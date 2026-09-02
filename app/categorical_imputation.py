@@ -30,7 +30,11 @@ def build_categorical_imputation_audit(
     """Enchaîne les phases validées puis impute les catégories absentes."""
 
     completeness_report, completeness_trace = build_numeric_completeness_audit(rows)
-    retained_ids = {\n        item["id"]\n        for item in completeness_trace\n        if item["decision"] == "conserver"\n    }
+    retained_ids = {
+        item["id"]
+        for item in completeness_trace
+        if item["decision"] == "conserver"
+    }
 
     _, geography_trace = build_geographic_preparation_audit(rows)
     neighborhoods = {
