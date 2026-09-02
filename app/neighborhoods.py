@@ -1,49 +1,53 @@
-"""Outils déterministes pour préparer la normalisation des quartiers."""
+"""Référentiel déterministe des zones retenues pour Ouaga Foncier."""
 
 from __future__ import annotations
 
 import re
 import unicodedata
 from collections.abc import Iterable
+from dataclasses import asdict, dataclass
 
 
-KNOWN_NEIGHBORHOOD_ALIASES = {
-    "ouaga 2000": "Ouaga 2000",
-    "ouaga2000": "Ouaga 2000",
-    "ouagadougou 2000": "Ouaga 2000",
-    "rimkieta": "Rimkiéta",
-    "boassa": "Boassa",
-    "saaba": "Saaba",
-    "karpala": "Karpala",
-    "zagtouli": "Zagtouli",
-    "bassinko": "Bassinko",
-    "koubri": "Koubri",
-    "tanghin": "Tanghin",
-    "tampouy": "Tampouy",
-    "kamboinsin": "Kamboinsin",
-    "yagma": "Yagma",
-    "kouba": "Kouba",
-    "bonheur ville": "Bonheur Ville",
-    "komsilga": "Komsilga",
-    "loumbila": "Loumbila",
-    "kossodo": "Kossodo",
-    "nagrin": "Nagrin",
-}
+# Noms métier validés. Les doublons orthographiques sont gérés par les alias.
+CANONICAL_NEIGHBORHOODS = (
+    "Bilbalogo", "Saint Léon", "Zangouettin", "Tiedpalogo", "Koulouba",
+    "Sabtenga", "Gampela", "Kamsonghin", "Samandin", "Gounghin Sud",
+    "Gandin", "Kouritenga", "Mankougoudou", "Paspanga", "Ouidi", "Larlé",
+    "Kologh Naba", "Dapoya", "Dapoya 2", "Nemnin", "Niogsin", "Hamdalaye",
+    "Gounghin Nord", "Baoghin", "Camp Militaire", "Sabtoana", "Baossa",
+    "Naababpougo", "Kienbaoghin", "Zongo", "Koumdayonré", "Nonsin",
+    "Rimkièta", "Kouba", "Sonré", "Tampouy", "Kilwin", "Tanghin", "Sambin",
+    "Somgandé", "Zone Industrielle", "Nioko 2", "Bendogo", "Toukin", "Zogona",
+    "Wemtenga", "Dagnoën", "Ronsin", "Kalgondin", "Pissy", "Kwaré",
+    "Pacsnoma", "Yagma", "Silmiougou", "Wayalghin", "Kossodo", "Polesgo",
+    "Dassasgho", "Nagrin", "Nongr-Massom", "Cissin", "Yamtenga", "Balkuy",
+    "Kamboinsé", "Ouaga 2000", "Goughin", "Zone du Bois", "Patte d'Oie",
+    "Bassinko", "Loumbila", "Saaba", "Zagtouli", "Kamboinsin", "Boassa",
+    "Sandogo", "Tengandogo", "Sig-Noghin", "Bissighin", "Darsalam",
+    "Cité Bancaire", "Cité An 3", "Cité Socogib", "Cité Militaire",
+    "Cité Abbé Simard", "Cité Bonheur", "Cité Azimo", "Cité Railtel",
+    "Cité Bolesse", "Zone Commerciale", "Centre Ville", "Paglayiri",
+    "Bilibambili", "Mogho Naaba", "Kuinima", "Bindougousso", "Zéca", "Baskuy",
+    "Pabré", "Koubri", "Komsilga", "Ouagadougou", "Karpala",
+)
+
+PERIPHERAL_COMMUNES = frozenset({"Loumbila", "Saaba", "Pabré", "Koubri", "Komsilga"})
+ADMINISTRATIVE_AREAS = frozenset({"Baskuy", "Nongr-Massom"})
+BROAD_AREAS = frozenset({"Centre Ville", "Zone Industrielle", "Zone Commerciale"})
+CITY_LEVEL_AREAS = frozenset({"Ouagadougou"})
 
 _NON_ALPHANUMERIC = re.compile(r"[^a-z0-9]+")
 _SPACE_BETWEEN_TEXT_AND_NUMBER = re.compile(r"(?<=[a-z])(?=\d)|(?<=\d)(?=[a-z])")
 
 
 def neighborhood_key(value: str | None) -> str:
-    """Construit une clé comparable sans inventer de quartier."""
+    """Construit une clé comparable sans accents, casse ni ponctuation."""
 
     if not value:
         return ""
     decomposed = unicodedata.normalize("NFKD", value)
     without_accents = "".join(
-        character
-        for character in decomposed
-        if not unicodedata.combining(character)
+        character for character in decomposed if not unicodedata.combining(character)
     )
     simplified = without_accents.casefold().strip()
     simplified = _SPACE_BETWEEN_TEXT_AND_NUMBER.sub(" ", simplified)
@@ -51,11 +55,70 @@ def neighborhood_key(value: str | None) -> str:
     return " ".join(simplified.split())
 
 
+_CANONICAL_BY_KEY = {
+    neighborhood_key(neighborhood): neighborhood
+    for neighborhood in CANONICAL_NEIGHBORHOODS
+}
+
+# Variantes confirmées qui ne sont pas déjà réunies par neighborhood_key().
+KNOWN_NEIGHBORHOOD_ALIASES = {
+    **_CANONICAL_BY_KEY,
+    "ouagadougou 2000": "Ouaga 2000",
+    "cite an iii": "Cité An 3",
+}
+
+
+@dataclass(frozen=True)
+class NeighborhoodMetadata:
+    original: str | None
+    comparison_key: str
+    canonical: str | None
+    in_scope: bool
+    zone_type: str | None
+    precision: str
+    status: str
+
+
 def suggest_canonical_neighborhood(value: str | None) -> str | None:
-    """Retourne uniquement une correspondance connue et vérifiée."""
+    """Retourne une zone canonique uniquement lorsqu'elle appartient au référentiel."""
+
+    return KNOWN_NEIGHBORHOOD_ALIASES.get(neighborhood_key(value))
+
+
+def neighborhood_metadata(value: str | None) -> dict[str, object]:
+    """Décrit la normalisation et la précision géographique d'une valeur."""
 
     key = neighborhood_key(value)
-    return KNOWN_NEIGHBORHOOD_ALIASES.get(key)
+    canonical = KNOWN_NEIGHBORHOOD_ALIASES.get(key)
+    if canonical in PERIPHERAL_COMMUNES:
+        zone_type, precision = "commune_peripherique", "commune"
+    elif canonical in ADMINISTRATIVE_AREAS:
+        zone_type, precision = "zone_administrative", "large"
+    elif canonical in BROAD_AREAS:
+        zone_type, precision = "zone_large", "large"
+    elif canonical in CITY_LEVEL_AREAS:
+        zone_type, precision = "ville", "ville_seulement"
+    elif canonical:
+        zone_type, precision = "quartier", "quartier"
+    else:
+        zone_type, precision = None, "inconnue"
+
+    metadata = NeighborhoodMetadata(
+        original=value,
+        comparison_key=key,
+        canonical=canonical,
+        in_scope=canonical is not None,
+        zone_type=zone_type,
+        precision=precision,
+        status="reference" if canonical else "review_required",
+    )
+    return asdict(metadata)
+
+
+def is_in_geographic_scope(value: str | None) -> bool:
+    """Indique si une valeur appartient à la liste géographique autorisée."""
+
+    return suggest_canonical_neighborhood(value) is not None
 
 
 def group_variants(values: Iterable[tuple[str, int]]) -> dict[str, list[tuple[str, int]]]:
@@ -64,7 +127,6 @@ def group_variants(values: Iterable[tuple[str, int]]) -> dict[str, list[tuple[st
     groups: dict[str, list[tuple[str, int]]] = {}
     for raw_value, count in values:
         key = neighborhood_key(raw_value)
-        if not key:
-            continue
-        groups.setdefault(key, []).append((raw_value, count))
+        if key:
+            groups.setdefault(key, []).append((raw_value, count))
     return groups

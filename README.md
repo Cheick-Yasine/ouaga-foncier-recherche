@@ -4,7 +4,7 @@ Plateforme de recherche intelligente d'annonces immobilières collectées autour
 
 ## Objectif
 
-L'utilisateur décrit le terrain, la parcelle, la maison ou la villa qu'il recherche. La plateforme transforme cette description en critères structurés, interroge la base PostgreSQL hébergée sur Neon et classe les annonces les plus pertinentes.
+L'utilisateur décrit le terrain, la parcelle ou la maison qu'il recherche. La plateforme transforme cette description en critères structurés, interroge la base PostgreSQL hébergée sur Neon et classe les annonces les plus pertinentes.
 
 ## Règles essentielles
 
