@@ -1,0 +1,53 @@
+name: Audit complétude numérique
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit-numeric-completeness:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+    steps:
+      - name: Récupérer le dépôt
+        uses: actions/checkout@v5
+
+      - name: Vérifier la présence du secret Neon
+        shell: bash
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::Le secret DATABASE_URL est absent."
+            exit 1
+          fi
+
+      - name: Installer Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Installer les dépendances
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Exécuter les tests
+        run: python -m pytest tests/test_numeric_completeness.py -q
+
+      - name: Auditer la complétude numérique
+        run: >-
+          python -m scripts.audit_numeric_completeness
+          --output reports/completude-numerique-audit.json
+          --trace-output "${RUNNER_TEMP}/completude-numerique-trace.csv"
+
+      - name: Publier le rapport agrégé
+        uses: actions/upload-artifact@v4
+        with:
+          name: audit-completude-numerique
+          path: reports/completude-numerique-audit.json
+          if-no-files-found: error
+          retention-days: 7
