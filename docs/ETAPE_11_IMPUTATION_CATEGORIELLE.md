@@ -5,9 +5,9 @@
 Garantir qu'aucune variable catégorielle du futur jeu de données ne soit vide, sans
 inventer une catégorie métier et sans supprimer d'annonce.
 
-Cette étape est exécutée après l'imputation numérique et ne modifie pas Neon.
+Cette étape est exécutée après le filtrage des annonces sans prix ou superficie observés et ne modifie pas Neon.
 
-## Variables concernées
+La base reçue par cette phase contient donc uniquement les annonces numériquement complètes.\n\n## Variables concernées
 
 - `quartier_final` ;
 - `type_bien_normalise` ;
