@@ -20,7 +20,8 @@ elles sont uniquement absentes du futur jeu de recherche.
 ## Traçabilité
 
 Le rapport JSON contient les volumes de chaque phase et les répartitions par source,
-type de zone et niveau de précision. Le CSV associe chaque identifiant à :
+type de zone et niveau de précision. Une trace CSV temporaire associe chaque
+identifiant à :
 
 - son quartier final ;
 - la source utilisée ;
@@ -29,6 +30,10 @@ type de zone et niveau de précision. Le CSV associe chaque identifiant à :
 - la décision de conservation ou d'exclusion.
 
 Aucun texte d'annonce et aucun contact WhatsApp ne sont exportés.
+
+Pour protéger les identifiants provenant de la base privée, GitHub Actions publie
+uniquement le rapport agrégé JSON. La trace CSV est créée dans le répertoire
+temporaire du runner et n'est pas ajoutée à l'artefact.
 
 ## Référence historique
 
