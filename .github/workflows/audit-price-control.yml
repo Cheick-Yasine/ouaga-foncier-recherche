@@ -1,0 +1,50 @@
+name: Audit contrôle des prix
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit-prices:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+    steps:
+      - name: Récupérer le dépôt
+        uses: actions/checkout@v4
+
+      - name: Vérifier la présence du secret Neon
+        shell: bash
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::Le secret DATABASE_URL est absent."
+            exit 1
+          fi
+
+      - name: Installer Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Installer les dépendances
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Simuler le contrôle des prix
+        run: >-
+          python -m scripts.audit_price_control
+          --output reports/controle-prix-audit.json
+          --trace-output "${RUNNER_TEMP}/controle-prix-trace.csv"
+
+      - name: Publier le rapport agrégé
+        uses: actions/upload-artifact@v4
+        with:
+          name: audit-controle-prix
+          path: reports/controle-prix-audit.json
+          if-no-files-found: error
+          retention-days: 7
