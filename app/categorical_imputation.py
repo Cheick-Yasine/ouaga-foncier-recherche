@@ -8,7 +8,7 @@ from typing import Any
 
 from app.geographic_preparation import build_geographic_preparation_audit
 from app.normalization import normalize_property_type
-from app.numeric_imputation import build_numeric_imputation_audit
+from app.numeric_completeness import build_numeric_completeness_audit
 from app.text_features import build_text_features_audit
 
 
@@ -29,8 +29,8 @@ def build_categorical_imputation_audit(
 ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     """Enchaîne les phases validées puis impute les catégories absentes."""
 
-    numeric_report, numeric_trace = build_numeric_imputation_audit(rows)
-    retained_ids = {item["id"] for item in numeric_trace}
+    completeness_report, completeness_trace = build_numeric_completeness_audit(rows)
+    retained_ids = {\n        item["id"]\n        for item in completeness_trace\n        if item["decision"] == "conserver"\n    }
 
     _, geography_trace = build_geographic_preparation_audit(rows)
     neighborhoods = {
@@ -97,7 +97,7 @@ def build_categorical_imputation_audit(
     total = len(trace)
     report = {
         "phases": [
-            *numeric_report["phases"],
+            *completeness_report["phases"],
             "Imputation des variables catégorielles",
         ],
         "observations_avant_imputation_categorielle": total,
