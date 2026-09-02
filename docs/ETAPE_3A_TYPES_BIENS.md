@@ -16,7 +16,9 @@ La plateforme utilise uniquement trois valeurs non nulles :
 | ferme | terrain |
 | parcelle | parcelle |
 | maison | maison |
-| villa | maison |
+| villa | valeur vide, annonce exclue |
+
+Une villa ne devient jamais une maison. Elle ne participe pas aux futurs résultats de recherche.
 
 La colonne d'origine `type_bien` reste intacte. La nouvelle valeur est placée dans `type_bien_normalise`.
 
@@ -24,7 +26,7 @@ La colonne d'origine `type_bien` reste intacte. La nouvelle valeur est placée d
 
 Les anciennes annonces `autre` sont analysées à partir de `resume_court` et `texte_nettoye`.
 
-Une catégorie n'est retenue que lorsqu'une seule famille claire de mots-clés est détectée. Si le texte contient des signaux contradictoires ou aucun signal, `type_bien_normalise` reste vide et l'annonce est marquée comme étant à confirmer.
+Une catégorie n'est retenue que lorsqu'une seule famille claire de mots-clés est détectée. Une annonce mentionnant une villa est exclue. Si le texte contient des signaux contradictoires ou aucun signal, `type_bien_normalise` reste vide et l'annonce est marquée comme étant à confirmer.
 
 Cette règle évite de transformer une incertitude en fausse information.
 
