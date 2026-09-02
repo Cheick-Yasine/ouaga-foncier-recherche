@@ -19,6 +19,10 @@ CONSTRAINT_NAME = "annonces_type_bien_normalise_check"
 INDEX_NAME = "idx_annonces_type_bien_normalise"
 
 
+def _is_original_villa(original_type: str | None) -> bool:
+    return (original_type or "").strip().casefold() in {"villa", "villas"}
+
+
 def build_plan(connection: psycopg.Connection[Any]) -> tuple[list[tuple[str | None, str]], dict[str, Any]]:
     with connection.cursor() as cursor:
         cursor.execute(
@@ -41,19 +45,28 @@ def build_plan(connection: psycopg.Connection[Any]) -> tuple[list[tuple[str | No
             summary,
             clean_text,
         )
-        normalized_counts[normalized_type or "<A_CONFIRMER>"] += 1
+
+        if normalized_type:
+            result_label = normalized_type
+        elif _is_original_villa(original_type):
+            result_label = "<VILLA_EXCLUE>"
+        else:
+            result_label = "<A_CONFIRMER>"
+
+        normalized_counts[result_label] += 1
         updates.append((normalized_type, identifier))
 
     report = {
         "total_rows": len(rows),
         "original_counts": dict(sorted(original_counts.items())),
         "normalized_counts": dict(sorted(normalized_counts.items())),
+        "excluded_villa_rows": normalized_counts["<VILLA_EXCLUE>"],
         "ambiguous_rows": normalized_counts["<A_CONFIRMER>"],
         "mapping": {
             "ferme": "terrain",
             "terrain": "terrain",
             "parcelle": "parcelle",
-            "villa": "maison",
+            "villa": "exclue, valeur normalisée vide",
             "maison": "maison",
             "autre": "analyse prudente du texte, sinon valeur vide",
         },
