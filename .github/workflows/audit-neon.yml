@@ -36,8 +36,7 @@ jobs:
           python -m pip install -r requirements.txt
 
       - name: Exécuter l'audit en lecture seule
-        run: |
-          python scripts/audit_neon_schema.py             --output reports/neon-schema-audit.json
+        run: python -m scripts.audit_neon_schema --output reports/neon-schema-audit.json
 
       - name: Publier le rapport
         uses: actions/upload-artifact@v4
