@@ -41,7 +41,7 @@ La table produite par `ouaga-foncier-etl` contient :
 Dans PowerShell, après avoir configuré le fichier local `.env` :
 
 ```powershell
-python scripts/audit_neon_schema.py --output reports/neon-schema-audit.json
+python -m scripts.audit_neon_schema --output reports/neon-schema-audit.json
 ```
 
 Le script place la transaction PostgreSQL en lecture seule.
@@ -50,4 +50,4 @@ Le script place la transaction PostgreSQL en lecture seule.
 
 Le workflow manuel **Audit Neon** nécessite un secret GitHub nommé exactement `DATABASE_URL`.
 
-Le rapport est proposé comme artefact téléchargeable et n'est pas ajouté automatiquement au dépôt.
+Le rapport est proposé comme artefact téléchargeable pendant sept jours et n'est jamais ajouté automatiquement au dépôt.
