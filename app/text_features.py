@@ -19,7 +19,7 @@ _PROXIMITY_PATTERNS = {
         r"\b(ecole|lycee|college|universite|institut|etablissement scolaire)\b"
     ),
     "voie_bitumee": re.compile(
-        r"\b(goudron|goudronnee?|bitume|bitumee?|voie bitumee|route bitumee)\b"
+        r"\b(route bitumee|voie bitumee|goudron|goudronnee?|bitume|bitumee?)\b"
     ),
 }
 _ROAD_PATTERN = re.compile(
@@ -35,7 +35,7 @@ _DOCUMENT_PATTERNS = {
         r"\b(puh|permis urbain d habiter|permis urbain de habiter)\b"
     ),
     "attestation_attribution": re.compile(
-        r"\b(attestation d attribution|attestation attribution|attestation)\b"
+        r"\b(attestation d attribution|attestation attribution|attestation(?! de possession fonciere rurale))\b"
     ),
     "apfr": re.compile(
         r"\b(apfr|attestation de possession fonciere rurale)\b"
