@@ -59,6 +59,16 @@ Adresses utiles :
 python -m pytest
 ```
 
+## Auditer la table Neon en lecture seule
+
+Après avoir configuré `.env` :
+
+```powershell
+python -m scripts.audit_neon_schema --output reports/neon-schema-audit.json
+```
+
+Le rapport contient la structure, les index, le volume et les valeurs manquantes, mais aucun texte d'annonce ni numéro WhatsApp. Consultez [la documentation de l'étape 2](docs/ETAPE_2_AUDIT_NEON.md).
+
 ## Sécurité de Neon
 
 La vraie `DATABASE_URL` est enregistrée uniquement :
