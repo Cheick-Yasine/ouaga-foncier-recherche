@@ -564,3 +564,18 @@ footer a { color: var(--green); }
   .header-note { display: none; }
   .account-button { padding: 8px 10px; }
 }
+
+
+.contact-box button.contact-action {
+  min-height: auto;
+  padding: 7px 9px;
+  color: var(--green);
+  background: transparent;
+  border: 0;
+}
+
+.contact-box button.contact-action:hover {
+  color: var(--green-dark);
+  background: rgba(15, 91, 67, 0.08);
+  text-decoration: none;
+}
