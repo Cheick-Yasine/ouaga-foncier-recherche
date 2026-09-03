@@ -1,61 +1,64 @@
-# Étape 10 révisée — Filtrage de la complétude numérique
+# Étape 10 révisée — Filtrage du double manque numérique
 
 ## Décision
 
-L'imputation des prix et superficies est supprimée.
+L'imputation des prix et superficies reste supprimée.
 
-Le moteur de recherche utilisera uniquement les annonces qui possèdent à la fois :
+Une annonce quitte la base préparée uniquement lorsque le prix et la superficie
+sont tous les deux manquants. Si une seule de ces informations manque, l'annonce
+reste disponible pour la recherche.
 
-- un prix réellement observé ;
-- une superficie réellement observée et strictement positive.
+## Pourquoi conserver les annonces partiellement renseignées
 
-Aucune moyenne ou valeur de remplacement n'est calculée.
+Une annonce sans prix peut encore correspondre au quartier, à la superficie, au
+type de bien, au document, à la proximité et à la viabilité recherchés.
 
-## Pourquoi cette règle
+Une annonce sans superficie peut encore correspondre au quartier, au prix et aux
+autres caractéristiques. Les supprimer ferait perdre des résultats potentiellement
+utiles.
 
-Le moteur doit comparer la description de l'utilisateur aux annonces selon plusieurs
-dimensions, notamment le prix et la superficie. Une valeur artificielle pourrait
-rendre une annonce faussement proche de la demande.
+## Règle de classement future
 
-Le filtrage garantit que :
+Le moteur calculera le score uniquement avec les critères disponibles pour chaque
+annonce :
 
-- le prix affiché vient réellement de l'annonce ;
-- la superficie affichée vient réellement de l'annonce ;
-- le prix au m² est calculé uniquement avec deux valeurs observées ;
-- les scores de proximité numérique ne reposent pas sur des estimations fabriquées.
+- prix absent : le critère prix est ignoré pour cette annonce ;
+- superficie absente : le critère superficie est ignoré ;
+- les poids des critères disponibles sont renormalisés pour conserver un score sur
+  100 ;
+- l'interface signale clairement toute information indisponible ;
+- une annonce ne reçoit jamais un avantage parce qu'une valeur manque.
 
-## Motifs d'exclusion
+Les règles strictes demandées par l'utilisateur restent prioritaires. Par exemple,
+si l'utilisateur rend le prix obligatoire, une annonce sans prix est écartée de
+cette recherche particulière, même si elle reste dans la base préparée.
 
-Chaque annonce incomplète reçoit un seul motif :
+## Motifs suivis dans l'audit
 
-- `prix_manquant` ;
-- `superficie_manquante` ;
-- `prix_et_superficie_manquants` ;
-- `superficie_non_positive`.
+Les annonces sont réparties entre :
 
-Une annonce `complete` reste dans la future base de recherche.
+- `complete` ;
+- `prix_manquant`, conservée ;
+- `superficie_manquante`, conservée ;
+- `prix_et_superficie_manquants`, exclue ;
+- `superficie_non_positive`, conservée par cette règle et signalée séparément.
 
 ## Conservation de la base brute
 
-« Exclure » signifie retirer l'annonce du jeu de données préparé pour la recherche.
-La ligne originale n'est jamais supprimée de `public.annonces` dans Neon.
+L'exclusion concerne uniquement le jeu de données préparé. Aucune ligne originale
+n'est supprimée de `public.annonces` dans Neon.
 
-Cela permet de la réintégrer plus tard si le collecteur obtient un prix ou une
-superficie lors d'une nouvelle publication ou mise à jour.
+## Résultat attendu
 
-## Conséquence attendue
+D'après le dernier audit :
 
-D'après l'audit précédent :
-
-- 3 401 annonces étaient disponibles avant ce filtre ;
-- 2 710 possédaient déjà une cible prix au m² réellement observée ;
-- environ 691 annonces devraient donc être écartées de la base de recherche.
-
-Le nouvel audit calculera les nombres exacts et séparera les différents motifs.
+- 3 401 annonces sont disponibles avant ce filtre ;
+- 113 ont simultanément le prix et la superficie manquants ;
+- 3 288 annonces devraient rester ;
+- aucune valeur numérique ne sera imputée.
 
 ## Confidentialité
 
-Le workflow manuel **Audit complétude numérique** utilise Neon en lecture seule.
-La trace détaillée reste temporaire dans le runner. L'artefact publié contient
-uniquement des statistiques agrégées, sans prix, superficie, texte, contact, URL ou
-identifiant individuel.
+Le workflow **Audit complétude numérique** utilise Neon en lecture seule. La trace
+détaillée reste temporaire dans le runner. L'artefact publié contient uniquement
+des statistiques agrégées.
