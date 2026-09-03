@@ -1,4 +1,4 @@
-"""Audite l'imputation numérique sans modifier Neon."""
+"""Audite le filtrage des annonces numériques incomplètes sans modifier Neon."""
 
 from __future__ import annotations
 
@@ -13,10 +13,10 @@ from psycopg.rows import dict_row
 
 from app.config import get_settings
 from app.database import DatabaseNotConfiguredError
-from app.numeric_imputation import build_numeric_imputation_audit
+from app.numeric_completeness import build_numeric_completeness_audit
 
 
-def audit_numeric_imputation() -> tuple[dict[str, Any], list[dict[str, Any]]]:
+def audit_numeric_completeness() -> tuple[dict[str, Any], list[dict[str, Any]]]:
     settings = get_settings()
     if settings.database_url is None:
         raise DatabaseNotConfiguredError(
@@ -51,18 +51,16 @@ def audit_numeric_imputation() -> tuple[dict[str, Any], list[dict[str, Any]]]:
                 """
             ).fetchall()
 
-    return build_numeric_imputation_audit(rows)
+    return build_numeric_completeness_audit(rows)
 
 
 def _write_trace(path: Path, trace: list[dict[str, Any]]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     columns = [
         "id",
-        "prix_fcfa_etait_manquant",
-        "superficie_m2_etait_manquante",
-        "methode_imputation_prix",
-        "methode_imputation_superficie",
-        "cible_prix_m2_observee",
+        "statut_completude_numerique",
+        "prix_fcfa_observe",
+        "superficie_m2_observee",
         "decision",
     ]
     with path.open("w", newline="", encoding="utf-8-sig") as stream:
@@ -73,13 +71,13 @@ def _write_trace(path: Path, trace: list[dict[str, Any]]) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Simuler l'imputation numérique des annonces admissibles."
+        description="Exclure de la recherche les annonces sans prix ou superficie."
     )
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--trace-output", type=Path, required=True)
     args = parser.parse_args()
 
-    report, trace = audit_numeric_imputation()
+    report, trace = audit_numeric_completeness()
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(
         json.dumps(report, ensure_ascii=False, indent=2, default=str) + "\n",
@@ -87,10 +85,11 @@ def main() -> int:
     )
     _write_trace(args.trace_output, trace)
     print(
-        "Imputation numérique simulée : "
-        f"{report['prix_imputes']} prix et "
-        f"{report['superficies_imputees']} superficies imputés ; "
-        f"{report['observations_restantes']} annonces conservées."
+        "Complétude numérique contrôlée : "
+        f"{report['observations_supprimees_filtrage_numerique']} exclues "
+        "de la base de recherche, "
+        f"{report['observations_restantes']} restantes, "
+        "0 valeur imputée."
     )
     return 0
 

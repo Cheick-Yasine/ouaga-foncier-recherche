@@ -1,4 +1,4 @@
-name: Audit imputation numérique
+name: Audit complétude numérique
 
 on:
   workflow_dispatch:
@@ -7,7 +7,7 @@ permissions:
   contents: read
 
 jobs:
-  audit-numeric-imputation:
+  audit-numeric-completeness:
     runs-on: ubuntu-latest
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
@@ -36,18 +36,18 @@ jobs:
           python -m pip install -r requirements.txt
 
       - name: Exécuter les tests
-        run: python -m pytest tests/test_numeric_imputation.py -q
+        run: python -m pytest tests/test_numeric_completeness.py -q
 
-      - name: Auditer l'imputation numérique
+      - name: Auditer la complétude numérique
         run: >-
-          python -m scripts.audit_numeric_imputation
-          --output reports/imputation-numerique-audit.json
-          --trace-output "${RUNNER_TEMP}/imputation-numerique-trace.csv"
+          python -m scripts.audit_numeric_completeness
+          --output reports/completude-numerique-audit.json
+          --trace-output "${RUNNER_TEMP}/completude-numerique-trace.csv"
 
       - name: Publier le rapport agrégé
         uses: actions/upload-artifact@v4
         with:
-          name: audit-imputation-numerique
-          path: reports/imputation-numerique-audit.json
+          name: audit-completude-numerique
+          path: reports/completude-numerique-audit.json
           if-no-files-found: error
           retention-days: 7
