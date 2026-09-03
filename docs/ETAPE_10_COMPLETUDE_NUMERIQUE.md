@@ -24,8 +24,7 @@ annonce :
 
 - prix absent : le critère prix ne rapporte aucun point ;
 - superficie absente : le critère superficie ne rapporte aucun point ;
-- les poids des critères disponibles sont renormalisés pour conserver un score sur
-  100 ;
+- la couverture du résultat diminue lorsqu'une information demandée manque ;
 - l'interface signale clairement toute information indisponible ;
 - une annonce ne reçoit jamais un avantage parce qu'une valeur manque.
 
