@@ -5,10 +5,8 @@ from __future__ import annotations
 import math
 import re
 from collections import Counter
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
-from typing import Any
-
 from app.neighborhoods import resolve_neighborhood
 from app.normalization import normalize_property_type
 from app.text_features import (
@@ -152,6 +150,8 @@ def cosine_similarity(left: str, right: str) -> float:
     right_vector = _tokens(right)
     if not left_vector or not right_vector:
         return 0.0
+    if left_vector == right_vector:
+        return 1.0
     common = left_vector.keys() & right_vector.keys()
     numerator = sum(left_vector[key] * right_vector[key] for key in common)
     left_norm = math.sqrt(sum(value * value for value in left_vector.values()))
@@ -188,18 +188,6 @@ def _requested_components(criteria: SearchCriteria) -> list[str]:
     if criteria.viability:
         requested.append("viabilite")
     return requested
-
-
-def _candidate_value(candidate: SearchCandidate, component: str) -> Any:
-    return {
-        "quartier": candidate.neighborhood,
-        "prix": candidate.price_fcfa,
-        "superficie": candidate.area_m2,
-        "type_bien": candidate.property_type,
-        "statut_document": candidate.document_status,
-        "proximite": candidate.proximity,
-        "viabilite": candidate.viability,
-    }.get(component)
 
 
 def score_candidate(
