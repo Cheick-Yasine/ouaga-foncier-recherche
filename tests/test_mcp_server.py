@@ -48,7 +48,8 @@ def test_search_never_returns_contact(monkeypatch) -> None:
     assert response["nombre_resultats"] == 1
     assert response["results"][0]["id"] == "post-1"
     assert "contact" not in response["results"][0]
-    assert "70 12 34 56" in response["results"][0]["description"]
+    assert "70 12 34 56" not in response["results"][0]["description"]
+    assert "[contact retire]" in response["results"][0]["description"]
 
 
 def test_fetch_excludes_contact_field(monkeypatch) -> None:
