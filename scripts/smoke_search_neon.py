@@ -37,32 +37,17 @@ def build_safe_report(
             "superficie_m2": criteria.area_m2,
             "statut_document": criteria.document_status,
         },
-        "meilleurs_resultats": [
-            {
-                "id": result.candidate.identifier,
-                "score": result.score,
-                "couverture": result.coverage,
-                "type_bien": result.candidate.property_type,
-                "quartier": result.candidate.neighborhood,
-                "prix_fcfa": result.candidate.price_fcfa,
-                "superficie_m2": result.candidate.area_m2,
-                "anciennete_jours": (
-                    round(result.candidate.age_days, 2)
-                    if result.candidate.age_days is not None
-                    else None
-                ),
-                "informations_absentes": [
-                    name
-                    for name, value in result.components.items()
-                    if value is None
-                ],
-            }
-            for result in ranked
-        ],
+        "scores": {
+            "meilleur": ranked[0].score if ranked else None,
+            "couverture_meilleure": ranked[0].coverage if ranked else None,
+        },
         "donnees_non_exportees": [
             "DATABASE_URL",
+            "identifiants_annonces",
+            "liens_facebook",
             "texte_integral",
             "contacts_whatsapp",
+            "prix_et_superficies_individuels",
         ],
     }
 
