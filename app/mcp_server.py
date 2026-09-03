@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import asdict, replace
+from dataclasses import replace
 from typing import Any
 
 import psycopg
@@ -12,7 +12,7 @@ from app.config import get_settings
 from app.database import DatabaseNotConfiguredError
 from app.search_engine import parse_search_description, rank_candidates
 from app.search_repository import load_candidate_by_id, load_recent_candidates
-from app.semantic_filter import apply_semantic_filter
+from app.semantic_filter import apply_semantic_filter, sanitize_external_text
 
 mcp = FastMCP(
     "Ouaga Foncier Recherche",
@@ -52,7 +52,7 @@ def _public_result(result) -> dict[str, Any]:
         )
         or "Annonce immobilière",
         "url": candidate.url,
-        "description": candidate.text,
+        "description": sanitize_external_text(candidate.text),
         "date_publication": candidate.publication_label,
         "type_bien": candidate.property_type,
         "quartier": candidate.neighborhood,
@@ -151,7 +151,7 @@ def fetch(id: str) -> dict[str, Any]:
             if value
         )
         or "Annonce immobilière",
-        "text": candidate.text,
+        "text": sanitize_external_text(candidate.text),
         "url": candidate.url,
         "metadata": {
             "date_publication": candidate.publication_label,
