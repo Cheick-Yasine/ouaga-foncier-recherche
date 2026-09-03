@@ -5,7 +5,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
 from app.config import get_settings
-from app.database import DatabaseNotConfiguredError, check_database_connection
+from app.database import DatabaseNotConfiguredError, check_database_connection\nfrom app.search_routes import router as search_router
 
 
 class HealthResponse(BaseModel):
