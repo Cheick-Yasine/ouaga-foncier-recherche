@@ -51,10 +51,15 @@ irréversible.
 
 Le rapport agrégé indique pour chaque variable :
 
-- le nombre de valeurs absentes avant l'imputation ;
-- le nombre converti en `manquante` ;
-- le nombre restant après l'imputation ;
+- `valeurs_manquantes_avant` : les valeurs nulles ou vides détectées ;
+- `valeurs_converties_en_manquante` : les remplacements effectués ;
+- `valeurs_vides_apres` : les vrais champs encore vides, normalement zéro ;
+- `categories_manquante_apres` : les observations portant désormais la modalité
+  explicite `manquante` ;
 - les distributions des principales variables.
+
+La modalité textuelle `manquante` est donc une valeur renseignée. Elle n'est pas
+comptée comme un champ techniquement vide.
 
 Aucune ligne n'est supprimée.
 

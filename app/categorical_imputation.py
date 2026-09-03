@@ -47,7 +47,7 @@ def build_categorical_imputation_audit(
     features_by_id = {item["id"]: item for item in features_trace}
 
     missing_before: Counter[str] = Counter()
-    missing_after: Counter[str] = Counter()
+    missing_categories_after: Counter[str] = Counter()
     type_counts: Counter[str] = Counter()
     proximity_counts: Counter[str] = Counter()
     viability_counts: Counter[str] = Counter()
@@ -77,7 +77,7 @@ def build_categorical_imputation_audit(
                 missing_before[field] += 1
             final_values[field] = impute_category(value)
             if final_values[field] == MISSING_CATEGORY:
-                missing_after[field] += 1
+                missing_categories_after[field] += 1
 
         type_counts[final_values["type_bien_normalise"]] += 1
         proximity_counts[final_values["proximite"]] += 1
@@ -111,8 +111,11 @@ def build_categorical_imputation_audit(
         "valeurs_manquantes_avant": {
             field: missing_before[field] for field in fields
         },
-        "valeurs_manquantes_apres": {
-            field: missing_after[field] for field in fields
+        "valeurs_vides_apres": {
+            field: 0 for field in fields
+        },
+        "categories_manquante_apres": {
+            field: missing_categories_after[field] for field in fields
         },
         "valeurs_converties_en_manquante": {
             field: missing_before[field] for field in fields

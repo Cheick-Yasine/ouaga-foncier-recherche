@@ -70,6 +70,9 @@ def test_ambiguous_type_becomes_missing_without_removing_row() -> None:
         report["valeurs_converties_en_manquante"]["type_bien_normalise"]
         == 1
     )
+    assert report["valeurs_vides_apres"]["type_bien_normalise"] == 0
+    assert report["categories_manquante_apres"]["type_bien_normalise"] == 1
+    assert "valeurs_manquantes_apres" not in report
 
     by_id = {item["id"]: item for item in trace}
     assert by_id["known"]["type_bien_normalise"] == "terrain"
