@@ -46,33 +46,38 @@ def test_search_never_returns_contact(monkeypatch) -> None:
     rendered = str(response)
 
     assert response["nombre_resultats"] == 1
-    assert response["results"][0]["id"] == "post-1"
+    assert response["results"][0]["id"] != "post-1"
+    assert response["results"][0]["url"] is None
     assert "contact" not in response["results"][0]
     assert "70 12 34 56" not in response["results"][0]["description"]
     assert "[contact retire]" in response["results"][0]["description"]
 
 
-def test_fetch_excludes_contact_field(monkeypatch) -> None:
+def test_fetch_excludes_source_identity_link_and_contact(monkeypatch) -> None:
+    candidate = SearchCandidate(
+        identifier="post-2",
+        text="Terrain à Karpala. Contact 76 00 00 00",
+        property_type="terrain",
+        neighborhood="Karpala",
+        url="https://facebook.com/posts/2",
+        contact="76 00 00 00",
+    )
     monkeypatch.setattr(
         mcp_server,
-        "load_candidate_by_id",
-        lambda _identifier: SearchCandidate(
-            identifier="post-2",
-            text="Terrain à Karpala",
-            property_type="terrain",
-            neighborhood="Karpala",
-            contact="76 00 00 00",
-        ),
+        "load_recent_candidates",
+        lambda _max_age: [candidate],
     )
 
-    response = mcp_server.fetch("post-2")
+    public_id = mcp_server._public_id(candidate.identifier)
+    response = mcp_server.fetch(public_id)
     rendered = str(response)
 
-    assert response["id"] == "post-2"
+    assert response["id"] == public_id
+    assert response["id"] != "post-2"
+    assert response["url"] is None
+    assert "facebook.com" not in rendered
     assert "contact" not in response
-    assert "76000000" not in rendered
     assert "76 00 00 00" not in rendered
-
 
 def test_unknown_required_criterion_is_rejected() -> None:
     response = mcp_server.rechercher_annonces(
