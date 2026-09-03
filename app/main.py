@@ -25,6 +25,8 @@ app = FastAPI(
     version="0.1.0",
 )
 
+app.include_router(search_router)
+
 
 @app.get("/", tags=["Système"])
 def root() -> dict[str, str]:
