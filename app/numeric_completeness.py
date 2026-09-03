@@ -72,7 +72,7 @@ def build_numeric_completeness_audit(
                 "decision": (
                     "conserver"
                     if keep
-                    else "exclure_base_recherche_incomplete"
+                    else "exclure_prix_et_superficie_manquants"
                 ),
             }
         )
@@ -86,13 +86,13 @@ def build_numeric_completeness_audit(
         ],
         "observations_avant_filtrage_numerique": before,
         "prix_seuls_manquants_conserves": status_counts["prix_manquant"],
-        "superficies_seules_manquantes": status_counts[
+        "superficies_seules_manquantes_conservees": status_counts[
             "superficie_manquante"
         ],
-        "prix_et_superficies_manquants": status_counts[
+        "prix_et_superficies_manquants_exclus": status_counts[
             "prix_et_superficie_manquants"
         ],
-        "superficies_non_positives": status_counts[
+        "superficies_non_positives_conservees": status_counts[
             "superficie_non_positive"
         ],
         "observations_supprimees_filtrage_numerique": removed,
