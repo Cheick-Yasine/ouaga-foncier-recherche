@@ -9,11 +9,30 @@ from app.main import app
 client = TestClient(app)
 
 
-def test_root() -> None:
+def test_root_serves_search_interface() -> None:
     response = client.get("/")
 
     assert response.status_code == 200
+    assert "text/html" in response.headers["content-type"]
+    assert "Ouaga Foncier" in response.text
+    assert 'id="search-form"' in response.text
+
+
+def test_api_information() -> None:
+    response = client.get("/api")
+
+    assert response.status_code == 200
     assert response.json()["documentation"] == "/docs"
+
+
+def test_static_assets_are_available() -> None:
+    css = client.get("/static/styles.css")
+    javascript = client.get("/static/app.js")
+
+    assert css.status_code == 200
+    assert "--green" in css.text
+    assert javascript.status_code == 200
+    assert 'fetch("/search"' in javascript.text
 
 
 def test_health() -> None:
