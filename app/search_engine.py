@@ -49,7 +49,7 @@ class SearchCriteria:
     viability: str | None = None
     document_status: str | None = None
     required_fields: frozenset[str] = field(default_factory=frozenset)
-    max_age_days: int = 7
+    max_age_days: int | None = None
 
 
 @dataclass(frozen=True)
@@ -200,7 +200,11 @@ def score_candidate(
 ) -> RankedResult | None:
     """Calcule un score explicable ou exclut une contrainte impossible."""
 
-    if candidate.age_days is not None and candidate.age_days > criteria.max_age_days:
+    if (
+        criteria.max_age_days is not None
+        and candidate.age_days is not None
+        and candidate.age_days > criteria.max_age_days
+    ):
         return None
     if (
         criteria.price_is_maximum
@@ -334,7 +338,7 @@ def rank_candidates(
             -(
                 result.candidate.age_days
                 if result.candidate.age_days is not None
-                else criteria.max_age_days
+                else float("inf")
             ),
         ),
         reverse=True,
