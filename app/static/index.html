@@ -14,7 +14,10 @@
       <span class="brand-mark" aria-hidden="true">OF</span>
       <span>Ouaga Foncier</span>
     </a>
-    <p class="header-note">Annonces collectées depuis moins de 7 jours</p>
+    <div class="header-actions">
+      <p class="header-note">Annonces collectées depuis moins de 7 jours</p>
+      <button id="account-button" class="account-button" type="button">Se connecter</button>
+    </div>
   </header>
 
   <main>
@@ -105,6 +108,26 @@
       </div>
     </section>
   </main>
+
+  <dialog id="auth-dialog" class="auth-dialog">
+    <form id="auth-form">
+      <div class="dialog-heading">
+        <div>
+          <p class="eyebrow">Espace personnel</p>
+          <h2 id="auth-title">Se connecter</h2>
+        </div>
+        <button id="close-auth" class="close-button" type="button" aria-label="Fermer">×</button>
+      </div>
+      <p id="auth-description" class="muted">Connectez-vous pour afficher les contacts complets.</p>
+      <label for="auth-email">Adresse e-mail</label>
+      <input id="auth-email" name="email" type="email" autocomplete="email" required>
+      <label for="auth-password">Mot de passe</label>
+      <input id="auth-password" name="password" type="password" minlength="10" maxlength="128" autocomplete="current-password" required>
+      <p id="auth-feedback" class="auth-feedback" aria-live="polite"></p>
+      <button id="auth-submit" type="submit">Se connecter</button>
+      <button id="auth-switch" class="text-button" type="button">Créer un compte</button>
+    </form>
+  </dialog>
 
   <footer>
     <p>Ouaga Foncier Recherche</p>
