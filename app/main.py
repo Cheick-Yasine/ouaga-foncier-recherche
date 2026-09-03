@@ -1,7 +1,11 @@
 """Point d'entrée FastAPI."""
 
+from pathlib import Path
+
 import psycopg
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from app.config import get_settings
@@ -23,13 +27,21 @@ class DatabaseHealthResponse(BaseModel):
 app = FastAPI(
     title="Ouaga Foncier Recherche",
     description="Recherche intelligente d'annonces immobilières récentes.",
-    version="0.2.0",
+    version="0.3.0",
 )
 app.include_router(search_router)
 
+STATIC_DIR = Path(__file__).resolve().parent / "static"
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
-@app.get("/", tags=["Système"])
-def root() -> dict[str, str]:
+
+@app.get("/", include_in_schema=False, response_class=FileResponse)
+def root() -> FileResponse:
+    return FileResponse(STATIC_DIR / "index.html")
+
+
+@app.get("/api", tags=["Système"])
+def api_information() -> dict[str, str]:
     return {
         "message": "API Ouaga Foncier Recherche",
         "documentation": "/docs",

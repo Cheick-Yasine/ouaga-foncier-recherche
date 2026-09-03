@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Recherche d'annonces immobilières récentes à Ouagadougou">
+  <title>Ouaga Foncier</title>
+  <link rel="stylesheet" href="/static/styles.css">
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="/" aria-label="Ouaga Foncier, accueil">
+      <span class="brand-mark" aria-hidden="true">OF</span>
+      <span>Ouaga Foncier</span>
+    </a>
+    <p class="header-note">Annonces collectées depuis moins de 7 jours</p>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="hero-copy">
+        <p class="eyebrow">Recherche immobilière à Ouagadougou</p>
+        <h1>Décrivez le bien que vous recherchez.</h1>
+        <p class="hero-text">
+          Le moteur analyse votre demande, compare les annonces récentes et
+          explique clairement pourquoi chaque résultat vous est proposé.
+        </p>
+      </div>
+
+      <form id="search-form" class="search-panel">
+        <label for="description">Votre recherche</label>
+        <textarea
+          id="description"
+          name="description"
+          rows="5"
+          minlength="3"
+          maxlength="2000"
+          required
+          placeholder="Exemple : Je cherche une parcelle à Saaba de 300 m² avec un budget maximum de 5 millions et un PUH"
+        ></textarea>
+
+        <div class="form-line">
+          <div>
+            <label for="limit">Nombre de résultats</label>
+            <select id="limit" name="limit">
+              <option value="10">10 résultats</option>
+              <option value="20" selected>20 résultats</option>
+              <option value="50">50 résultats</option>
+            </select>
+          </div>
+          <button id="submit-button" type="submit">Rechercher les annonces</button>
+        </div>
+
+        <details class="requirements">
+          <summary>Définir des critères obligatoires</summary>
+          <p>
+            Une annonce sera exclue si une information cochée est absente ou
+            différente.
+          </p>
+          <div class="checkbox-grid">
+            <label><input type="checkbox" value="quartier"> Quartier</label>
+            <label><input type="checkbox" value="prix"> Prix</label>
+            <label><input type="checkbox" value="superficie"> Superficie</label>
+            <label><input type="checkbox" value="type_bien"> Type de bien</label>
+            <label><input type="checkbox" value="statut_document"> Document</label>
+          </div>
+        </details>
+      </form>
+    </section>
+
+    <section id="feedback" class="feedback" aria-live="polite"></section>
+
+    <section id="search-output" class="search-output" hidden>
+      <div id="criteria-panel" class="criteria-panel"></div>
+      <div class="results-heading">
+        <div>
+          <p class="eyebrow">Résultats classés</p>
+          <h2>Annonces correspondantes</h2>
+          <p id="result-count" class="muted"></p>
+        </div>
+      </div>
+      <div id="results" class="results-grid"></div>
+    </section>
+
+    <section id="empty-state" class="empty-state">
+      <p class="eyebrow">Comment ça fonctionne</p>
+      <h2>Une sélection précise et transparente</h2>
+      <div class="steps">
+        <article>
+          <span>01</span>
+          <h3>Compréhension</h3>
+          <p>Le quartier, le budget, la superficie et le document sont extraits de votre description.</p>
+        </article>
+        <article>
+          <span>02</span>
+          <h3>Comparaison</h3>
+          <p>Chaque annonce récente est comparée au texte et aux critères demandés.</p>
+        </article>
+        <article>
+          <span>03</span>
+          <h3>Explication</h3>
+          <p>Le score et les informations manquantes sont affichés sans inventer de données.</p>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>Ouaga Foncier Recherche</p>
+    <a href="/docs">Documentation de l’API</a>
+  </footer>
+</body>
+</html>
