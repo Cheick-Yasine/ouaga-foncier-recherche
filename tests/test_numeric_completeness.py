@@ -59,7 +59,7 @@ def test_numeric_completeness_classification(
     )
 
 
-def test_incomplete_rows_leave_search_base_without_imputation() -> None:
+def test_only_rows_missing_both_values_are_excluded() -> None:
     rows = [
         _row("complete", price=20_000_000, area=300, day=0),
         _row("missing-price", price=None, area=300, day=1),
@@ -69,27 +69,29 @@ def test_incomplete_rows_leave_search_base_without_imputation() -> None:
     report, trace = build_numeric_completeness_audit(rows)
 
     assert report["observations_avant_filtrage_numerique"] == 4
-    assert report["prix_seuls_manquants"] == 1
-    assert report["superficies_seules_manquantes"] == 1
-    assert report["prix_et_superficies_manquants"] == 1
-    assert report["observations_supprimees_filtrage_numerique"] == 3
-    assert report["observations_restantes"] == 1
+    assert report["prix_seuls_manquants_conserves"] == 1
+    assert report["superficies_seules_manquantes_conservees"] == 1
+    assert report["prix_et_superficies_manquants_exclus"] == 1
+    assert report["observations_supprimees_filtrage_numerique"] == 1
+    assert report["observations_restantes"] == 3
     assert report["prix_ou_superficie_imputes"] == 0
 
     by_id = {item["id"]: item for item in trace}
     assert by_id["complete"]["decision"] == "conserver"
+    assert by_id["missing-price"]["decision"] == "conserver"
+    assert by_id["missing-area"]["decision"] == "conserver"
     assert (
-        by_id["missing-price"]["decision"]
-        == "exclure_base_recherche_incomplete"
+        by_id["missing-both"]["decision"]
+        == "exclure_prix_et_superficie_manquants"
     )
 
 
-def test_non_positive_area_is_excluded() -> None:
+def test_non_positive_area_is_kept_by_this_specific_rule() -> None:
     report, _ = build_numeric_completeness_audit(
         [_row("zero-area", price=20_000_000, area=0)]
     )
-    assert report["superficies_non_positives"] == 1
-    assert report["observations_restantes"] == 0
+    assert report["superficies_non_positives_conservees"] == 1
+    assert report["observations_restantes"] == 1
 
 
 def test_source_database_is_not_deleted() -> None:
