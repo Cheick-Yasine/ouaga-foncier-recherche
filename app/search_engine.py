@@ -67,6 +67,7 @@ class SearchCandidate:
     url: str | None = None
     publication_label: str | None = None
     collected_at: str | None = None
+    contact: str | None = None
 
 
 @dataclass(frozen=True)

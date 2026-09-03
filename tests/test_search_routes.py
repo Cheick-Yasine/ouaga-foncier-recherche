@@ -115,3 +115,67 @@ def test_search_reports_missing_database(monkeypatch) -> None:
 
     assert response.status_code == 503
     assert response.json()["detail"] == "DATABASE_URL absente"
+
+
+def test_contact_is_masked_for_visitor(monkeypatch) -> None:
+    from app.search_engine import SearchCandidate
+
+    monkeypatch.setattr(
+        "app.search_routes.load_recent_candidates",
+        lambda _days: [
+            SearchCandidate(
+                identifier="post-contact",
+                text="Parcelle à Saaba",
+                contact="70 12 34 56",
+            )
+        ],
+    )
+    monkeypatch.setattr(
+        "app.search_routes.get_session_user",
+        lambda _token: None,
+    )
+
+    response = client.post(
+        "/search",
+        json={"description": "parcelle à Saaba"},
+    )
+    result = response.json()["resultats"][0]
+
+    assert result["contact"] is None
+    assert result["contact_masque"] == "70 ** ** 56"
+    assert result["lien_whatsapp"] is None
+    assert result["connexion_requise_pour_contact"] is True
+
+
+def test_contact_is_visible_for_authenticated_user(monkeypatch) -> None:
+    from app.auth import AuthenticatedUser
+    from app.search_engine import SearchCandidate
+
+    monkeypatch.setattr(
+        "app.search_routes.load_recent_candidates",
+        lambda _days: [
+            SearchCandidate(
+                identifier="post-contact",
+                text="Parcelle à Saaba",
+                contact="70 12 34 56",
+            )
+        ],
+    )
+    monkeypatch.setattr(
+        "app.search_routes.get_session_user",
+        lambda _token: AuthenticatedUser(
+            id="user-1",
+            email="client@example.com",
+        ),
+    )
+
+    response = client.post(
+        "/search",
+        json={"description": "parcelle à Saaba"},
+        cookies={"of_session": "token"},
+    )
+    result = response.json()["resultats"][0]
+
+    assert result["contact"] == "70 12 34 56"
+    assert result["lien_whatsapp"] == "https://wa.me/22670123456"
+    assert result["connexion_requise_pour_contact"] is False

@@ -6,9 +6,11 @@ from dataclasses import replace
 from typing import Literal
 
 import psycopg
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Cookie, HTTPException
 from pydantic import BaseModel, Field
 
+from app.auth import SESSION_COOKIE, get_session_user
+from app.contacts import mask_contact, whatsapp_url
 from app.database import DatabaseNotConfiguredError
 from app.search_engine import (
     RankedResult,
@@ -72,6 +74,10 @@ class SearchResult(BaseModel):
     couverture: float
     composantes: dict[str, float | None]
     explications: list[str]
+    contact: str | None
+    contact_masque: str | None
+    lien_whatsapp: str | None
+    connexion_requise_pour_contact: bool
 
 
 class SearchResponse(BaseModel):
@@ -109,8 +115,13 @@ def _criteria_response(criteria: SearchCriteria) -> InterpretedCriteria:
     )
 
 
-def _result_response(result: RankedResult) -> SearchResult:
+def _result_response(
+    result: RankedResult,
+    *,
+    authenticated: bool,
+) -> SearchResult:
     candidate = result.candidate
+    visible_contact = candidate.contact if authenticated else None
     return SearchResult(
         id=candidate.identifier,
         texte=candidate.text,
@@ -133,6 +144,12 @@ def _result_response(result: RankedResult) -> SearchResult:
         couverture=result.coverage,
         composantes=dict(result.components),
         explications=list(result.explanations),
+        contact=visible_contact,
+        contact_masque=mask_contact(candidate.contact),
+        lien_whatsapp=whatsapp_url(visible_contact),
+        connexion_requise_pour_contact=bool(
+            candidate.contact and not authenticated
+        ),
     )
 
 
@@ -142,7 +159,10 @@ def interpret_search(payload: InterpretRequest) -> InterpretedCriteria:
 
 
 @router.post("", response_model=SearchResponse)
-def search(payload: SearchRequest) -> SearchResponse:
+def search(
+    payload: SearchRequest,
+    session_token: str | None = Cookie(default=None, alias=SESSION_COOKIE),
+) -> SearchResponse:
     """Interprète la demande, lit Neon puis classe les annonces récentes."""
 
     criteria = _with_options(payload)
@@ -156,10 +176,18 @@ def search(payload: SearchRequest) -> SearchResponse:
             detail="La lecture des annonces dans Neon a échoué.",
         ) from None
 
+    try:
+        authenticated = get_session_user(session_token) is not None
+    except (DatabaseNotConfiguredError, psycopg.Error):
+        authenticated = False
+
     ranked = rank_candidates(criteria, candidates, limit=payload.limit)
     return SearchResponse(
         criteres=_criteria_response(criteria),
         candidats_evalues=len(candidates),
         nombre_resultats=len(ranked),
-        resultats=[_result_response(result) for result in ranked],
+        resultats=[
+            _result_response(result, authenticated=authenticated)
+            for result in ranked
+        ],
     )

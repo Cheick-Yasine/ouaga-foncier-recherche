@@ -6,6 +6,18 @@ const emptyState = document.querySelector("#empty-state");
 const resultsContainer = document.querySelector("#results");
 const resultCount = document.querySelector("#result-count");
 const criteriaPanel = document.querySelector("#criteria-panel");
+const accountButton = document.querySelector("#account-button");
+const authDialog = document.querySelector("#auth-dialog");
+const authForm = document.querySelector("#auth-form");
+const authTitle = document.querySelector("#auth-title");
+const authDescription = document.querySelector("#auth-description");
+const authFeedback = document.querySelector("#auth-feedback");
+const authSubmit = document.querySelector("#auth-submit");
+const authSwitch = document.querySelector("#auth-switch");
+const closeAuth = document.querySelector("#close-auth");
+
+let currentUser = null;
+let authMode = "login";
 
 const formatNumber = new Intl.NumberFormat("fr-FR", {
   maximumFractionDigits: 0,
@@ -104,6 +116,34 @@ function renderResult(result, index) {
     body.append(reasons);
   }
 
+  if (result.contact_masque) {
+    const contactBox = createElement("div", "contact-box");
+    const contactText = createElement("div");
+    contactText.append(createElement("div", "contact-label", "Contact de l’annonce"));
+    contactText.append(
+      createElement(
+        "div",
+        "contact-value",
+        result.contact || result.contact_masque
+      )
+    );
+    contactBox.append(contactText);
+
+    if (result.lien_whatsapp) {
+      const whatsapp = createElement("a", "contact-action", "Contacter sur WhatsApp");
+      whatsapp.href = result.lien_whatsapp;
+      whatsapp.target = "_blank";
+      whatsapp.rel = "noopener noreferrer";
+      contactBox.append(whatsapp);
+    } else if (result.connexion_requise_pour_contact) {
+      const reveal = createElement("button", "contact-action", "Afficher le contact");
+      reveal.type = "button";
+      reveal.addEventListener("click", () => authDialog.showModal());
+      contactBox.append(reveal);
+    }
+    body.append(contactBox);
+  }
+
   const footer = createElement("div", "card-footer");
   footer.append(
     createElement(
@@ -193,3 +233,84 @@ form.addEventListener("submit", async (event) => {
     submitButton.textContent = "Rechercher les annonces";
   }
 });
+
+
+function updateAuthMode(mode) {
+  authMode = mode;
+  const registering = mode === "register";
+  authTitle.textContent = registering ? "Créer un compte" : "Se connecter";
+  authDescription.textContent = registering
+    ? "Créez votre espace pour afficher les contacts et bientôt enregistrer vos annonces."
+    : "Connectez-vous pour afficher les contacts complets.";
+  authSubmit.textContent = registering ? "Créer mon compte" : "Se connecter";
+  authSwitch.textContent = registering
+    ? "J’ai déjà un compte"
+    : "Créer un compte";
+  authFeedback.textContent = "";
+}
+
+async function refreshSession() {
+  try {
+    const response = await fetch("/auth/me");
+    currentUser = response.ok ? await response.json() : null;
+  } catch {
+    currentUser = null;
+  }
+  accountButton.textContent = currentUser
+    ? currentUser.email
+    : "Se connecter";
+}
+
+accountButton.addEventListener("click", async () => {
+  if (!currentUser) {
+    updateAuthMode("login");
+    authDialog.showModal();
+    return;
+  }
+
+  await fetch("/auth/logout", { method: "POST" });
+  currentUser = null;
+  accountButton.textContent = "Se connecter";
+  setFeedback("Vous êtes déconnecté. Les contacts sont de nouveau masqués.");
+});
+
+closeAuth.addEventListener("click", () => authDialog.close());
+authSwitch.addEventListener("click", () => {
+  updateAuthMode(authMode === "login" ? "register" : "login");
+});
+
+authForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  authFeedback.textContent = "";
+  authSubmit.disabled = true;
+
+  try {
+    const response = await fetch(`/auth/${authMode}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: document.querySelector("#auth-email").value.trim(),
+        password: document.querySelector("#auth-password").value,
+      }),
+    });
+    const payload = await response.json();
+    if (!response.ok) {
+      throw new Error(payload.detail || "La connexion a échoué.");
+    }
+
+    currentUser = payload;
+    accountButton.textContent = currentUser.email;
+    authDialog.close();
+    authForm.reset();
+    setFeedback(
+      "Connexion réussie. Relancez la recherche pour afficher les contacts complets.",
+      "loading"
+    );
+  } catch (error) {
+    authFeedback.textContent = error.message;
+  } finally {
+    authSubmit.disabled = false;
+  }
+});
+
+refreshSession();
