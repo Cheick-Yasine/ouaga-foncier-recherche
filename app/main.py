@@ -6,6 +6,7 @@ from pydantic import BaseModel
 
 from app.config import get_settings
 from app.database import DatabaseNotConfiguredError, check_database_connection
+from app.search_routes import router as search_router
 
 
 class HealthResponse(BaseModel):
@@ -22,8 +23,9 @@ class DatabaseHealthResponse(BaseModel):
 app = FastAPI(
     title="Ouaga Foncier Recherche",
     description="Recherche intelligente d'annonces immobilières récentes.",
-    version="0.1.0",
+    version="0.2.0",
 )
+app.include_router(search_router)
 
 
 @app.get("/", tags=["Système"])
