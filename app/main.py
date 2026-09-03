@@ -27,8 +27,8 @@ class DatabaseHealthResponse(BaseModel):
 
 app = FastAPI(
     title="Ouaga Foncier Recherche",
-    description="Recherche intelligente d'annonces immobilières récentes.",
-    version="0.4.0",
+    description="Recherche intelligente d'annonces immobilières pertinentes.",
+    version="0.5.0",
 )
 app.include_router(search_router)
 app.include_router(auth_router)

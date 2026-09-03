@@ -55,7 +55,6 @@ function renderCriteria(criteria) {
     ["Prix", criteria.prix_fcfa ? `${formatNumber.format(criteria.prix_fcfa)} FCFA` : null],
     ["Superficie", criteria.superficie_m2 ? `${formatNumber.format(criteria.superficie_m2)} m²` : null],
     ["Document", criteria.statut_document],
-    ["Période", `${criteria.anciennete_maximale_jours} jours maximum`],
   ];
 
   values
@@ -170,7 +169,7 @@ function renderResponse(payload) {
   renderCriteria(payload.criteres);
   resultsContainer.replaceChildren();
   resultCount.textContent =
-    `${payload.nombre_resultats} résultat(s) parmi ${payload.candidats_evalues} annonces récentes évaluées`;
+    `${payload.nombre_resultats} résultat(s) parmi ${payload.candidats_evalues} annonces évaluées`;
 
   if (payload.resultats.length === 0) {
     resultsContainer.append(
@@ -202,7 +201,7 @@ form.addEventListener("submit", async (event) => {
   submitButton.disabled = true;
   submitButton.textContent = "Recherche en cours…";
   output.hidden = true;
-  setFeedback("Analyse de la demande et comparaison des annonces récentes…", "loading");
+  setFeedback("Analyse de la demande et comparaison sémantique des annonces…", "loading");
 
   try {
     const response = await fetch("/search", {
@@ -211,7 +210,6 @@ form.addEventListener("submit", async (event) => {
       body: JSON.stringify({
         description,
         required_fields: requiredFields,
-        max_age_days: 7,
         limit,
       }),
     });

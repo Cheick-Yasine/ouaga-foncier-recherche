@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 
 from app.auth import SESSION_COOKIE, get_session_user
 from app.contacts import mask_contact, whatsapp_url
+from app.config import get_settings
 from app.database import DatabaseNotConfiguredError
 from app.search_engine import (
     RankedResult,
@@ -19,6 +20,7 @@ from app.search_engine import (
     rank_candidates,
 )
 from app.search_repository import load_recent_candidates
+from app.semantic_filter import apply_semantic_filter
 
 
 RequiredField = Literal[
@@ -35,7 +37,7 @@ RequiredField = Literal[
 class InterpretRequest(BaseModel):
     description: str = Field(min_length=3, max_length=2_000)
     required_fields: set[RequiredField] = Field(default_factory=set)
-    max_age_days: int = Field(default=7, ge=1, le=31)
+    max_age_days: int | None = Field(default=None, ge=1, le=365)
 
 
 class SearchRequest(InterpretRequest):
@@ -53,7 +55,7 @@ class InterpretedCriteria(BaseModel):
     viabilite: str | None
     statut_document: str | None
     contraintes_obligatoires: list[str]
-    anciennete_maximale_jours: int
+    anciennete_maximale_jours: int | None
 
 
 class SearchResult(BaseModel):
@@ -85,6 +87,9 @@ class SearchResponse(BaseModel):
     candidats_evalues: int
     nombre_resultats: int
     resultats: list[SearchResult]
+    filtre_semantique_utilise: bool
+    modele_semantique: str | None
+    repli_classement_local: bool
 
 
 router = APIRouter(prefix="/search", tags=["Recherche"])
@@ -181,7 +186,15 @@ def search(
     except (DatabaseNotConfiguredError, psycopg.Error):
         authenticated = False
 
-    ranked = rank_candidates(criteria, candidates, limit=payload.limit)
+    settings = get_settings()
+    local_limit = max(payload.limit, settings.llm_candidate_limit)
+    ranked_local = rank_candidates(criteria, candidates, limit=local_limit)
+    semantic = apply_semantic_filter(
+        criteria,
+        ranked_local,
+        settings=settings,
+    )
+    ranked = semantic.results[: payload.limit]
     return SearchResponse(
         criteres=_criteria_response(criteria),
         candidats_evalues=len(candidates),
@@ -190,4 +203,7 @@ def search(
             _result_response(result, authenticated=authenticated)
             for result in ranked
         ],
+        filtre_semantique_utilise=semantic.used,
+        modele_semantique=semantic.model,
+        repli_classement_local=semantic.fallback,
     )

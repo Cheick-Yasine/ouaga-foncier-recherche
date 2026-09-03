@@ -8,11 +8,13 @@ L'utilisateur décrit le terrain, la parcelle ou la maison qu'il recherche. La p
 
 ## Règles essentielles
 
-- afficher uniquement les annonces des 7 derniers jours ;
+- conserver les annonces quelle que soit leur date et afficher leur date lorsqu’elle existe ;
 - séparer les contraintes obligatoires des préférences ;
 - ne jamais dépasser un budget exprimé comme maximum ;
 - ne jamais inventer un prix, une superficie ou un document absent ;
 - regrouper les doublons et republications ;
+- effectuer un dernier contrôle sémantique avec `gpt-4o-mini` ;
+- ne transmettre à OpenAI aucun contact, e-mail, lien Facebook ou identifiant ;
 - expliquer la raison du classement de chaque résultat.
 
 ## Socle technique
@@ -36,7 +38,7 @@ python -m pip install -r requirements.txt
 Copy-Item .env.example .env
 ```
 
-Ouvrez ensuite le fichier `.env` et remplacez l'exemple par l'URL PostgreSQL fournie par Neon.
+Ouvrez ensuite le fichier `.env`, ajoutez l’URL PostgreSQL fournie par Neon et votre clé `OPENAI_API_KEY`. Sans clé OpenAI, l’application conserve automatiquement le classement local.
 
 > Ne publiez jamais la véritable valeur de `DATABASE_URL` dans GitHub, une capture d'écran ou un message.
 
@@ -84,8 +86,8 @@ Le dépôt contient seulement `.env.example`, sans identifiants réels.
 1. Socle FastAPI et connexion Neon.
 2. Audit du schéma existant de la table `annonces`.
 3. Normalisation des quartiers, types de biens et documents.
-4. Moteur de filtres stricts sur les annonces des 7 derniers jours.
+4. Moteur de filtres métier sur toutes les annonces admissibles.
 5. Recherche plein texte PostgreSQL.
-6. Similarité sémantique avec pgvector.
+6. Filtre sémantique final avec `gpt-4o-mini`, sur un lot anonymisé.
 7. Score métier, déduplication et explications.
 8. Interface de recherche.

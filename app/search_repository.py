@@ -85,13 +85,13 @@ def _candidate_from_row(
 
 
 def load_recent_candidates(
-    max_age_days: int,
+    max_age_days: int | None = None,
     settings: Settings | None = None,
     *,
     now: datetime | None = None,
     pool_limit: int = 5_000,
 ) -> list[SearchCandidate]:
-    """Charge les annonces récentes admissibles sans modifier Neon."""
+    """Charge les annonces admissibles sans modifier Neon."""
 
     current_settings = settings or get_settings()
     if current_settings.database_url is None:
@@ -107,8 +107,19 @@ def load_recent_candidates(
     ) as connection:
         with connection.transaction():
             connection.execute("SET TRANSACTION READ ONLY")
+            age_clause = (
+                "premiere_collecte >= CURRENT_TIMESTAMP - "
+                "(%s * INTERVAL '1 day') AND "
+                if max_age_days is not None
+                else ""
+            )
+            parameters: tuple[int, ...] = (
+                (max_age_days, pool_limit)
+                if max_age_days is not None
+                else (pool_limit,)
+            )
             rows = connection.execute(
-                """
+                f"""
                 SELECT
                     id::text AS id,
                     url,
@@ -124,20 +135,17 @@ def load_recent_candidates(
                     texte_nettoye,
                     premiere_collecte
                 FROM public.annonces
-                WHERE premiere_collecte >=
-                      CURRENT_TIMESTAMP - (%s * INTERVAL '1 day')
-                  AND NOT (
-                      prix_fcfa IS NULL AND superficie_m2 IS NULL
-                  )
+                WHERE {age_clause}
+                      NOT (prix_fcfa IS NULL AND superficie_m2 IS NULL)
                   AND COALESCE(
                       NULLIF(LOWER(TRIM(type_bien_normalise)), ''),
                       NULLIF(LOWER(TRIM(type_bien)), ''),
                       ''
                   ) <> 'villa'
-                ORDER BY premiere_collecte DESC, id
+                ORDER BY premiere_collecte DESC NULLS LAST, id
                 LIMIT %s
                 """,
-                (max_age_days, pool_limit),
+                parameters,
             ).fetchall()
 
     return [

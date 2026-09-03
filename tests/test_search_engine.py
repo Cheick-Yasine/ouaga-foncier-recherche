@@ -153,3 +153,13 @@ def test_limit_is_respected() -> None:
         for index in range(5)
     ]
     assert len(rank_candidates(criteria, candidates, limit=2)) == 2
+
+
+def test_old_ad_is_kept_when_no_date_limit_is_requested() -> None:
+    criteria = SearchCriteria(description="terrain")
+    old = SearchCandidate(
+        identifier="old-but-relevant",
+        text="terrain",
+        age_days=365,
+    )
+    assert score_candidate(criteria, old) is not None
