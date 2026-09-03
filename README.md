@@ -24,7 +24,8 @@ L'utilisateur décrit le terrain, la parcelle ou la maison qu'il recherche. La p
 - recherche textuelle : PostgreSQL Full Text Search ;
 - recherche sémantique prévue : pgvector ;
 - tests : pytest ;
-- automatisation : GitHub Actions.
+- automatisation : GitHub Actions ;
+- intégration IA : serveur MCP Python en lecture seule.
 
 ## Installation locale sous Windows
 
@@ -54,6 +55,14 @@ Adresses utiles :
 - documentation interactive : http://127.0.0.1:8000/docs
 - santé de l'API : http://127.0.0.1:8000/health
 - test de Neon : http://127.0.0.1:8000/health/database
+
+## Lancer le serveur MCP
+
+```powershell
+uvicorn app.mcp_server:http_app --host 127.0.0.1 --port 8001
+```
+
+Le point d’entrée local est `http://127.0.0.1:8001/mcp`. Consultez [la documentation MCP](docs/SERVEUR_MCP.md).
 
 ## Lancer les tests
 
