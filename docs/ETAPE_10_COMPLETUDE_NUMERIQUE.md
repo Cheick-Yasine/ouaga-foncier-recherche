@@ -22,8 +22,8 @@ utiles.
 Le moteur calculera le score uniquement avec les critères disponibles pour chaque
 annonce :
 
-- prix absent : le critère prix est ignoré pour cette annonce ;
-- superficie absente : le critère superficie est ignoré ;
+- prix absent : le critère prix ne rapporte aucun point ;
+- superficie absente : le critère superficie ne rapporte aucun point ;
 - les poids des critères disponibles sont renormalisés pour conserver un score sur
   100 ;
 - l'interface signale clairement toute information indisponible ;
