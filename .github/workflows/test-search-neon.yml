@@ -1,0 +1,50 @@
+name: Test recherche Neon
+
+on:
+  workflow_dispatch:
+    inputs:
+      description:
+        description: Description immobilière à tester
+        required: true
+        default: Je cherche une parcelle à Ouagadougou
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  recherche:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+    steps:
+      - name: Récupérer le dépôt
+        uses: actions/checkout@v4
+
+      - name: Vérifier le secret Neon
+        shell: bash
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::Le secret DATABASE_URL est absent."
+            exit 1
+          fi
+
+      - name: Installer Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Installer les dépendances
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Exécuter la recherche réelle en lecture seule
+        run: |
+          python -m scripts.smoke_search_neon \
+            --description "${{ inputs.description }}" \
+            --max-age-days 7 \
+            --limit 10 \
+            --output /tmp/test-recherche-neon.json
