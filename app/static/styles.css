@@ -420,3 +420,147 @@ footer a { color: var(--green); }
   .fact:last-child { border-bottom: 0; }
   footer { width: calc(100% - 32px); }
 }
+
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.account-button {
+  min-height: 42px;
+  padding: 9px 16px;
+  color: var(--green);
+  background: transparent;
+  border: 1px solid var(--green);
+}
+
+.account-button:hover {
+  color: white;
+  background: var(--green);
+}
+
+.auth-dialog {
+  width: min(460px, calc(100% - 28px));
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-lg);
+  box-shadow: 0 30px 90px rgba(5, 31, 22, 0.28);
+}
+
+.auth-dialog::backdrop {
+  background: rgba(9, 31, 24, 0.55);
+  backdrop-filter: blur(3px);
+}
+
+.auth-dialog form { padding: 30px; }
+
+.dialog-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+}
+
+.auth-dialog h2 {
+  margin-bottom: 10px;
+  font-size: 2.2rem;
+}
+
+.auth-dialog label {
+  display: block;
+  margin: 17px 0 7px;
+  font-size: 0.84rem;
+  font-weight: 750;
+}
+
+.auth-dialog input {
+  width: 100%;
+  padding: 13px 14px;
+  color: var(--ink);
+  background: #fbfbf9;
+  border: 1px solid #cdd7d2;
+  border-radius: 11px;
+  outline: none;
+}
+
+.auth-dialog input:focus {
+  border-color: var(--green);
+  box-shadow: 0 0 0 4px rgba(15, 91, 67, 0.10);
+}
+
+.auth-dialog #auth-submit { width: 100%; }
+
+.close-button {
+  min-width: 38px;
+  min-height: 38px;
+  padding: 0;
+  color: var(--ink);
+  background: var(--sand);
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.close-button:hover {
+  color: white;
+  background: var(--green-dark);
+}
+
+.text-button {
+  width: 100%;
+  min-height: 40px;
+  margin-top: 8px;
+  padding: 6px;
+  color: var(--green);
+  background: transparent;
+}
+
+.text-button:hover {
+  color: var(--green-dark);
+  background: var(--green-soft);
+}
+
+.auth-feedback {
+  min-height: 24px;
+  margin: 12px 0;
+  color: #762d25;
+  font-size: 0.88rem;
+}
+
+.contact-box {
+  margin-top: 18px;
+  padding: 13px 15px;
+  background: var(--green-soft);
+  border-radius: 11px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.contact-label {
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+
+.contact-value {
+  margin-top: 2px;
+  font-weight: 800;
+}
+
+.contact-action {
+  flex: 0 0 auto;
+  color: var(--green);
+  font-size: 0.86rem;
+  font-weight: 750;
+  text-decoration: none;
+}
+
+.contact-action:hover { text-decoration: underline; }
+
+@media (max-width: 620px) {
+  .header-actions { gap: 8px; }
+  .header-note { display: none; }
+  .account-button { padding: 8px 10px; }
+}
