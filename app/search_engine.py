@@ -65,6 +65,8 @@ class SearchCandidate:
     document_status: str | None = None
     age_days: float | None = None
     url: str | None = None
+    publication_label: str | None = None
+    collected_at: str | None = None
 
 
 @dataclass(frozen=True)

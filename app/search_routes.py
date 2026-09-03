@@ -5,10 +5,18 @@ from __future__ import annotations
 from dataclasses import replace
 from typing import Literal
 
-from fastapi import APIRouter
+import psycopg
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
-from app.search_engine import SearchCriteria, parse_search_description
+from app.database import DatabaseNotConfiguredError
+from app.search_engine import (
+    RankedResult,
+    SearchCriteria,
+    parse_search_description,
+    rank_candidates,
+)
+from app.search_repository import load_recent_candidates
 
 
 RequiredField = Literal[
@@ -28,6 +36,10 @@ class InterpretRequest(BaseModel):
     max_age_days: int = Field(default=7, ge=1, le=31)
 
 
+class SearchRequest(InterpretRequest):
+    limit: int = Field(default=20, ge=1, le=100)
+
+
 class InterpretedCriteria(BaseModel):
     description: str
     type_bien: str | None
@@ -42,10 +54,46 @@ class InterpretedCriteria(BaseModel):
     anciennete_maximale_jours: int
 
 
+class SearchResult(BaseModel):
+    id: str
+    texte: str
+    url: str | None
+    date_publication: str | None
+    premiere_collecte: str | None
+    anciennete_jours: float | None
+    type_bien: str | None
+    quartier: str | None
+    prix_fcfa: float | None
+    superficie_m2: float | None
+    statut_document: str | None
+    proximite: str | None
+    viabilite: str | None
+    score: float
+    couverture: float
+    composantes: dict[str, float | None]
+    explications: list[str]
+
+
+class SearchResponse(BaseModel):
+    criteres: InterpretedCriteria
+    candidats_evalues: int
+    nombre_resultats: int
+    resultats: list[SearchResult]
+
+
 router = APIRouter(prefix="/search", tags=["Recherche"])
 
 
-def _response(criteria: SearchCriteria) -> InterpretedCriteria:
+def _with_options(payload: InterpretRequest) -> SearchCriteria:
+    criteria = parse_search_description(payload.description)
+    return replace(
+        criteria,
+        required_fields=frozenset(payload.required_fields),
+        max_age_days=payload.max_age_days,
+    )
+
+
+def _criteria_response(criteria: SearchCriteria) -> InterpretedCriteria:
     return InterpretedCriteria(
         description=criteria.description,
         type_bien=criteria.property_type,
@@ -61,12 +109,57 @@ def _response(criteria: SearchCriteria) -> InterpretedCriteria:
     )
 
 
+def _result_response(result: RankedResult) -> SearchResult:
+    candidate = result.candidate
+    return SearchResult(
+        id=candidate.identifier,
+        texte=candidate.text,
+        url=candidate.url,
+        date_publication=candidate.publication_label,
+        premiere_collecte=candidate.collected_at,
+        anciennete_jours=(
+            round(candidate.age_days, 2)
+            if candidate.age_days is not None
+            else None
+        ),
+        type_bien=candidate.property_type,
+        quartier=candidate.neighborhood,
+        prix_fcfa=candidate.price_fcfa,
+        superficie_m2=candidate.area_m2,
+        statut_document=candidate.document_status,
+        proximite=candidate.proximity,
+        viabilite=candidate.viability,
+        score=result.score,
+        couverture=result.coverage,
+        composantes=dict(result.components),
+        explications=list(result.explanations),
+    )
+
+
 @router.post("/interpret", response_model=InterpretedCriteria)
 def interpret_search(payload: InterpretRequest) -> InterpretedCriteria:
-    criteria = parse_search_description(payload.description)
-    criteria = replace(
-        criteria,
-        required_fields=frozenset(payload.required_fields),
-        max_age_days=payload.max_age_days,
+    return _criteria_response(_with_options(payload))
+
+
+@router.post("", response_model=SearchResponse)
+def search(payload: SearchRequest) -> SearchResponse:
+    """Interprète la demande, lit Neon puis classe les annonces récentes."""
+
+    criteria = _with_options(payload)
+    try:
+        candidates = load_recent_candidates(criteria.max_age_days)
+    except DatabaseNotConfiguredError as error:
+        raise HTTPException(status_code=503, detail=str(error)) from None
+    except psycopg.Error:
+        raise HTTPException(
+            status_code=503,
+            detail="La lecture des annonces dans Neon a échoué.",
+        ) from None
+
+    ranked = rank_candidates(criteria, candidates, limit=payload.limit)
+    return SearchResponse(
+        criteres=_criteria_response(criteria),
+        candidats_evalues=len(candidates),
+        nombre_resultats=len(ranked),
+        resultats=[_result_response(result) for result in ranked],
     )
-    return _response(criteria)
