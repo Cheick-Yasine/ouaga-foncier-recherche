@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
+import hashlib
 from typing import Any
 
 import psycopg
@@ -11,7 +12,7 @@ from mcp.server.fastmcp import FastMCP
 from app.config import get_settings
 from app.database import DatabaseNotConfiguredError
 from app.search_engine import parse_search_description, rank_candidates
-from app.search_repository import load_candidate_by_id, load_recent_candidates
+from app.search_repository import load_recent_candidates
 from app.semantic_filter import apply_semantic_filter, sanitize_external_text
 
 mcp = FastMCP(
@@ -41,17 +42,27 @@ def _criteria_payload(criteria) -> dict[str, Any]:
     }
 
 
+def _public_id(identifier: str) -> str:
+    """Produit une référence stable sans divulguer l'identifiant source."""
+
+    return hashlib.blake2b(
+        identifier.encode("utf-8"),
+        digest_size=12,
+        person=b"ouaga-mcp",
+    ).hexdigest()
+
+
 def _public_result(result) -> dict[str, Any]:
     candidate = result.candidate
     return {
-        "id": candidate.identifier,
+        "id": _public_id(candidate.identifier),
         "title": " à ".join(
             value
             for value in (candidate.property_type, candidate.neighborhood)
             if value
         )
         or "Annonce immobilière",
-        "url": candidate.url,
+        "url": None,
         "description": sanitize_external_text(candidate.text),
         "date_publication": candidate.publication_label,
         "type_bien": candidate.property_type,
@@ -133,18 +144,26 @@ def search(query: str) -> dict[str, Any]:
 
 
 def fetch(id: str) -> dict[str, Any]:
-    """Retourne le détail public d'une annonce sans aucun contact."""
+    """Retourne le détail public associé à une référence MCP opaque."""
 
     try:
-        candidate = load_candidate_by_id(id)
+        candidates = load_recent_candidates(None)
     except (DatabaseNotConfiguredError, psycopg.Error):
         return {"erreur": "La base d'annonces est temporairement indisponible."}
 
+    candidate = next(
+        (
+            item
+            for item in candidates
+            if _public_id(item.identifier) == id
+        ),
+        None,
+    )
     if candidate is None:
         return {"erreur": "Annonce introuvable."}
 
     return {
-        "id": candidate.identifier,
+        "id": _public_id(candidate.identifier),
         "title": " à ".join(
             value
             for value in (candidate.property_type, candidate.neighborhood)
@@ -152,7 +171,7 @@ def fetch(id: str) -> dict[str, Any]:
         )
         or "Annonce immobilière",
         "text": sanitize_external_text(candidate.text),
-        "url": candidate.url,
+        "url": None,
         "metadata": {
             "date_publication": candidate.publication_label,
             "type_bien": candidate.property_type,
@@ -162,7 +181,6 @@ def fetch(id: str) -> dict[str, Any]:
             "document": candidate.document_status,
         },
     }
-
 
 mcp.tool()(interpreter_recherche)
 mcp.tool()(rechercher_annonces)
