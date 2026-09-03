@@ -80,6 +80,7 @@ def _candidate_from_row(
         url=_optional_text(row.get("url")),
         publication_label=_optional_text(row.get("date_publication")),
         collected_at=collected_at.isoformat() if collected_at else None,
+        contact=_optional_text(row.get("contacts_whatsapp")),
     )
 
 
@@ -118,6 +119,7 @@ def load_recent_candidates(
                     superficie_m2,
                     prix_fcfa,
                     statut_document,
+                    contacts_whatsapp,
                     resume_court,
                     texte_nettoye,
                     premiere_collecte
