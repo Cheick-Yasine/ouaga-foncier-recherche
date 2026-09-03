@@ -71,7 +71,7 @@ def _write_trace(path: Path, trace: list[dict[str, Any]]) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Exclure de la recherche les annonces sans prix ou superficie."
+        description="Exclure uniquement les annonces sans prix et sans superficie."
     )
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--trace-output", type=Path, required=True)

@@ -57,7 +57,7 @@ def build_numeric_completeness_audit(
     for row in retained_rows:
         status = classify_numeric_completeness(row)
         status_counts[status] += 1
-        keep = status == "complete"
+        keep = status != "prix_et_superficie_manquants"
         if keep:
             retained += 1
         trace.append(
@@ -72,7 +72,7 @@ def build_numeric_completeness_audit(
                 "decision": (
                     "conserver"
                     if keep
-                    else "exclure_base_recherche_incomplete"
+                    else "exclure_prix_et_superficie_manquants"
                 ),
             }
         )
@@ -85,21 +85,21 @@ def build_numeric_completeness_audit(
             "Filtrage de la complétude numérique",
         ],
         "observations_avant_filtrage_numerique": before,
-        "prix_seuls_manquants": status_counts["prix_manquant"],
-        "superficies_seules_manquantes": status_counts[
+        "prix_seuls_manquants_conserves": status_counts["prix_manquant"],
+        "superficies_seules_manquantes_conservees": status_counts[
             "superficie_manquante"
         ],
-        "prix_et_superficies_manquants": status_counts[
+        "prix_et_superficies_manquants_exclus": status_counts[
             "prix_et_superficie_manquants"
         ],
-        "superficies_non_positives": status_counts[
+        "superficies_non_positives_conservees": status_counts[
             "superficie_non_positive"
         ],
         "observations_supprimees_filtrage_numerique": removed,
         "observations_restantes": retained,
         "prix_ou_superficie_imputes": 0,
         "regle_recherche": (
-            "prix_observe_et_superficie_observee_strictement_positive"
+            "exclure_uniquement_si_prix_et_superficie_manquants"
         ),
         "source_neon_rows_deleted": 0,
         "read_only": True,
