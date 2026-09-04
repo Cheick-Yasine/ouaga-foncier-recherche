@@ -12,7 +12,11 @@ from openai import OpenAI
 from pydantic import BaseModel, Field
 
 from app.config import Settings, get_settings
-from app.search_engine import RankedResult, SearchCriteria
+from app.search_engine import (
+    RankedResult,
+    SearchCriteria,
+    _descriptive_priority,
+)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -200,7 +204,11 @@ def apply_semantic_filter(
             )
 
         filtered.sort(
-            key=lambda item: (item.score, item.coverage),
+            key=lambda item: (
+                _descriptive_priority(criteria, item),
+                item.score,
+                item.coverage,
+            ),
             reverse=True,
         )
         return SemanticFilterOutcome(
