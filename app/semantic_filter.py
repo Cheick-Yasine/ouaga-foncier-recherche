@@ -81,6 +81,7 @@ def build_anonymized_payload(
                 "quartier": result.candidate.neighborhood,
                 "prix_fcfa": result.candidate.price_fcfa,
                 "superficie_m2": result.candidate.area_m2,
+                "base_prix": result.candidate.pricing_note,
                 "proximite": result.candidate.proximity,
                 "viabilite": result.candidate.viability,
                 "document": result.candidate.document_status,
@@ -101,6 +102,9 @@ def _instructions() -> str:
         "la proximité et la viabilité lorsqu'ils sont demandés. "
         "Le sens de la phrase de l'utilisateur prime sur une simple ressemblance de mots. "
         "N'invente aucune information absente et signale clairement les compromis. "
+        "Ne confonds jamais un prix total avec un prix par hectare ou par m². "
+        "Quand base_prix est renseignée, utilise uniquement le coût et la surface "
+        "recalculés du lot réellement achetable. "
         "Un budget annoncé, même sans les mots maximum ou FCFA, est un plafond strict. "
         "Quand l'utilisateur demande un bon deal, compare les annonces qui restent sous "
         "ce plafond. La superficie est alors le critère principal : une annonce "
