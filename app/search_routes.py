@@ -43,7 +43,7 @@ RequiredField = Literal[
 class InterpretRequest(BaseModel):
     description: str = Field(min_length=3, max_length=2_000)
     required_fields: set[RequiredField] = Field(default_factory=set)
-    max_age_days: int | None = Field(default=None, ge=1, le=365)
+    max_age_days: Literal[7, 30, 90] = 30
 
 
 class SearchRequest(InterpretRequest):
@@ -179,6 +179,7 @@ async def search(
     """Interprète la demande, lit Neon et retourne au plus dix annonces uniques."""
 
     total_started = perf_counter()
+    settings = get_settings()
 
     criteria_started = perf_counter()
     criteria = _with_options(payload)
@@ -189,17 +190,40 @@ async def search(
     )
 
     neon_started = perf_counter()
+    LOGGER.info(
+        "search_stage stage=neon status=started max_age_days=%d",
+        criteria.max_age_days,
+    )
     try:
-        candidates = await asyncio.to_thread(
-            load_recent_candidates,
-            criteria.max_age_days,
+        candidates = await asyncio.wait_for(
+            asyncio.to_thread(
+                load_recent_candidates,
+                criteria.max_age_days,
+            ),
+            timeout=settings.database_deadline_seconds,
         )
+    except TimeoutError:
+        LOGGER.warning(
+            "search_stage stage=neon status=timeout deadline_seconds=%.1f",
+            settings.database_deadline_seconds,
+        )
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Neon met trop de temps à répondre. "
+                "Réessayez dans quelques instants."
+            ),
+        ) from None
     except DatabaseNotConfiguredError as error:
         raise HTTPException(status_code=503, detail=str(error)) from None
     except psycopg.Error:
+        LOGGER.error("search_stage stage=neon status=error")
         raise HTTPException(
             status_code=503,
-            detail="La lecture des annonces dans Neon a échoué.",
+            detail=(
+                "Neon est temporairement indisponible. "
+                "Réessayez dans quelques instants."
+            ),
         ) from None
     neon_ms = (perf_counter() - neon_started) * 1_000
     LOGGER.info(
@@ -211,9 +235,12 @@ async def search(
     session_started = perf_counter()
     try:
         authenticated = (
-            await asyncio.to_thread(get_session_user, session_token)
+            await asyncio.wait_for(
+                asyncio.to_thread(get_session_user, session_token),
+                timeout=6.0,
+            )
         ) is not None
-    except (DatabaseNotConfiguredError, psycopg.Error):
+    except (TimeoutError, DatabaseNotConfiguredError, psycopg.Error):
         authenticated = False
     session_ms = (perf_counter() - session_started) * 1_000
     LOGGER.info(
@@ -221,7 +248,6 @@ async def search(
         session_ms,
     )
 
-    settings = get_settings()
     local_started = perf_counter()
     local_limit = max(payload.limit, settings.llm_candidate_limit)
     ranked_local = await asyncio.to_thread(
