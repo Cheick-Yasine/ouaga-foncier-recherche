@@ -130,7 +130,7 @@ def _result_response(
     return SearchResult(
         id=candidate.identifier,
         texte=candidate.text,
-        url=candidate.url,
+        url=candidate.url if authenticated else None,
         date_publication=candidate.publication_label,
         premiere_collecte=candidate.collected_at,
         anciennete_jours=(
