@@ -19,7 +19,7 @@ def check_database_connection(settings: Settings | None = None) -> bool:
         )
 
     database_url = current_settings.database_url.get_secret_value()
-    with psycopg.connect(database_url, connect_timeout=5) as connection:
+    with psycopg.connect(database_url, connect_timeout=10) as connection:
         with connection.cursor() as cursor:
             cursor.execute("SELECT 1")
             result = cursor.fetchone()
