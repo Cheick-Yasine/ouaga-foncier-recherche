@@ -3,21 +3,27 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Trouvez les annonces foncières qui correspondent vraiment à votre besoin à Ouagadougou.">
-  <title>Foncier Ouaga — Recherche immobilière intelligente</title>
-  <link rel="stylesheet" href="/static/styles.css">
-  <script src="/static/app.js" defer></script>
+  <meta name="description" content="Recherche et comparaison d’annonces foncières à Ouagadougou et dans sa périphérie.">
+  <title>Foncier Ouaga | Recherche foncière assistée</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/styles.css?v=20260904-2">
+  <script src="/static/app.js?v=20260904-2" defer></script>
 </head>
 <body>
   <header class="site-header">
     <a class="brand" href="/" aria-label="Foncier Ouaga, accueil">
-      <span class="brand-symbol" aria-hidden="true">F</span>
-      <span class="brand-copy"><strong>Foncier Ouaga</strong><small>Recherche immobilière</small></span>
+      <span class="brand-symbol" aria-hidden="true">OF</span>
+      <span class="brand-copy">
+        <strong>Foncier Ouaga</strong>
+        <small>Recherche foncière assistée</small>
+      </span>
     </a>
     <nav class="main-nav" aria-label="Navigation principale">
-      <button class="nav-link is-active" type="button" data-view="search">Rechercher</button>
+      <button class="nav-link is-active" type="button" data-view="search">Recherche</button>
       <button class="nav-link member-only" type="button" data-view="saved" hidden>Annonces enregistrées</button>
-      <button class="nav-link member-only" type="button" data-view="history" hidden>Mes recherches</button>
+      <button class="nav-link member-only" type="button" data-view="history" hidden>Recherches</button>
       <button class="nav-link member-only" type="button" data-view="alerts" hidden>Surveillances</button>
     </nav>
     <button id="account-button" class="account-button" type="button">Se connecter</button>
@@ -27,21 +33,29 @@
     <section id="search-view" class="view">
       <section class="hero">
         <div class="hero-inner">
-          <p class="kicker">Recherche foncière assistée</p>
-          <h1>Trouvez le bien qui répond réellement à vos critères</h1>
-          <p class="hero-lead">Décrivez librement la zone, le budget, la superficie, les documents et les repères souhaités. Le moteur analyse les annonces, vérifie les critères et présente une sélection argumentée.</p>
-          <form id="search-form" class="search-box">
-            <label class="sr-only" for="description">Décrivez le bien recherché</label>
-            <textarea id="description" name="description" rows="4" minlength="3" maxlength="2000" required placeholder="Exemple : Je cherche une parcelle à Saaba, environ 300 m², avec un budget maximum de 6 millions FCFA et une attestation."></textarea>
-            <div class="search-actions">
-              <p><span class="status-dot"></span>Analyse multicritère et sélection assistée</p>
-              <button id="submit-button" type="submit">Trouver les meilleures annonces</button>
+          <div class="hero-copy">
+            <p class="kicker">Ouagadougou et périphérie</p>
+            <h1>Une recherche foncière plus précise, à partir de vos propres mots</h1>
+            <p class="hero-lead">Indiquez le bien recherché, le quartier, le prix, la superficie et les caractéristiques indispensables. La plateforme vérifie chaque critère avant de classer les annonces.</p>
+            <div class="scope-line">
+              <span>10 annonces au maximum</span>
+              <span>Résultats sans republication</span>
             </div>
-          </form>
-          <div class="trust-row" aria-label="Engagements">
-            <span>Sélection limitée à 10 annonces</span>
-            <span>Republications regroupées</span>
-            <span>Classement justifié</span>
+          </div>
+
+          <div class="search-panel">
+            <div class="panel-heading">
+              <p class="panel-label">Votre recherche</p>
+              <p>Une phrase suffit. Plus elle est précise, plus la sélection sera fiable.</p>
+            </div>
+            <form id="search-form" class="search-box">
+              <label class="sr-only" for="description">Décrivez le bien recherché</label>
+              <textarea id="description" name="description" rows="5" minlength="3" maxlength="2000" required placeholder="Je cherche une parcelle de 300 m² à Saaba, avec un budget de 6 millions FCFA et une attestation de possession."></textarea>
+              <div class="search-actions">
+                <p><span class="status-dot"></span>Analyse multicritère</p>
+                <button id="submit-button" type="submit">Rechercher</button>
+              </div>
+            </form>
           </div>
         </div>
       </section>
@@ -51,11 +65,11 @@
       <section id="search-output" class="search-output" hidden>
         <div class="results-intro">
           <div>
-            <p class="kicker">Sélection personnalisée</p>
-            <h2 id="selection-title">Les annonces les plus adaptées</h2>
+            <p class="kicker">Résultats</p>
+            <h2 id="selection-title">Recommandation principale</h2>
             <p id="result-count" class="subtle"></p>
           </div>
-          <button id="create-alert" class="secondary-button" type="button">Surveiller cette recherche</button>
+          <button id="create-alert" class="secondary-button" type="button">Créer une surveillance</button>
         </div>
 
         <section id="winner" class="winner"></section>
@@ -63,47 +77,70 @@
         <div class="comparison-shell">
           <div class="table-heading">
             <div>
-              <h2>Comparaison complète</h2>
-              <p class="subtle">Classement établi selon votre description, sans répétition d’annonce.</p>
+              <h2>Comparer les annonces</h2>
+              <p class="subtle">Les informations sont issues des annonces et vérifiées selon votre demande.</p>
             </div>
           </div>
           <div class="table-scroll">
             <table class="comparison-table">
-              <thead><tr><th>Rang</th><th>Localisation</th><th>Superficie</th><th>Prix</th><th>Document</th><th>Avis de l’IA</th><th></th></tr></thead>
+              <thead>
+                <tr>
+                  <th>Rang</th>
+                  <th>Localisation</th>
+                  <th>Superficie</th>
+                  <th>Prix</th>
+                  <th>Document</th>
+                  <th>Analyse</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
               <tbody id="results-table"></tbody>
             </table>
           </div>
         </div>
 
         <div id="result-cards" class="result-cards"></div>
-        <aside class="safety-note"><strong>Avant toute transaction</strong><p>Vérifiez la parcelle, l’identité du vendeur et l’authenticité des documents auprès des services fonciers compétents. L’outil facilite la sélection, mais ne remplace pas les vérifications juridiques.</p></aside>
+        <aside class="safety-note">
+          <strong>Vérification indispensable</strong>
+          <p>Avant tout engagement, contrôlez l’identité du vendeur, la parcelle et les documents auprès des services fonciers compétents.</p>
+        </aside>
       </section>
 
-      <section id="empty-state" class="method">
-        <div class="method-heading">
-          <p class="kicker">Une méthode claire et vérifiable</p>
-          <h2>De votre demande à une sélection fiable</h2>
-        </div>
-        <div class="method-grid">
-          <article><span>01</span><h3>Décrire le besoin</h3><p>Indiquez naturellement le type de bien, la zone, le prix, la superficie et les caractéristiques attendues.</p></article>
-          <article><span>02</span><h3>Comparer les annonces</h3><p>Le moteur contrôle les critères, corrige les unités, regroupe les republications et écarte les incohérences.</p></article>
-          <article><span>03</span><h3>Examiner la sélection</h3><p>Chaque résultat présente les informations essentielles et une justification concise pour faciliter la décision.</p></article>
+      <section id="empty-state" class="capabilities">
+        <p class="capabilities-title">Contrôles appliqués à chaque recherche</p>
+        <div class="capabilities-grid">
+          <article><strong>Localisation</strong><span>Quartier réel et périmètre autorisé</span></article>
+          <article><strong>Valeur</strong><span>Prix total, prix unitaire et superficie</span></article>
+          <article><strong>Conformité</strong><span>Documents et caractéristiques demandés</span></article>
+          <article><strong>Unicité</strong><span>Republications détectées entre groupes</span></article>
         </div>
       </section>
     </section>
 
     <section id="saved-view" class="view account-view" hidden>
-      <div class="page-heading"><p class="kicker">Votre sélection</p><h1>Annonces enregistrées</h1><p>Retrouvez ici les biens que vous souhaitez comparer ou contacter plus tard.</p></div>
+      <div class="page-heading">
+        <p class="kicker">Espace personnel</p>
+        <h1>Annonces enregistrées</h1>
+        <p>Les biens conservés pour une consultation ou une comparaison ultérieure.</p>
+      </div>
       <div id="saved-list" class="dashboard-list"></div>
     </section>
 
     <section id="history-view" class="view account-view" hidden>
-      <div class="page-heading"><p class="kicker">Votre parcours</p><h1>Mes recherches</h1><p>Relancez une demande précédente en un clic.</p></div>
+      <div class="page-heading">
+        <p class="kicker">Espace personnel</p>
+        <h1>Recherches précédentes</h1>
+        <p>Retrouvez et relancez vos demandes récentes.</p>
+      </div>
       <div id="history-list" class="dashboard-list"></div>
     </section>
 
     <section id="alerts-view" class="view account-view" hidden>
-      <div class="page-heading"><p class="kicker">Veille personnalisée</p><h1>Mes surveillances</h1><p>Les recherches que vous souhaitez suivre lorsqu’une nouvelle annonce apparaît.</p></div>
+      <div class="page-heading">
+        <p class="kicker">Espace personnel</p>
+        <h1>Surveillances</h1>
+        <p>Les critères enregistrés pour repérer de nouvelles annonces.</p>
+      </div>
       <div id="alerts-list" class="dashboard-list"></div>
     </section>
   </main>
@@ -111,10 +148,13 @@
   <dialog id="auth-dialog" class="modal">
     <form id="auth-form">
       <button id="close-auth" class="modal-close" type="button" aria-label="Fermer">×</button>
-      <p class="kicker">Espace personnel</p><h2 id="auth-title">Se connecter</h2>
+      <p class="kicker">Espace personnel</p>
+      <h2 id="auth-title">Se connecter</h2>
       <p id="auth-description" class="subtle">Connectez-vous pour enregistrer vos annonces et vos recherches.</p>
-      <label for="auth-email">Adresse e-mail</label><input id="auth-email" name="email" type="email" autocomplete="email" required>
-      <label for="auth-password">Mot de passe</label><input id="auth-password" name="password" type="password" minlength="10" maxlength="128" autocomplete="current-password" required>
+      <label for="auth-email">Adresse e-mail</label>
+      <input id="auth-email" name="email" type="email" autocomplete="email" required>
+      <label for="auth-password">Mot de passe</label>
+      <input id="auth-password" name="password" type="password" minlength="10" maxlength="128" autocomplete="current-password" required>
       <p id="auth-feedback" class="auth-feedback" aria-live="polite"></p>
       <button id="auth-submit" class="primary-wide" type="submit">Se connecter</button>
       <button id="auth-switch" class="text-button" type="button">Créer un compte</button>
@@ -124,14 +164,22 @@
   <dialog id="alert-dialog" class="modal">
     <form id="alert-form">
       <button id="close-alert" class="modal-close" type="button" aria-label="Fermer">×</button>
-      <p class="kicker">Surveillance</p><h2>Suivre cette recherche</h2>
-      <p class="subtle">Nous conserverons vos critères afin de repérer les nouvelles annonces correspondantes.</p>
-      <label for="alert-name">Nom de la surveillance</label><input id="alert-name" maxlength="80" required placeholder="Parcelles à Saaba">
+      <p class="kicker">Surveillance</p>
+      <h2>Suivre cette recherche</h2>
+      <p class="subtle">Enregistrez ces critères pour retrouver les nouvelles annonces correspondantes.</p>
+      <label for="alert-name">Nom de la surveillance</label>
+      <input id="alert-name" maxlength="80" required placeholder="Parcelles à Saaba">
       <label class="check-line"><input id="alert-daily" type="checkbox" checked> Vérification quotidienne</label>
-      <button class="primary-wide" type="submit">Activer la surveillance</button>
+      <button class="primary-wide" type="submit">Enregistrer</button>
     </form>
   </dialog>
 
-  <footer><div><strong>Foncier Ouaga</strong><p>Une recherche structurée pour le marché foncier burkinabè.</p></div><p>Les annonces restent sous la responsabilité de leurs auteurs.</p></footer>
+  <footer>
+    <div>
+      <strong>Foncier Ouaga</strong>
+      <p>Recherche foncière assistée à Ouagadougou.</p>
+    </div>
+    <p>Les annonces restent sous la responsabilité de leurs auteurs.</p>
+  </footer>
 </body>
 </html>
