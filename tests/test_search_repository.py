@@ -2,7 +2,13 @@
 
 from datetime import datetime, timedelta, timezone
 
-from app.search_repository import _candidate_from_row, _is_prepared_candidate
+from app.config import Settings
+from app.search_repository import (
+    _candidate_from_row,
+    _is_prepared_candidate,
+    clear_candidate_cache,
+    load_recent_candidates,
+)
 
 
 def test_row_is_mapped_to_search_candidate() -> None:
@@ -168,3 +174,71 @@ def test_unwanted_property_type_is_rejected() -> None:
     )
 
     assert _is_prepared_candidate(candidate) is False
+
+
+def test_recent_candidates_are_cached_between_searches(monkeypatch) -> None:
+    now = datetime.now(timezone.utc)
+    rows = [
+        {
+            "id": "cached-post",
+            "url": None,
+            "date_publication": None,
+            "type_bien": "Parcelle",
+            "type_bien_normalise": "parcelle",
+            "quartier_zone": "Saaba",
+            "superficie_m2": 300,
+            "prix_fcfa": 5_000_000,
+            "statut_document": None,
+            "contacts_whatsapp": None,
+            "resume_court": None,
+            "texte_nettoye": "Parcelle de 300 m2 à Saaba",
+            "premiere_collecte": now,
+        }
+    ]
+    connections = 0
+
+    class Result:
+        def fetchall(self):
+            return rows
+
+    class Transaction:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+    class Connection:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def transaction(self):
+            return Transaction()
+
+        def execute(self, statement, _parameters=None):
+            if "FROM public.annonces" in statement:
+                return Result()
+            return None
+
+    def connect(*_args, **_kwargs):
+        nonlocal connections
+        connections += 1
+        return Connection()
+
+    monkeypatch.setattr(
+        "app.search_repository.get_settings",
+        lambda: Settings(database_url="postgresql://example.test/database"),
+    )
+    monkeypatch.setattr("app.search_repository.psycopg.connect", connect)
+    clear_candidate_cache()
+
+    first = load_recent_candidates()
+    second = load_recent_candidates()
+
+    assert [item.identifier for item in first] == ["cached-post"]
+    assert [item.identifier for item in second] == ["cached-post"]
+    assert connections == 1
+    clear_candidate_cache()
