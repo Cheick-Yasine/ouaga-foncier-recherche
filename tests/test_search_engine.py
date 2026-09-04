@@ -378,3 +378,29 @@ def test_missing_price_is_excluded_when_budget_is_requested() -> None:
     )
 
     assert score_candidate(criteria, candidate) is None
+
+
+def test_good_deal_does_not_reward_spending_more_budget() -> None:
+    criteria = parse_search_description(
+        "Avec un budget de 10 000 000 donne-moi les annonces de bon deal"
+    )
+    results = rank_candidates(
+        criteria,
+        [
+            SearchCandidate(
+                identifier="cheap",
+                text="Terrain de 500 m2",
+                price_fcfa=4_000_000,
+                area_m2=500,
+            ),
+            SearchCandidate(
+                identifier="expensive",
+                text="Terrain de 500 m2",
+                price_fcfa=9_500_000,
+                area_m2=500,
+            ),
+        ],
+    )
+
+    assert results[0].candidate.identifier == "cheap"
+    assert "prix faible" in results[0].explanations[-1]
