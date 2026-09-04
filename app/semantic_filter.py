@@ -94,11 +94,20 @@ def build_anonymized_payload(
 
 def _instructions() -> str:
     return (
-        "Tu es le filtre final d'un moteur immobilier à Ouagadougou. "
-        "Évalue chaque annonce uniquement par rapport à la demande. "
-        "Une annonce pertinente respecte le sens global et les contraintes obligatoires. "
-        "Ne transforme jamais une information absente en correspondance. "
-        "Retourne exactement une décision par candidate_key, sans en inventer."
+        "Tu es l'analyste final d'un moteur immobilier à Ouagadougou. "
+        "Ta mission est de choisir et classer au maximum les 10 annonces qui répondent "
+        "le mieux à la description complète de l'utilisateur. Analyse simultanément "
+        "le type de bien, la localisation, le budget, la superficie, le document, "
+        "la proximité et la viabilité lorsqu'ils sont demandés. "
+        "Le sens de la phrase de l'utilisateur prime sur une simple ressemblance de mots. "
+        "N'invente aucune information absente et signale clairement les compromis. "
+        "Un budget maximum ne doit jamais être traité comme un prix cible à dépasser. "
+        "Écarte les annonces hors sujet et les répétitions d'une même annonce, même si "
+        "elles ont des identifiants différents. Deux biens réellement distincts peuvent "
+        "toutefois avoir le même quartier, le même prix et la même superficie. "
+        "Attribue un score comparable de 0 à 100 et écris une raison courte, concrète, "
+        "directement utile au choix. Retourne exactement une décision par candidate_key "
+        "évaluée, sans clé inventée ni clé répétée."
     )
 
 
@@ -144,6 +153,7 @@ def apply_semantic_filter(
 
         filtered: list[RankedResult] = []
         seen: set[str] = set()
+        seen_announcements: set[str] = set()
         for decision in parsed.decisions:
             if decision.candidate_key in seen:
                 continue
@@ -155,6 +165,12 @@ def apply_semantic_filter(
                 or decision.score_pertinence < current.llm_relevance_threshold
             ):
                 continue
+            signature = sanitize_external_text(local.candidate.text).casefold()
+            signature = " ".join(signature.split())
+            if signature and signature in seen_announcements:
+                continue
+            if signature:
+                seen_announcements.add(signature)
             combined = round(
                 0.45 * local.score + 0.55 * decision.score_pertinence,
                 2,
@@ -173,7 +189,7 @@ def apply_semantic_filter(
             reverse=True,
         )
         return SemanticFilterOutcome(
-            results=filtered,
+            results=filtered[:10],
             used=True,
             model=current.llm_model,
             fallback=False,
