@@ -343,13 +343,12 @@ def _contact_numbers(value: str | None) -> frozenset[str]:
 
     if not value:
         return frozenset()
-    digits = re.findall(r"\d", value)
-    compact = "".join(digits)
-    # Les numéros burkinabè ont 8 chiffres; plusieurs contacts peuvent être concaténés.
-    return frozenset(
-        compact[index:index + 8]
-        for index in range(0, len(compact) - 7, 8)
-    )
+    matches = re.findall(r"(?:\+?226[\s()./-]*)?(?:\d[\s()./-]*){8}", value)
+    numbers = {
+        "".join(re.findall(r"\d", match))[-8:]
+        for match in matches
+    }
+    return frozenset(number for number in numbers if len(number) == 8)
 
 
 def _same_announcement(
