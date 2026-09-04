@@ -270,3 +270,36 @@ def test_same_characteristics_with_different_text_remain_distinct() -> None:
     )
 
     assert len(results) == 2
+
+
+def test_republication_without_neighborhood_is_listed_once() -> None:
+    criteria = SearchCriteria(description="bon deal avec un budget de 10 millions")
+    results = rank_candidates(
+        criteria,
+        [
+            SearchCandidate(
+                identifier="publication-1",
+                text=(
+                    "Terrain agricole de 100 hectares à 2 250 000 FCFA "
+                    "par hectare avec accès à l eau"
+                ),
+                property_type="terrain",
+                neighborhood=None,
+                price_fcfa=2_250_000,
+                area_m2=10_000,
+            ),
+            SearchCandidate(
+                identifier="publication-2",
+                text=(
+                    "Terrain agricole de 100 hectares à 2 250 000 FCFA "
+                    "par hectare avec accès à l eau disponible"
+                ),
+                property_type="terrain",
+                neighborhood=None,
+                price_fcfa=2_250_000,
+                area_m2=10_000,
+            ),
+        ],
+    )
+
+    assert len(results) == 1
