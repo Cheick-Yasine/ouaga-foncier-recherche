@@ -35,6 +35,11 @@ _PRICE_PATTERN = re.compile(
     r"\b(\d[\d ]*(?:[.,]\d+)?)\s*"
     r"(milliards?|millions?|fcfa|f cfa|cfa)\b"
 )
+_BUDGET_PATTERN = re.compile(
+    r"\bbudget(?:\s+(?:maximum|maximal|de))?\s*"
+    r"(\d[\d ]*(?:[.,]\d+)?)\s*"
+    r"(milliards?|millions?|fcfa|f cfa|cfa)?\b"
+)
 
 
 @dataclass(frozen=True)
@@ -93,13 +98,17 @@ def parse_search_description(description: str) -> SearchCriteria:
 
     text_without_area = _AREA_PATTERN.sub(" ", normalized)
     price_match = _PRICE_PATTERN.search(text_without_area)
+    budget_match = _BUDGET_PATTERN.search(text_without_area)
+    if budget_match is not None:
+        price_match = budget_match
+
     price: float | None = None
     if price_match:
         price = _parse_number(price_match.group(1))
         unit = price_match.group(2)
-        if unit.startswith("million"):
+        if unit and unit.startswith("million"):
             price *= 1_000_000
-        elif unit.startswith("milliard"):
+        elif unit and unit.startswith("milliard"):
             price *= 1_000_000_000
 
     property_type = normalize_property_type(None, description)
