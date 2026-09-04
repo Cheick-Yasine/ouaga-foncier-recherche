@@ -402,27 +402,54 @@ def rank_candidates(
             if result.candidate.area_m2 is not None
             and result.candidate.area_m2 > 0
         ]
+        known_prices = [
+            result.candidate.price_fcfa
+            for result in results
+            if result.candidate.price_fcfa is not None
+            and result.candidate.price_fcfa > 0
+        ]
         largest_area = max(known_areas, default=1.0)
+        lowest_price = min(known_prices, default=1.0)
         adjusted: list[RankedResult] = []
         for result in results:
             candidate = result.candidate
-            area_value = (
-                candidate.area_m2 / largest_area
-                if candidate.area_m2 is not None and candidate.area_m2 > 0
-                else 0.0
-            )
-            budget_use = (
-                candidate.price_fcfa / criteria.price_fcfa
-                if candidate.price_fcfa is not None
-                else 0.0
-            )
-            deal_score = 0.70 * area_value + 0.30 * budget_use
+            if criteria.area_m2 is not None:
+                area_value = (
+                    numeric_similarity(criteria.area_m2, candidate.area_m2)
+                    if candidate.area_m2 is not None
+                    else 0.0
+                )
+                price_value = (
+                    lowest_price / candidate.price_fcfa
+                    if candidate.price_fcfa is not None
+                    and candidate.price_fcfa > 0
+                    else 0.0
+                )
+                deal_score = 0.70 * area_value + 0.30 * price_value
+                deal_explanation = (
+                    "Bon deal : superficie demandée au prix le plus faible"
+                )
+            else:
+                area_value = (
+                    candidate.area_m2 / largest_area
+                    if candidate.area_m2 is not None and candidate.area_m2 > 0
+                    else 0.0
+                )
+                budget_use = (
+                    candidate.price_fcfa / criteria.price_fcfa
+                    if candidate.price_fcfa is not None
+                    else 0.0
+                )
+                deal_score = 0.70 * area_value + 0.30 * budget_use
+                deal_explanation = (
+                    "Bon deal : grande superficie dans le budget"
+                )
             adjusted.append(
                 replace(
                     result,
                     score=round(0.40 * result.score + 60 * deal_score, 2),
                     explanations=result.explanations
-                    + ("Bon deal : grande superficie dans le budget",),
+                    + (deal_explanation,),
                 )
             )
         results = adjusted
