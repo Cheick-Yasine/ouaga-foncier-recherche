@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import replace
-import hashlib
 from typing import Any
 
 import psycopg
@@ -12,6 +11,7 @@ from mcp.server.transport_security import TransportSecuritySettings
 
 from app.config import get_settings
 from app.database import DatabaseNotConfiguredError
+from app.public_references import public_announcement_id
 from app.search_engine import parse_search_description, rank_candidates
 from app.search_repository import load_recent_candidates
 from app.semantic_filter import apply_semantic_filter, sanitize_external_text
@@ -57,27 +57,17 @@ def _criteria_payload(criteria) -> dict[str, Any]:
     }
 
 
-def _public_id(identifier: str) -> str:
-    """Produit une référence stable sans divulguer l'identifiant source."""
-
-    return hashlib.blake2b(
-        identifier.encode("utf-8"),
-        digest_size=12,
-        person=b"ouaga-mcp",
-    ).hexdigest()
-
-
 def _public_result(result) -> dict[str, Any]:
     candidate = result.candidate
     return {
-        "id": _public_id(candidate.identifier),
+        "id": public_announcement_id(candidate.identifier),
         "title": " à ".join(
             value
             for value in (candidate.property_type, candidate.neighborhood)
             if value
         )
         or "Annonce immobilière",
-        "url": None,
+        "url": f"{get_settings().public_app_url}/?annonce={public_announcement_id(candidate.identifier)}",
         "description": sanitize_external_text(candidate.text),
         "date_publication": candidate.publication_label,
         "type_bien": candidate.property_type,
@@ -170,7 +160,7 @@ def fetch(id: str) -> dict[str, Any]:
         (
             item
             for item in candidates
-            if _public_id(item.identifier) == id
+            if public_announcement_id(item.identifier) == id
         ),
         None,
     )
@@ -178,7 +168,7 @@ def fetch(id: str) -> dict[str, Any]:
         return {"erreur": "Annonce introuvable."}
 
     return {
-        "id": _public_id(candidate.identifier),
+        "id": public_announcement_id(candidate.identifier),
         "title": " à ".join(
             value
             for value in (candidate.property_type, candidate.neighborhood)
