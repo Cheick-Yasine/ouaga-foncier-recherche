@@ -114,6 +114,8 @@ def _instructions() -> str:
         "N'invente aucune information absente et signale clairement les compromis. "
         "Pour la proximité, ne confonds jamais proche d'une voie bitumée avec "
         "simplement accessible par une voie bitumée; ce sont deux catégories différentes. "
+        "De même, destination école signifie usage prévu pour une école et ne prouve "
+        "jamais la présence d'une école à proximité. "
         "Pour le document, recopie strictement la catégorie fournie : une attestation "
         "de possession n'est jamais une attestation d'attribution, et inversement. "
         "Ne confonds jamais un prix total avec un prix par hectare ou par m². "
