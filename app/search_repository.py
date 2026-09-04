@@ -35,13 +35,16 @@ def _optional_float(value: Any) -> float | None:
 
 
 _PER_HECTARE_RE = re.compile(
-    r"(?i)(?:/|par)\s*(?:hectare|ha)\b|\bl['’]?hectare\b"
+    r"(?i)(?:/|par)\s*(?:hectare|ha)\b"
+    r"|\bl['’]?(?:hectare|ha)\b"
+    r"|\b(?:hectare|ha)\s*(?:unitaire|negociable|discutable)?\b"
 )
 _PER_SQUARE_METRE_RE = re.compile(
     r"(?i)(?:/|par)\s*(?:m[²2]|metres?\s+carres?)\b"
 )
 _MINIMUM_HECTARES_RE = re.compile(
-    r"(?i)(?:bloc\s+de|minimum(?:\s+de)?)\s*"
+    r"(?i)(?:bloc\s+(?:minimum\s+)?de|lot\s+(?:minimum\s+)?de"
+    r"|minimum(?:\s+de)?|a\s+partir\s+de|tranche\s+de)\s*"
     r"(\d+(?:[.,]\d+)?)\s*(?:hectares?|ha)\b"
 )
 
