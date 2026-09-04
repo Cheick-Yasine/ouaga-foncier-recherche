@@ -404,3 +404,74 @@ def test_good_deal_does_not_reward_spending_more_budget() -> None:
 
     assert results[0].candidate.identifier == "cheap"
     assert "prix faible" in results[0].explanations[-1]
+
+
+def test_same_dakoure_property_from_different_groups_is_listed_once() -> None:
+    criteria = SearchCriteria(description="parcelle à Saaba")
+    results = rank_candidates(
+        criteria,
+        [
+            SearchCandidate(
+                identifier="dakoure-group-a",
+                text=(
+                    "Belle opportunité sur le site Dakouré à Saaba. Parcelle "
+                    "à proximité de la grande voie rouge, non loin du lycée CGE. "
+                    "Prix 11 000 000 FCFA, superficie 300 m2, attestation."
+                ),
+                property_type="parcelle",
+                neighborhood="Saaba",
+                price_fcfa=11_000_000,
+                area_m2=300,
+                contact="72 62 59 31",
+            ),
+            SearchCandidate(
+                identifier="dakoure-group-b",
+                text=(
+                    "Une parcelle est mise en vente à Saaba sur le site de "
+                    "Dakoure, grande voie rouge non loin du lycée CGE de Saaba. "
+                    "Superficie 300m2 document attestation prix 11 millions."
+                ),
+                property_type="parcelle",
+                neighborhood="Saaba",
+                price_fcfa=11_000_000,
+                area_m2=300,
+                contact="67 47 48 62; 65 46 61 14",
+            ),
+        ],
+    )
+
+    assert len(results) == 1
+
+
+def test_same_phone_identifies_shortened_cross_group_repost() -> None:
+    criteria = SearchCriteria(description="parcelle à Saaba")
+    results = rank_candidates(
+        criteria,
+        [
+            SearchCandidate(
+                identifier="mairie-a",
+                text=(
+                    "Saaba 300 m2 après la nouvelle mairie avec attestation "
+                    "guichet unique à 10 millions fixe"
+                ),
+                property_type="parcelle",
+                neighborhood="Saaba",
+                price_fcfa=10_000_000,
+                area_m2=300,
+                contact="+226 56 53 34 15",
+            ),
+            SearchCandidate(
+                identifier="mairie-b",
+                text=(
+                    "Saaba 300 m2 en vente à 10 millions attestation guichet unique"
+                ),
+                property_type="parcelle",
+                neighborhood="Saaba",
+                price_fcfa=10_000_000,
+                area_m2=300,
+                contact="56 53 34 15",
+            ),
+        ],
+    )
+
+    assert len(results) == 1
