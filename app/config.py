@@ -11,6 +11,7 @@ class Settings(BaseSettings):
 
     app_name: str = "Ouaga Foncier Recherche"
     app_env: str = "development"
+    public_app_url: str = "https://ouaga-foncier-mcp.onrender.com"
     database_url: SecretStr | None = None
     max_ad_age_days: int | None = Field(default=None, ge=1, le=365)
     openai_api_key: SecretStr | None = None
@@ -37,6 +38,14 @@ class Settings(BaseSettings):
                 "DATABASE_URL doit commencer par postgresql:// ou postgres://"
             )
         return value
+
+    @field_validator("public_app_url")
+    @classmethod
+    def validate_public_app_url(cls, value: str) -> str:
+        normalized = value.strip().rstrip("/")
+        if not normalized.startswith(("https://", "http://localhost", "http://127.0.0.1")):
+            raise ValueError("PUBLIC_APP_URL doit être une URL HTTPS publique.")
+        return normalized
 
 
 @lru_cache
