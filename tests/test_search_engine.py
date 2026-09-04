@@ -504,3 +504,82 @@ def test_exact_requested_area_is_ordered_by_lowest_price() -> None:
     )
 
     assert results[0].candidate.identifier == "ten-million"
+
+
+def test_plain_amount_after_property_is_interpreted_as_target_price() -> None:
+    criteria = parse_search_description(
+        "Je cherche un terrain à 1000000"
+    )
+
+    assert criteria.price_fcfa == 1_000_000
+    assert criteria.price_is_maximum is False
+
+
+def test_two_hectares_are_converted_to_square_metres() -> None:
+    criteria = parse_search_description(
+        "Je cherche un terrain de 2 ha"
+    )
+
+    assert criteria.area_m2 == 20_000
+    assert criteria.price_fcfa is None
+
+
+def test_good_deal_at_target_price_prefers_largest_area() -> None:
+    criteria = parse_search_description(
+        "Je cherche un bon deal pour un terrain à 1 000 000"
+    )
+    results = rank_candidates(
+        criteria,
+        [
+            SearchCandidate(
+                identifier="small",
+                text="Terrain à 1 000 000",
+                property_type="terrain",
+                price_fcfa=1_000_000,
+                area_m2=300,
+            ),
+            SearchCandidate(
+                identifier="large",
+                text="Terrain à 1 000 000",
+                property_type="terrain",
+                price_fcfa=1_000_000,
+                area_m2=800,
+            ),
+            SearchCandidate(
+                identifier="different-price",
+                text="Terrain à 900 000",
+                property_type="terrain",
+                price_fcfa=900_000,
+                area_m2=1_000,
+            ),
+        ],
+    )
+
+    assert results[0].candidate.identifier == "large"
+
+
+def test_requested_area_prefers_low_price_at_same_area() -> None:
+    criteria = parse_search_description(
+        "Je cherche une parcelle de 800 m2"
+    )
+    results = rank_candidates(
+        criteria,
+        [
+            SearchCandidate(
+                identifier="expensive",
+                text="Parcelle de 800 m2",
+                property_type="parcelle",
+                price_fcfa=12_000_000,
+                area_m2=800,
+            ),
+            SearchCandidate(
+                identifier="cheap",
+                text="Parcelle de 800 m2",
+                property_type="parcelle",
+                price_fcfa=5_000_000,
+                area_m2=800,
+            ),
+        ],
+    )
+
+    assert results[0].candidate.identifier == "cheap"
