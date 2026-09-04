@@ -19,9 +19,23 @@ _PROXIMITY_PATTERNS = {
         r"\b(ecole|lycee|college|universite|institut|etablissement scolaire)\b"
     ),
     "voie_bitumee": re.compile(
-        r"\b(route bitumee|voie bitumee|goudron|goudronnee?|bitume|bitumee?)\b"
+        r"\b(?:proche|proximite|non loin|bord|bordure|face)"
+        r"(?:\s+\w+){0,5}\s+"
+        r"(?:route bitumee|voie bitumee|goudron|bitume)\b"
+        r"|\b(?:route bitumee|voie bitumee|goudron|bitume)"
+        r"(?:\s+\w+){0,5}\s+"
+        r"(?:proche|proximite|non loin|bord|bordure|face)\b"
+        r"|\b(?:sur|au bord de|en bordure de)\s+"
+        r"(?:la |le |du )?(?:route bitumee|voie bitumee|goudron|bitume)\b"
     ),
 }
+_PAVED_ACCESS_PATTERN = re.compile(
+    r"\b(?:accessible|acces|desservi|desservie)"
+    r"(?:\s+\w+){0,4}\s+"
+    r"(?:route bitumee|voie bitumee|goudron|bitume)\b"
+    r"|\b(?:route bitumee|voie bitumee|goudron|bitume)"
+    r"(?:\s+\w+){0,4}\s+(?:accessible|acces)\b"
+)
 _ROAD_PATTERN = re.compile(
     r"\b(route|voie principale|axe principal|grande voie|rn\s*\d+)\b"
 )
@@ -76,6 +90,11 @@ def extract_proximity(*texts: Any) -> str:
     )
     if _ROAD_PATTERN.search(text_without_paved_phrases):
         detected.add("voie_route")
+    if (
+        "voie_bitumee" not in detected
+        and _PAVED_ACCESS_PATTERN.search(searchable)
+    ):
+        detected.add("acces_voie_bitumee")
 
     if not detected:
         return "non_precisee"
