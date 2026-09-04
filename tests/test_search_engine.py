@@ -163,3 +163,23 @@ def test_old_ad_is_kept_when_no_date_limit_is_requested() -> None:
         age_days=365,
     )
     assert score_candidate(criteria, old) is not None
+
+
+def test_budget_without_currency_is_a_maximum() -> None:
+    criteria = parse_search_description(
+        "Avec un budget de 10 000 000 donne moi les annonces de bon deal"
+    )
+
+    assert criteria.price_fcfa == 10_000_000
+    assert criteria.price_is_maximum is True
+
+
+def test_budget_without_currency_excludes_more_expensive_candidate() -> None:
+    criteria = parse_search_description("Budget de 10 000 000 pour un bon deal")
+    candidate = SearchCandidate(
+        identifier="trop-cher",
+        text="Parcelle à vendre",
+        price_fcfa=380_000_000,
+    )
+
+    assert score_candidate(criteria, candidate) is None
