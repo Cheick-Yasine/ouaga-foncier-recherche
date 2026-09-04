@@ -74,6 +74,7 @@ class SearchCandidate:
     publication_label: str | None = None
     collected_at: str | None = None
     contact: str | None = None
+    pricing_note: str | None = None
 
 
 @dataclass(frozen=True)
@@ -330,15 +331,49 @@ def score_candidate(
     )
 
 
+def _same_announcement(
+    candidate: SearchCandidate,
+    other: SearchCandidate,
+) -> bool:
+    if candidate.identifier == other.identifier:
+        return True
+    same_characteristics = (
+        candidate.price_fcfa == other.price_fcfa
+        and candidate.area_m2 == other.area_m2
+        and _normalized_equal(candidate.neighborhood, other.neighborhood)
+        and _normalized_equal(candidate.property_type, other.property_type)
+    )
+    if not same_characteristics:
+        return False
+    candidate_tokens = set(_tokens(candidate.text))
+    other_tokens = set(_tokens(other.text))
+    union = candidate_tokens | other_tokens
+    similarity = (
+        len(candidate_tokens & other_tokens) / len(union)
+        if union
+        else 0.0
+    )
+    return similarity >= 0.88
+
+
 def rank_candidates(
     criteria: SearchCriteria,
     candidates: Iterable[SearchCandidate],
     *,
     limit: int = 20,
 ) -> list[RankedResult]:
+    unique_candidates: list[SearchCandidate] = []
+    for candidate in candidates:
+        if any(
+            _same_announcement(candidate, other)
+            for other in unique_candidates
+        ):
+            continue
+        unique_candidates.append(candidate)
+
     results = [
         result
-        for candidate in candidates
+        for candidate in unique_candidates
         if (result := score_candidate(criteria, candidate)) is not None
     ]
     good_deal = (
