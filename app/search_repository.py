@@ -37,7 +37,7 @@ def _optional_float(value: Any) -> float | None:
 _PER_HECTARE_RE = re.compile(
     r"(?i)(?:/|par)\s*(?:hectare|ha)\b"
     r"|\bl['’]?(?:hectare|ha)\b"
-    r"|\b(?:hectare|ha)\s*(?:unitaire|negociable|discutable)?\b"
+    r"|\bprix\s+(?:de\s+|du\s+)?(?:l['’])?(?:hectare|ha)\b"
 )
 _PER_SQUARE_METRE_RE = re.compile(
     r"(?i)(?:/|par)\s*(?:m[²2]|metres?\s+carres?)\b"
