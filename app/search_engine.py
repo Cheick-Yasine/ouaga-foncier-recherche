@@ -389,7 +389,7 @@ def rank_candidates(
         if (result := score_candidate(criteria, candidate)) is not None
     ]
     good_deal = (
-        criteria.price_fcfa is not None
+        (criteria.price_fcfa is not None or criteria.area_m2 is not None)
         and any(
             marker in normalize_text(criteria.description)
             for marker in _GOOD_DEAL_MARKERS
