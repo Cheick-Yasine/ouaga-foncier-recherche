@@ -2,7 +2,7 @@
 
 from datetime import datetime, timedelta, timezone
 
-from app.search_repository import _candidate_from_row
+from app.search_repository import _candidate_from_row, _is_prepared_candidate
 
 
 def test_row_is_mapped_to_search_candidate() -> None:
@@ -113,3 +113,58 @@ def test_price_per_hectare_without_minimum_uses_one_hectare() -> None:
     assert candidate.price_fcfa == 2_250_000
     assert candidate.area_m2 == 10_000
     assert candidate.pricing_note == "Prix et superficie présentés pour 1 hectare"
+
+
+def test_candidate_outside_geographic_scope_is_rejected() -> None:
+    candidate = _candidate_from_row(
+        {
+            "id": "outside",
+            "type_bien": "Terrain",
+            "type_bien_normalise": "terrain",
+            "quartier_zone": "Bobo-Dioulasso",
+            "superficie_m2": 500,
+            "prix_fcfa": 5_000_000,
+            "texte_nettoye": "Terrain à Bobo-Dioulasso",
+            "premiere_collecte": datetime(2026, 9, 3, tzinfo=timezone.utc),
+        },
+        now=datetime(2026, 9, 3, tzinfo=timezone.utc),
+    )
+
+    assert candidate.neighborhood is None
+    assert _is_prepared_candidate(candidate) is False
+
+
+def test_candidate_in_periphery_is_kept() -> None:
+    candidate = _candidate_from_row(
+        {
+            "id": "periphery",
+            "type_bien": "Parcelle",
+            "type_bien_normalise": "parcelle",
+            "quartier_zone": "Saaba",
+            "superficie_m2": 300,
+            "prix_fcfa": None,
+            "texte_nettoye": "Parcelle à Saaba",
+            "premiere_collecte": datetime(2026, 9, 3, tzinfo=timezone.utc),
+        },
+        now=datetime(2026, 9, 3, tzinfo=timezone.utc),
+    )
+
+    assert _is_prepared_candidate(candidate) is True
+
+
+def test_unwanted_property_type_is_rejected() -> None:
+    candidate = _candidate_from_row(
+        {
+            "id": "villa",
+            "type_bien": "Villa",
+            "type_bien_normalise": "villa",
+            "quartier_zone": "Saaba",
+            "superficie_m2": 300,
+            "prix_fcfa": 20_000_000,
+            "texte_nettoye": "Villa à Saaba",
+            "premiere_collecte": datetime(2026, 9, 3, tzinfo=timezone.utc),
+        },
+        now=datetime(2026, 9, 3, tzinfo=timezone.utc),
+    )
+
+    assert _is_prepared_candidate(candidate) is False
