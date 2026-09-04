@@ -35,12 +35,18 @@ _DOCUMENT_PATTERNS = {
         r"\b(puh|permis urbain d habiter|permis urbain de habiter)\b"
     ),
     "attestation_attribution": re.compile(
-        r"\b(attestation d attribution|attestation attribution|attestation(?! de possession fonciere rurale))\b"
+        r"\b(attestation d attribution|attestation attribution"
+        r"|fiche d attribution|fiche attribution)\b"
+    ),
+    "attestation_possession": re.compile(
+        r"\battestation de possession\b"
+        r"(?!\s+fonciere\s+rurale)"
     ),
     "apfr": re.compile(
         r"\b(apfr|attestation de possession fonciere rurale)\b"
     ),
 }
+_GENERIC_ATTESTATION_RE = re.compile(r"\battestation\b")
 
 
 def normalize_text(value: Any) -> str:
@@ -91,22 +97,31 @@ def extract_viability(*texts: Any) -> str:
     return "non_precisee"
 
 
-def extract_document_status(structured_status: Any, *texts: Any) -> str:
-    searchable = normalize_text(
-        " ".join(
-            [str(structured_status or ""), *(str(text or "") for text in texts)]
-        )
-    )
+def _detect_document_in_text(searchable: str) -> str:
     detected = {
         label
         for label, pattern in _DOCUMENT_PATTERNS.items()
         if pattern.search(searchable)
     }
-    if not detected:
-        return "non_precise"
     if len(detected) > 1:
         return "plusieurs_documents"
-    return next(iter(detected))
+    if detected:
+        return next(iter(detected))
+    if _GENERIC_ATTESTATION_RE.search(searchable):
+        return "attestation_non_precisee"
+    return "non_precise"
+
+
+def extract_document_status(structured_status: Any, *texts: Any) -> str:
+    """Privilégie le document explicitement écrit dans l'annonce."""
+
+    descriptive = normalize_text(
+        " ".join(str(text or "") for text in texts)
+    )
+    detected_from_text = _detect_document_in_text(descriptive)
+    if detected_from_text != "non_precise":
+        return detected_from_text
+    return _detect_document_in_text(normalize_text(structured_status))
 
 
 def extract_text_features(row: Mapping[str, Any]) -> dict[str, str]:
