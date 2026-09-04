@@ -151,3 +151,9 @@ def test_remote_failure_keeps_local_results() -> None:
     assert outcome.results == [result]
     assert outcome.used is False
     assert outcome.fallback is True
+
+
+def test_sanitizer_limits_default_announcement_length() -> None:
+    cleaned = sanitize_external_text("a" * 1_200)
+
+    assert len(cleaned) == 900
