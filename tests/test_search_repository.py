@@ -62,3 +62,54 @@ def test_missing_numeric_value_is_preserved() -> None:
     assert candidate.price_fcfa is None
     assert candidate.area_m2 == 400
     assert candidate.text == "Terrain à Karpala"
+
+
+def test_price_per_hectare_uses_minimum_sale_block() -> None:
+    now = datetime(2026, 9, 3, 12, tzinfo=timezone.utc)
+    candidate = _candidate_from_row(
+        {
+            "id": "unit-hectare",
+            "type_bien": "Terrain",
+            "type_bien_normalise": "terrain",
+            "quartier_zone": "Sankoinsé",
+            "superficie_m2": 970_000,
+            "prix_fcfa": 3_500_000,
+            "statut_document": None,
+            "resume_court": None,
+            "texte_nettoye": (
+                "Superficie 97 hectares. Prix 3.500.000 FCFA / hectare. "
+                "Vente possible par bloc de 10 hectares minimum."
+            ),
+            "premiere_collecte": now,
+        },
+        now=now,
+    )
+
+    assert candidate.price_fcfa == 35_000_000
+    assert candidate.area_m2 == 100_000
+    assert candidate.pricing_note == (
+        "Prix calculé pour le lot minimum de 10 hectare(s)"
+    )
+
+
+def test_price_per_hectare_without_minimum_uses_one_hectare() -> None:
+    now = datetime(2026, 9, 3, 12, tzinfo=timezone.utc)
+    candidate = _candidate_from_row(
+        {
+            "id": "unit-hectare-simple",
+            "type_bien": "Terrain",
+            "type_bien_normalise": "terrain",
+            "quartier_zone": None,
+            "superficie_m2": 200_000,
+            "prix_fcfa": 2_250_000,
+            "statut_document": None,
+            "resume_court": "Terrain à 2 250 000 FCFA par hectare",
+            "texte_nettoye": None,
+            "premiere_collecte": now,
+        },
+        now=now,
+    )
+
+    assert candidate.price_fcfa == 2_250_000
+    assert candidate.area_m2 == 10_000
+    assert candidate.pricing_note == "Prix et superficie présentés pour 1 hectare"
