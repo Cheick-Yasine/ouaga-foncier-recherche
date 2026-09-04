@@ -368,6 +368,25 @@ def _same_announcement(
     return similarity >= 0.88
 
 
+def _descriptive_priority(
+    criteria: SearchCriteria,
+    result: RankedResult,
+) -> tuple[int, int, int, int, int]:
+    """Place les critères descriptifs explicites avant prix et superficie."""
+
+    components = result.components
+    return (
+        int(criteria.neighborhood is not None and components.get("quartier") == 1),
+        int(criteria.property_type is not None and components.get("type_bien") == 1),
+        int(
+            criteria.document_status is not None
+            and components.get("statut_document") == 1
+        ),
+        int(criteria.proximity is not None and components.get("proximite") == 1),
+        int(criteria.viability is not None and components.get("viabilite") == 1),
+    )
+
+
 def rank_candidates(
     criteria: SearchCriteria,
     candidates: Iterable[SearchCandidate],
@@ -456,6 +475,7 @@ def rank_candidates(
 
     results.sort(
         key=lambda result: (
+            _descriptive_priority(criteria, result),
             result.score,
             result.candidate.area_m2 or 0.0 if good_deal else result.coverage,
             -(
