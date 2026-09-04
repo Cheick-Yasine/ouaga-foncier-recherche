@@ -146,6 +146,22 @@ def _candidate_from_row(
     )
 
 
+_ALLOWED_PROPERTY_TYPES = frozenset({"terrain", "parcelle", "maison"})
+
+
+def _is_prepared_candidate(candidate: SearchCandidate) -> bool:
+    """Applique les règles validées de la base finale avant le classement."""
+
+    return (
+        candidate.neighborhood is not None
+        and candidate.property_type in _ALLOWED_PROPERTY_TYPES
+        and not (
+            candidate.price_fcfa is None
+            and candidate.area_m2 is None
+        )
+    )
+
+
 def load_recent_candidates(
     max_age_days: int | None = None,
     settings: Settings | None = None,
@@ -210,7 +226,12 @@ def load_recent_candidates(
                 parameters,
             ).fetchall()
 
-    return [
+    candidates = [
         _candidate_from_row(dict(row), now=current_time)
         for row in rows
+    ]
+    return [
+        candidate
+        for candidate in candidates
+        if _is_prepared_candidate(candidate)
     ]
