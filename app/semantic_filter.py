@@ -163,8 +163,6 @@ def apply_semantic_filter(
     )
     api_client = client or OpenAI(
         api_key=current.openai_api_key.get_secret_value(),
-        timeout=25.0,
-        max_retries=0,
     )
 
     try:
