@@ -195,7 +195,7 @@ def load_recent_candidates(
     settings: Settings | None = None,
     *,
     now: datetime | None = None,
-    pool_limit: int = 5_000,
+    pool_limit: int = 2_000,
 ) -> list[SearchCandidate]:
     """Charge les annonces admissibles sans modifier Neon."""
 
@@ -225,8 +225,8 @@ def load_recent_candidates(
 
     with psycopg.connect(
         database_url,
-        connect_timeout=5,
-        options="-c statement_timeout=8000",
+        connect_timeout=10,
+        options="-c statement_timeout=12000",
         row_factory=dict_row,
     ) as connection:
         with connection.transaction():
