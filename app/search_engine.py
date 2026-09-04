@@ -6,7 +6,7 @@ import math
 import re
 from collections import Counter
 from collections.abc import Iterable, Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from app.neighborhoods import resolve_neighborhood
 from app.normalization import normalize_property_type
 from app.text_features import (
@@ -40,6 +40,7 @@ _BUDGET_PATTERN = re.compile(
     r"(\d[\d ]*(?:[.,]\d+)?)\s*"
     r"(milliards?|millions?|fcfa|f cfa|cfa)?\b"
 )
+_GOOD_DEAL_MARKERS = ("bon deal", "bonne affaire", "meilleur deal")
 
 
 @dataclass(frozen=True)
@@ -340,10 +341,49 @@ def rank_candidates(
         for candidate in candidates
         if (result := score_candidate(criteria, candidate)) is not None
     ]
+    good_deal = (
+        criteria.price_fcfa is not None
+        and any(
+            marker in normalize_text(criteria.description)
+            for marker in _GOOD_DEAL_MARKERS
+        )
+    )
+    if good_deal and results:
+        known_areas = [
+            result.candidate.area_m2
+            for result in results
+            if result.candidate.area_m2 is not None
+            and result.candidate.area_m2 > 0
+        ]
+        largest_area = max(known_areas, default=1.0)
+        adjusted: list[RankedResult] = []
+        for result in results:
+            candidate = result.candidate
+            area_value = (
+                candidate.area_m2 / largest_area
+                if candidate.area_m2 is not None and candidate.area_m2 > 0
+                else 0.0
+            )
+            budget_use = (
+                candidate.price_fcfa / criteria.price_fcfa
+                if candidate.price_fcfa is not None
+                else 0.0
+            )
+            deal_score = 0.70 * area_value + 0.30 * budget_use
+            adjusted.append(
+                replace(
+                    result,
+                    score=round(0.40 * result.score + 60 * deal_score, 2),
+                    explanations=result.explanations
+                    + ("Bon deal : grande superficie dans le budget",),
+                )
+            )
+        results = adjusted
+
     results.sort(
         key=lambda result: (
             result.score,
-            result.coverage,
+            result.candidate.area_m2 or 0.0 if good_deal else result.coverage,
             -(
                 result.candidate.age_days
                 if result.candidate.age_days is not None
