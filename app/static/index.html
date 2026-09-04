@@ -8,8 +8,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/styles.css?v=20260904-6">
-  <script src="/static/app.js?v=20260904-6" defer></script>
+  <link rel="stylesheet" href="/static/styles.css?v=20260904-7">
+  <script src="/static/app.js?v=20260904-7" defer></script>
 </head>
 <body>
   <header class="site-header">
@@ -47,6 +47,14 @@
               <label class="sr-only" for="description">Décrivez le bien recherché</label>
               <textarea id="description" name="description" rows="5" minlength="3" maxlength="2000" required placeholder="Je cherche une parcelle de 300 m² à Saaba, avec un budget de 6 millions FCFA et une attestation de possession."></textarea>
               <div class="search-actions">
+                <label class="period-control" for="max-age-days">
+                  <span>Période des annonces</span>
+                  <select id="max-age-days" name="max_age_days">
+                    <option value="7">7 jours</option>
+                    <option value="30" selected>1 mois</option>
+                    <option value="90">3 mois</option>
+                  </select>
+                </label>
                 <button id="submit-button" type="submit">Rechercher</button>
               </div>
             </form>
