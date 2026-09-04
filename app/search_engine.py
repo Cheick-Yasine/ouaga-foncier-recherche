@@ -11,7 +11,7 @@ from app.neighborhoods import resolve_neighborhood
 from app.normalization import normalize_property_type
 from app.text_features import (
     extract_document_status,
-    extract_proximity,
+    extract_proximity_details,
     extract_viability,
     normalize_text,
 )
@@ -139,7 +139,7 @@ def parse_search_description(description: str) -> SearchCriteria:
     resolution = resolve_neighborhood(description, None)
     neighborhood = resolution.canonical if resolution.in_scope else None
 
-    proximity = extract_proximity(description)
+    proximity = extract_proximity_details(description)
     viability = extract_viability(description)
     document = extract_document_status(None, description)
 
