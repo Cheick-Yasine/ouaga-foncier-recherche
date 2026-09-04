@@ -84,7 +84,7 @@ def test_structured_document_and_text_are_combined() -> None:
     row = _row("document", "Terrain avec accès au goudron")
     row["statut_document"] = "Attestation d'attribution"
     features = extract_text_features(row)
-    assert features["proximite"] == "voie_bitumee"
+    assert features["proximite"] == "acces_voie_bitumee"
     assert features["statut_document_normalise"] == "attestation_attribution"
 
 
