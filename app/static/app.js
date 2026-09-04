@@ -29,7 +29,7 @@ function relativeDate(r){
  }
  return showValue(r.date_publication)
 }
-function documentLabel(value){const labels={attestation_possession:"Attestation de possession",attestation_attribution:"Attestation d’attribution",attestation_non_precisee:"Attestation non précisée",apfr:"APFR",puh:"PUH",titre_foncier:"Titre foncier",plusieurs_documents:"Plusieurs documents",non_precise:"Non précisé"};return labels[value]||showValue(value)}
+function documentLabel(value){const labels={attestation_possession:"Attestation de possession",attestation_attribution:"Attestation d’attribution",attestation_non_precisee:"Attestation — type non précisé",apfr:"APFR",puh:"PUH",titre_foncier:"Titre foncier",plusieurs_documents:"Plusieurs documents",non_precise:"Non précisé"};return labels[value]||showValue(value)}
 function facts(r){return[showValue(r.prix_fcfa," FCFA"),showValue(r.superficie_m2," m²"),documentLabel(r.statut_document),"◷ "+relativeDate(r)].join(" · ")}
 function requireLogin(message){if(currentUser)return true;$("#auth-description").textContent=message||"Connectez-vous pour utiliser votre espace personnel.";setAuthMode("login");authDialog.showModal();return false}
 function isSaved(id){return read("saved").some(x=>x.id===id)}
