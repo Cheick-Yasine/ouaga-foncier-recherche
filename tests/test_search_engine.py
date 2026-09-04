@@ -303,3 +303,35 @@ def test_republication_without_neighborhood_is_listed_once() -> None:
     )
 
     assert len(results) == 1
+
+
+def test_good_deal_for_requested_area_prefers_lower_price() -> None:
+    criteria = parse_search_description(
+        "Je veux un bon deal pour une parcelle de 300 m2"
+    )
+    results = rank_candidates(
+        criteria,
+        [
+            SearchCandidate(
+                identifier="cheap-exact",
+                text="Parcelle de 300 m2",
+                price_fcfa=4_000_000,
+                area_m2=300,
+            ),
+            SearchCandidate(
+                identifier="expensive-exact",
+                text="Parcelle de 300 m2",
+                price_fcfa=8_000_000,
+                area_m2=300,
+            ),
+            SearchCandidate(
+                identifier="cheap-far",
+                text="Parcelle de 900 m2",
+                price_fcfa=3_000_000,
+                area_m2=900,
+            ),
+        ],
+    )
+
+    assert results[0].candidate.identifier == "cheap-exact"
+    assert "prix le plus faible" in results[0].explanations[-1]
