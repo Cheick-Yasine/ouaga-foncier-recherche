@@ -93,3 +93,30 @@ def test_published_report_contains_only_aggregates() -> None:
     assert "private-id" not in repr(report)
     assert report["identifiers_exported"] is False
     assert report["database_modified"] is False
+
+
+def test_possession_is_not_confused_with_attribution() -> None:
+    assert (
+        extract_document_status(
+            None,
+            "Attestation de possession disponible.",
+        )
+        == "attestation_possession"
+    )
+    assert (
+        extract_document_status(
+            None,
+            "Fiche d'attribution disponible.",
+        )
+        == "attestation_attribution"
+    )
+
+
+def test_explicit_ad_text_overrides_stale_structured_document() -> None:
+    assert (
+        extract_document_status(
+            "attestation_attribution",
+            "Attestation de possession disponible.",
+        )
+        == "attestation_possession"
+    )
