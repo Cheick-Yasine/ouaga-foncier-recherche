@@ -34,7 +34,7 @@ def test_static_assets_are_available() -> None:
     assert javascript.status_code == 200
     assert 'fetch("/search"' in javascript.text
     assert "AbortController" in javascript.text
-    assert "35000" in javascript.text
+    assert "50000" in javascript.text
 
 
 def test_health() -> None:
