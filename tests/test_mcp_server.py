@@ -1,6 +1,7 @@
 """Tests des outils publics du serveur MCP."""
 
 from app import mcp_server
+from app.public_references import public_announcement_id
 from app.search_engine import SearchCandidate
 from app.semantic_filter import SemanticFilterOutcome
 
@@ -47,7 +48,8 @@ def test_search_never_returns_contact(monkeypatch) -> None:
 
     assert response["nombre_resultats"] == 1
     assert response["results"][0]["id"] != "post-1"
-    assert response["results"][0]["url"] is None
+    assert response["results"][0]["url"].startswith("https://ouaga-foncier-mcp.onrender.com/?annonce=")
+    assert "facebook.com" not in response["results"][0]["url"]
     assert "contact" not in response["results"][0]
     assert "70 12 34 56" not in response["results"][0]["description"]
     assert "[contact retire]" in response["results"][0]["description"]
@@ -68,7 +70,7 @@ def test_fetch_excludes_source_identity_link_and_contact(monkeypatch) -> None:
         lambda _max_age: [candidate],
     )
 
-    public_id = mcp_server._public_id(candidate.identifier)
+    public_id = public_announcement_id(candidate.identifier)
     response = mcp_server.fetch(public_id)
     rendered = str(response)
 
