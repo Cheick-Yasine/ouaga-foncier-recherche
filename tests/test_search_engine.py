@@ -583,3 +583,44 @@ def test_requested_area_prefers_low_price_at_same_area() -> None:
     )
 
     assert results[0].candidate.identifier == "cheap"
+
+
+def test_school_destination_does_not_satisfy_school_proximity() -> None:
+    criteria = parse_search_description(
+        "Parcelle avec attestation proche d'une voie bitumée et d'une école"
+    )
+    candidate = SearchCandidate(
+        identifier="school-destination",
+        text=(
+            "Terrain d'un hectare et quart. Document attestation. "
+            "Destination école."
+        ),
+        property_type="parcelle",
+        proximity=None,
+        document_status="attestation_non_precisee",
+        price_fcfa=100_000_000,
+        area_m2=12_500,
+    )
+
+    assert score_candidate(criteria, candidate) is None
+
+
+def test_candidate_must_have_every_requested_proximity() -> None:
+    criteria = parse_search_description(
+        "Parcelle proche d'une voie bitumée et d'une école"
+    )
+    road_only = SearchCandidate(
+        identifier="road-only",
+        text="Parcelle proche d'une voie bitumée",
+        property_type="parcelle",
+        proximity="voie_bitumee",
+    )
+    both = SearchCandidate(
+        identifier="both",
+        text="Parcelle proche d'une voie bitumée et d'une école",
+        property_type="parcelle",
+        proximity="ecole+voie_bitumee",
+    )
+
+    assert score_candidate(criteria, road_only) is None
+    assert score_candidate(criteria, both) is not None
