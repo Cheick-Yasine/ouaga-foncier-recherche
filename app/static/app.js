@@ -10,7 +10,7 @@ function key(kind){return"foncier-ouaga:"+(currentUser?.id||"visitor")+":"+kind}
 function read(kind){try{return JSON.parse(localStorage.getItem(key(kind))||"[]")}catch{return[]}}
 function write(kind,data){localStorage.setItem(key(kind),JSON.stringify(data))}
 function title(r){const t=r.type_bien?r.type_bien[0].toUpperCase()+r.type_bien.slice(1):"Bien";return[t,r.superficie_m2?"de "+showValue(r.superficie_m2," m²"):null,r.quartier?"à "+r.quartier:null].filter(Boolean).join(" ")}
-function opinion(r,index){if(r.explications?.length)return r.explications[r.explications.length-1].replace(/^Filtre sémantique\s*:\s*/i,"");return index===0?"Meilleur équilibre avec votre demande.":"Option intéressante à vérifier selon vos priorités."}
+function opinion(r,index){const base=r.explications?.length?r.explications[r.explications.length-1].replace(/^Filtre sémantique\s*:\s*/i,""):index===0?"Meilleur équilibre avec votre demande.":"Option intéressante à vérifier selon vos priorités.";return r.note_prix?r.note_prix+". "+base:base}
 function relativeDate(r){
  if(typeof r.anciennete_jours==="number"){
   const days=Math.max(0,Math.floor(r.anciennete_jours));
