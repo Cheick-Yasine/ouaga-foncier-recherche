@@ -286,7 +286,6 @@ def score_candidate(
             criteria.document_status,
             candidate.document_status,
         ),
-        "proximite": (criteria.proximity, candidate.proximity),
         "viabilite": (criteria.viability, candidate.viability),
     }
     for component, (expected, observed) in categorical_pairs.items():
@@ -296,6 +295,20 @@ def score_candidate(
                 if observed is None
                 else float(_normalized_equal(expected, observed))
             )
+
+    if criteria.proximity:
+        if candidate.proximity is None:
+            components["proximite"] = None
+        else:
+            requested_proximities = set(criteria.proximity.split("+"))
+            observed_proximities = set(candidate.proximity.split("+"))
+            components["proximite"] = float(
+                requested_proximities <= observed_proximities
+            )
+        # Une proximité formulée explicitement est une caractéristique réelle,
+        # pas un simple mot-clé : une annonce non conforme est écartée.
+        if components["proximite"] != 1:
+            return None
 
     for required in criteria.required_fields:
         if required not in requested:
