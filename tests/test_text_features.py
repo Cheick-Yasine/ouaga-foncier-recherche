@@ -120,3 +120,21 @@ def test_explicit_ad_text_overrides_stale_structured_document() -> None:
         )
         == "attestation_possession"
     )
+
+
+def test_paved_proximity_and_paved_access_are_distinct() -> None:
+    assert (
+        extract_proximity("Parcelle proche d'une voie bitumée")
+        == "voie_bitumee"
+    )
+    assert (
+        extract_proximity("Parcelle facilement accessible par le goudron")
+        == "acces_voie_bitumee"
+    )
+
+
+def test_directional_landmark_does_not_imply_paved_proximity() -> None:
+    assert (
+        extract_proximity("Après Boassa facilement accessible par le goudron")
+        == "acces_voie_bitumee"
+    )
