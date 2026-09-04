@@ -182,6 +182,10 @@ def search(
     criteria_started = perf_counter()
     criteria = _with_options(payload)
     criteria_ms = (perf_counter() - criteria_started) * 1_000
+    LOGGER.info(
+        "search_stage stage=criteria status=completed elapsed_ms=%.1f",
+        criteria_ms,
+    )
 
     neon_started = perf_counter()
     try:
@@ -194,6 +198,11 @@ def search(
             detail="La lecture des annonces dans Neon a échoué.",
         ) from None
     neon_ms = (perf_counter() - neon_started) * 1_000
+    LOGGER.info(
+        "search_stage stage=neon status=completed elapsed_ms=%.1f candidates=%d",
+        neon_ms,
+        len(candidates),
+    )
 
     session_started = perf_counter()
     try:
@@ -201,13 +210,29 @@ def search(
     except (DatabaseNotConfiguredError, psycopg.Error):
         authenticated = False
     session_ms = (perf_counter() - session_started) * 1_000
+    LOGGER.info(
+        "search_stage stage=session status=completed elapsed_ms=%.1f",
+        session_ms,
+    )
 
     settings = get_settings()
     local_started = perf_counter()
     local_limit = max(payload.limit, settings.llm_candidate_limit)
     ranked_local = rank_candidates(criteria, candidates, limit=local_limit)
     local_ms = (perf_counter() - local_started) * 1_000
+    LOGGER.info(
+        (
+            "search_stage stage=local_rank status=completed "
+            "elapsed_ms=%.1f results=%d"
+        ),
+        local_ms,
+        len(ranked_local),
+    )
 
+    LOGGER.info(
+        "search_stage stage=semantic status=started candidates=%d",
+        len(ranked_local),
+    )
     semantic_started = perf_counter()
     semantic = apply_semantic_filter(
         criteria,
@@ -215,6 +240,15 @@ def search(
         settings=settings,
     )
     semantic_ms = (perf_counter() - semantic_started) * 1_000
+    LOGGER.info(
+        (
+            "search_stage stage=semantic status=completed elapsed_ms=%.1f "
+            "llm_used=%s fallback=%s"
+        ),
+        semantic_ms,
+        semantic.used,
+        semantic.fallback,
+    )
 
     ranked = semantic.results[: payload.limit]
     total_ms = (perf_counter() - total_started) * 1_000
