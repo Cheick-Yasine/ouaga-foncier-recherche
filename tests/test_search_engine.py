@@ -216,3 +216,57 @@ def test_good_deal_prioritizes_large_area_within_budget() -> None:
 
     assert [result.candidate.identifier for result in results] == ["large", "small"]
     assert "grande superficie" in results[0].explanations[-1]
+
+
+def test_near_identical_republication_is_listed_once() -> None:
+    criteria = SearchCriteria(description="terrain à Saaba")
+    results = rank_candidates(
+        criteria,
+        [
+            SearchCandidate(
+                identifier="repost-1",
+                text="Belle parcelle à Saaba 300 m2 avec PUH proche de la route contact",
+                property_type="parcelle",
+                neighborhood="Saaba",
+                price_fcfa=5_000_000,
+                area_m2=300,
+            ),
+            SearchCandidate(
+                identifier="repost-2",
+                text="Belle parcelle à Saaba 300 m2 avec PUH proche de la route contact direct",
+                property_type="parcelle",
+                neighborhood="Saaba",
+                price_fcfa=5_000_000,
+                area_m2=300,
+            ),
+        ],
+    )
+
+    assert len(results) == 1
+
+
+def test_same_characteristics_with_different_text_remain_distinct() -> None:
+    criteria = SearchCriteria(description="parcelle")
+    results = rank_candidates(
+        criteria,
+        [
+            SearchCandidate(
+                identifier="property-1",
+                text="Parcelle résidentielle près du marché et de la mairie",
+                property_type="parcelle",
+                neighborhood="Saaba",
+                price_fcfa=5_000_000,
+                area_m2=300,
+            ),
+            SearchCandidate(
+                identifier="property-2",
+                text="Terrain calme derrière le lycée avec accès à l eau",
+                property_type="parcelle",
+                neighborhood="Saaba",
+                price_fcfa=5_000_000,
+                area_m2=300,
+            ),
+        ],
+    )
+
+    assert len(results) == 2
