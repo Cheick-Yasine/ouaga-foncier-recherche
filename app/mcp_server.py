@@ -8,6 +8,7 @@ from typing import Any
 
 import psycopg
 from mcp.server.fastmcp import FastMCP
+from mcp.server.transport_security import TransportSecuritySettings
 
 from app.config import get_settings
 from app.database import DatabaseNotConfiguredError
@@ -24,6 +25,20 @@ mcp = FastMCP(
     ),
     stateless_http=True,
     json_response=True,
+    transport_security=TransportSecuritySettings(
+        enable_dns_rebinding_protection=True,
+        allowed_hosts=[
+            "ouaga-foncier-mcp.onrender.com",
+            "localhost:*",
+            "127.0.0.1:*",
+        ],
+        allowed_origins=[
+            "https://chatgpt.com",
+            "https://chat.openai.com",
+            "http://localhost:*",
+            "http://127.0.0.1:*",
+        ],
+    ),
 )
 
 
