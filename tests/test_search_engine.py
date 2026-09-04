@@ -335,3 +335,32 @@ def test_good_deal_for_requested_area_prefers_lower_price() -> None:
 
     assert results[0].candidate.identifier == "cheap-exact"
     assert "prix le plus faible" in results[0].explanations[-1]
+
+
+def test_requested_neighborhood_precedes_a_better_price() -> None:
+    criteria = parse_search_description(
+        "Je cherche une parcelle à Saaba de 300 m2 avec un budget de 10 millions"
+    )
+    results = rank_candidates(
+        criteria,
+        [
+            SearchCandidate(
+                identifier="saaba",
+                text="Parcelle à Saaba de 300 m2",
+                property_type="parcelle",
+                neighborhood="Saaba",
+                price_fcfa=9_500_000,
+                area_m2=300,
+            ),
+            SearchCandidate(
+                identifier="cheaper-elsewhere",
+                text="Parcelle de 300 m2 à prix exceptionnel",
+                property_type="parcelle",
+                neighborhood="Karpala",
+                price_fcfa=4_000_000,
+                area_m2=300,
+            ),
+        ],
+    )
+
+    assert results[0].candidate.identifier == "saaba"
