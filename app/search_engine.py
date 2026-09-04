@@ -338,6 +338,20 @@ def score_candidate(
     )
 
 
+def _contact_numbers(value: str | None) -> frozenset[str]:
+    """Normalise les téléphones sans les exposer hors du moteur local."""
+
+    if not value:
+        return frozenset()
+    digits = re.findall(r"\d", value)
+    compact = "".join(digits)
+    # Les numéros burkinabè ont 8 chiffres; plusieurs contacts peuvent être concaténés.
+    return frozenset(
+        compact[index:index + 8]
+        for index in range(0, len(compact) - 7, 8)
+    )
+
+
 def _same_announcement(
     candidate: SearchCandidate,
     other: SearchCandidate,
@@ -356,15 +370,17 @@ def _same_announcement(
     )
     if not same_characteristics:
         return False
-    candidate_tokens = set(_tokens(candidate.text))
-    other_tokens = set(_tokens(other.text))
-    union = candidate_tokens | other_tokens
-    similarity = (
-        len(candidate_tokens & other_tokens) / len(union)
-        if union
-        else 0.0
+    shared_contacts = (
+        _contact_numbers(candidate.contact)
+        & _contact_numbers(other.contact)
     )
-    return similarity >= 0.88
+    if shared_contacts:
+        return True
+
+    # Les republications inter-groupes sont souvent reformulées. Le cosinus
+    # mots + bigrammes reconnaît les mêmes sites et repères sans exiger un
+    # texte copié mot pour mot.
+    return cosine_similarity(candidate.text, other.text) >= 0.50
 
 
 def _descriptive_priority(
