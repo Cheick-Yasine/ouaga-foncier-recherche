@@ -106,11 +106,7 @@ def create_user(email: str, password: str) -> AuthenticatedUser:
     user_id = str(uuid.uuid4())
 
     try:
-        with psycopg.connect(
-        _database_url(),
-        connect_timeout=5,
-        options="-c statement_timeout=8000",
-    ) as connection:
+        with psycopg.connect(_database_url()) as connection:
             connection.execute(
                 """
                 INSERT INTO public.app_users (id, email, password_hash)
@@ -130,8 +126,6 @@ def authenticate_user(email: str, password: str) -> AuthenticatedUser | None:
     normalized = normalize_email(email)
     with psycopg.connect(
         _database_url(),
-        connect_timeout=5,
-        options="-c statement_timeout=8000",
         row_factory=dict_row,
     ) as connection:
         row = connection.execute(
@@ -151,11 +145,7 @@ def authenticate_user(email: str, password: str) -> AuthenticatedUser | None:
 def create_session(user_id: str) -> str:
     token = secrets.token_urlsafe(32)
     expires_at = datetime.now(timezone.utc) + SESSION_DURATION
-    with psycopg.connect(
-        _database_url(),
-        connect_timeout=5,
-        options="-c statement_timeout=8000",
-    ) as connection:
+    with psycopg.connect(_database_url()) as connection:
         connection.execute(
             """
             INSERT INTO public.user_sessions (token_hash, user_id, expires_at)
@@ -171,8 +161,6 @@ def get_session_user(token: str | None) -> AuthenticatedUser | None:
         return None
     with psycopg.connect(
         _database_url(),
-        connect_timeout=5,
-        options="-c statement_timeout=8000",
         row_factory=dict_row,
     ) as connection:
         row = connection.execute(
@@ -194,11 +182,7 @@ def get_session_user(token: str | None) -> AuthenticatedUser | None:
 def delete_session(token: str | None) -> None:
     if not token:
         return
-    with psycopg.connect(
-        _database_url(),
-        connect_timeout=5,
-        options="-c statement_timeout=8000",
-    ) as connection:
+    with psycopg.connect(_database_url()) as connection:
         connection.execute(
             "DELETE FROM public.user_sessions WHERE token_hash = %s",
             (_token_hash(token),),
