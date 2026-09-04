@@ -225,8 +225,6 @@ def load_recent_candidates(
 
     with psycopg.connect(
         database_url,
-        connect_timeout=10,
-        options="-c statement_timeout=12000",
         row_factory=dict_row,
     ) as connection:
         with connection.transaction():
