@@ -16,6 +16,8 @@ def test_root_serves_search_interface() -> None:
     assert "text/html" in response.headers["content-type"]
     assert "Foncier Ouaga" in response.text
     assert 'id="search-form"' in response.text
+    assert 'id="max-age-days"' in response.text
+    assert '<option value="30" selected>1 mois</option>' in response.text
 
 
 def test_api_information() -> None:
@@ -35,6 +37,8 @@ def test_static_assets_are_available() -> None:
     assert 'fetch("/search"' in javascript.text
     assert "AbortController" in javascript.text
     assert "50000" in javascript.text
+    assert "max_age_days:Number(maxAgeInput.value)" in javascript.text
+    assert "emptyState" not in javascript.text
 
 
 def test_health() -> None:
