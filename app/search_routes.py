@@ -41,7 +41,7 @@ class InterpretRequest(BaseModel):
 
 
 class SearchRequest(InterpretRequest):
-    limit: int = Field(default=20, ge=1, le=100)
+    limit: int = Field(default=10, ge=1, le=10)
 
 
 class InterpretedCriteria(BaseModel):
@@ -168,7 +168,7 @@ def search(
     payload: SearchRequest,
     session_token: str | None = Cookie(default=None, alias=SESSION_COOKIE),
 ) -> SearchResponse:
-    """Interprète la demande, lit Neon puis classe les annonces récentes."""
+    """Interprète la demande, lit Neon et retourne au plus dix annonces uniques."""
 
     criteria = _with_options(payload)
     try:
