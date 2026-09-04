@@ -16,7 +16,7 @@ from app.normalization import normalize_property_type
 from app.search_engine import SearchCandidate
 from app.text_features import (
     extract_document_status,
-    extract_proximity,
+    extract_proximity_details,
     extract_viability,
 )
 
@@ -111,7 +111,7 @@ def _candidate_from_row(
         if collected_at is not None
         else None
     )
-    proximity = extract_proximity(text)
+    proximity = extract_proximity_details(text)
     viability = extract_viability(text)
     document = extract_document_status(
         _optional_text(row.get("statut_document")),
