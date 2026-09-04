@@ -97,4 +97,4 @@ def test_actual_kamboinsin_location_precedes_route_to_yagma() -> None:
     )
 
     assert resolution.canonical == "Kamboinsin"
-    assert resolution.source == "texte_localisation_explicite"
+    assert resolution.source == "texte_nettoye"
