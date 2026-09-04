@@ -88,7 +88,10 @@ def extract_proximity(*texts: Any) -> str:
     text_without_paved_phrases = _PROXIMITY_PATTERNS["voie_bitumee"].sub(
         " ", searchable
     )
-    if _ROAD_PATTERN.search(text_without_paved_phrases):
+    if (
+        _ROAD_PATTERN.search(text_without_paved_phrases)
+        and not _PAVED_ACCESS_PATTERN.search(searchable)
+    ):
         detected.add("voie_route")
     if (
         "voie_bitumee" not in detected
