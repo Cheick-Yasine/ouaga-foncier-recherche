@@ -17,6 +17,7 @@ from app.search_engine import (
     SearchCriteria,
     _descriptive_priority,
     _good_deal_priority,
+    _price_match_priority,
 )
 
 LOGGER = logging.getLogger(__name__)
@@ -118,7 +119,11 @@ def _instructions() -> str:
         "Ne confonds jamais un prix total avec un prix par hectare ou par m². "
         "Quand base_prix est renseignée, utilise uniquement le coût et la surface "
         "recalculés du lot réellement achetable. "
-        "Un budget annoncé, même sans les mots maximum ou FCFA, est un plafond strict. "
+        "Un montant introduit par le mot budget est un plafond strict. Un prix "
+        "demandé sans le mot budget est une cible : favorise d'abord les annonces à ce "
+        "prix ou au prix le plus proche. Si un bon deal est demandé à un prix cible, "
+        "départage les annonces à ce prix par la plus grande superficie. "
+        "Une superficie exprimée en hectare doit être comprise avec 1 ha = 10 000 m². "
         "Quand l'utilisateur demande un bon deal avec seulement un budget, compare les "
         "annonces sous ce plafond et recherche le meilleur compromis entre la plus "
         "grande superficie réellement achetable et le prix total le plus faible. "
@@ -212,6 +217,7 @@ def apply_semantic_filter(
         filtered.sort(
             key=lambda item: (
                 _descriptive_priority(criteria, item),
+                _price_match_priority(criteria, item),
                 _good_deal_priority(criteria, item),
                 item.score,
                 item.coverage,
