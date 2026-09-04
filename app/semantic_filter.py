@@ -111,6 +111,8 @@ def _instructions() -> str:
         "les annonces qui respectent ces critères; prix et superficie servent ensuite à "
         "départager les annonces du même niveau descriptif. "
         "N'invente aucune information absente et signale clairement les compromis. "
+        "Pour la proximité, ne confonds jamais proche d'une voie bitumée avec "
+        "simplement accessible par une voie bitumée; ce sont deux catégories différentes. "
         "Pour le document, recopie strictement la catégorie fournie : une attestation "
         "de possession n'est jamais une attestation d'attribution, et inversement. "
         "Ne confonds jamais un prix total avec un prix par hectare ou par m². "
