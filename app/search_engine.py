@@ -346,7 +346,11 @@ def _same_announcement(
     if candidate.identifier == other.identifier:
         return True
     same_characteristics = (
-        candidate.price_fcfa == other.price_fcfa
+        candidate.price_fcfa is not None
+        and other.price_fcfa is not None
+        and candidate.area_m2 is not None
+        and other.area_m2 is not None
+        and candidate.price_fcfa == other.price_fcfa
         and candidate.area_m2 == other.area_m2
         and _same_optional_value(candidate.neighborhood, other.neighborhood)
         and _same_optional_value(candidate.property_type, other.property_type)
