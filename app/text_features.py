@@ -11,12 +11,21 @@ from typing import Any
 from app.villa_exclusion import build_villa_exclusion_audit
 
 
+_PROXIMITY_CUE = (
+    r"(?:proche|proximite|non loin|a cote|en face|devant|derriere"
+    r"|a moins de|a \d+\s*(?:m|km))"
+)
+_SCHOOL_PLACE = r"(?:ecole|lycee|college|universite|institut|etablissement scolaire)"
+_HEALTH_PLACE = r"(?:hopital|clinique|centre de sante|centre medical|csps|cma|dispensaire)"
+
 _PROXIMITY_PATTERNS = {
     "centre_sante_hopital": re.compile(
-        r"\b(hopital|clinique|centre de sante|centre medical|csps|cma|dispensaire)\b"
+        rf"\b{_PROXIMITY_CUE}(?:\s+\w+){{0,10}}\s+{_HEALTH_PLACE}\b"
+        rf"|\b{_HEALTH_PLACE}(?:\s+\w+){{0,6}}\s+{_PROXIMITY_CUE}\b"
     ),
     "ecole": re.compile(
-        r"\b(ecole|lycee|college|universite|institut|etablissement scolaire)\b"
+        rf"\b{_PROXIMITY_CUE}(?:\s+\w+){{0,10}}\s+{_SCHOOL_PLACE}\b"
+        rf"|\b{_SCHOOL_PLACE}(?:\s+\w+){{0,6}}\s+{_PROXIMITY_CUE}\b"
     ),
     "voie_bitumee": re.compile(
         r"\b(?:proche|proximite|non loin|bord|bordure|face)"
@@ -76,15 +85,13 @@ def normalize_text(value: Any) -> str:
     return " ".join(text.split())
 
 
-def extract_proximity(*texts: Any) -> str:
+def _detected_proximities(*texts: Any) -> set[str]:
     searchable = normalize_text(" ".join(str(text or "") for text in texts))
     detected = {
         label
         for label, pattern in _PROXIMITY_PATTERNS.items()
         if pattern.search(searchable)
     }
-
-    # « route bitumée » décrit une seule caractéristique, pas deux.
     text_without_paved_phrases = _PROXIMITY_PATTERNS["voie_bitumee"].sub(
         " ", searchable
     )
@@ -98,6 +105,20 @@ def extract_proximity(*texts: Any) -> str:
         and _PAVED_ACCESS_PATTERN.search(searchable)
     ):
         detected.add("acces_voie_bitumee")
+    return detected
+
+
+def extract_proximity_details(*texts: Any) -> str:
+    """Conserve l'identité de chaque proximité demandée pour la recherche."""
+
+    detected = _detected_proximities(*texts)
+    if not detected:
+        return "non_precisee"
+    return "+".join(sorted(detected))
+
+
+def extract_proximity(*texts: Any) -> str:
+    detected = _detected_proximities(*texts)
 
     if not detected:
         return "non_precisee"
