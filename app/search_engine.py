@@ -31,9 +31,16 @@ DEFAULT_WEIGHTS = {
 _AREA_PATTERN = re.compile(
     r"\b(\d+(?:[.,]\d+)?)\s*(?:m2|metres? carres?)\b"
 )
+_HECTARE_PATTERN = re.compile(
+    r"\b(\d+(?:[.,]\d+)?)\s*(?:hectares?|ha)\b"
+)
 _PRICE_PATTERN = re.compile(
-    r"\b(\d[\d ]*(?:[.,]\d+)?)\s*"
+    r"\b(\d[\d ]*(?:[.,]\d+)?|un)\s*"
     r"(milliards?|millions?|fcfa|f cfa|cfa)\b"
+)
+_PLAIN_PRICE_PATTERN = re.compile(
+    r"\b(?:prix(?:\s+de)?|a|de|pour)\s*"
+    r"(\d(?:[\d ]*\d)?)\b"
 )
 _BUDGET_PATTERN = re.compile(
     r"\bbudget(?:\s+(?:maximum|maximal|de))?\s*"
@@ -88,6 +95,8 @@ class RankedResult:
 
 def _parse_number(value: str) -> float:
     compact = value.replace(" ", "").replace(",", ".")
+    if compact == "un":
+        return 1.0
     return float(compact)
 
 
@@ -96,13 +105,22 @@ def parse_search_description(description: str) -> SearchCriteria:
 
     normalized = normalize_text(description)
     area_match = _AREA_PATTERN.search(normalized)
-    area = _parse_number(area_match.group(1)) if area_match else None
+    hectare_match = _HECTARE_PATTERN.search(normalized)
+    if area_match:
+        area = _parse_number(area_match.group(1))
+    elif hectare_match:
+        area = _parse_number(hectare_match.group(1)) * 10_000
+    else:
+        area = None
 
     text_without_area = _AREA_PATTERN.sub(" ", normalized)
+    text_without_area = _HECTARE_PATTERN.sub(" ", text_without_area)
     price_match = _PRICE_PATTERN.search(text_without_area)
     budget_match = _BUDGET_PATTERN.search(text_without_area)
     if budget_match is not None:
         price_match = budget_match
+    elif price_match is None:
+        price_match = _PLAIN_PRICE_PATTERN.search(text_without_area)
 
     price: float | None = None
     if price_match:
@@ -401,6 +419,22 @@ def _descriptive_priority(
     )
 
 
+def _price_match_priority(
+    criteria: SearchCriteria,
+    result: RankedResult,
+) -> float:
+    """Un prix demandé sans notion de budget est une cible, pas un plafond."""
+
+    candidate_price = result.candidate.price_fcfa
+    if (
+        criteria.price_fcfa is None
+        or criteria.price_is_maximum
+        or candidate_price is None
+    ):
+        return 0.0
+    return numeric_similarity(criteria.price_fcfa, candidate_price)
+
+
 def _good_deal_priority(
     criteria: SearchCriteria,
     result: RankedResult,
@@ -500,11 +534,21 @@ def rank_candidates(
                     and candidate.price_fcfa > 0
                     else 0.0
                 )
-                # Un bon deal combine équitablement grande surface et faible prix.
-                deal_score = 0.50 * area_value + 0.50 * price_value
-                deal_explanation = (
-                    "Bon deal : grande superficie et prix faible"
-                )
+                if criteria.price_is_maximum:
+                    # Avec un budget plafond : grande surface et prix faible.
+                    deal_score = 0.50 * area_value + 0.50 * price_value
+                    deal_explanation = (
+                        "Bon deal : grande superficie et prix faible"
+                    )
+                else:
+                    price_match = numeric_similarity(
+                        criteria.price_fcfa,
+                        candidate.price_fcfa,
+                    )
+                    deal_score = 0.70 * area_value + 0.30 * price_match
+                    deal_explanation = (
+                        "Bon deal : grande superficie au prix demandé"
+                    )
             adjusted.append(
                 replace(
                     result,
@@ -518,6 +562,7 @@ def rank_candidates(
     results.sort(
         key=lambda result: (
             _descriptive_priority(criteria, result),
+            _price_match_priority(criteria, result),
             _good_deal_priority(criteria, result),
             result.score,
             result.candidate.area_m2 or 0.0 if good_deal else result.coverage,
