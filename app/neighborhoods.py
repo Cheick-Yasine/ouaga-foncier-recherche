@@ -237,7 +237,7 @@ def resolve_neighborhood(
         source = "hors_perimetre"
     elif explicit:
         canonical = explicit
-        source = "texte_localisation_explicite"
+        source = "texte_nettoye"
     elif len(candidates) == 1:
         canonical = candidates[0]
         source = "texte_nettoye"
