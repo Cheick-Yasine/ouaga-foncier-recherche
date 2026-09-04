@@ -401,6 +401,32 @@ def _descriptive_priority(
     )
 
 
+def _good_deal_priority(
+    criteria: SearchCriteria,
+    result: RankedResult,
+) -> tuple[float, float]:
+    """À superficie comparable, impose le prix total le plus faible."""
+
+    is_good_deal = any(
+        marker in normalize_text(criteria.description)
+        for marker in _GOOD_DEAL_MARKERS
+    )
+    if not is_good_deal or criteria.area_m2 is None:
+        return (0.0, 0.0)
+    candidate = result.candidate
+    area_match = (
+        numeric_similarity(criteria.area_m2, candidate.area_m2)
+        if candidate.area_m2 is not None
+        else 0.0
+    )
+    price = (
+        candidate.price_fcfa
+        if candidate.price_fcfa is not None
+        else float("inf")
+    )
+    return (round(area_match, 3), -price)
+
+
 def rank_candidates(
     criteria: SearchCriteria,
     candidates: Iterable[SearchCandidate],
@@ -492,6 +518,7 @@ def rank_candidates(
     results.sort(
         key=lambda result: (
             _descriptive_priority(criteria, result),
+            _good_deal_priority(criteria, result),
             result.score,
             result.candidate.area_m2 or 0.0 if good_deal else result.coverage,
             -(
