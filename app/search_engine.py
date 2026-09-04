@@ -453,14 +453,16 @@ def rank_candidates(
                     if candidate.area_m2 is not None and candidate.area_m2 > 0
                     else 0.0
                 )
-                budget_use = (
-                    candidate.price_fcfa / criteria.price_fcfa
+                price_value = (
+                    lowest_price / candidate.price_fcfa
                     if candidate.price_fcfa is not None
+                    and candidate.price_fcfa > 0
                     else 0.0
                 )
-                deal_score = 0.70 * area_value + 0.30 * budget_use
+                # Un bon deal combine équitablement grande surface et faible prix.
+                deal_score = 0.50 * area_value + 0.50 * price_value
                 deal_explanation = (
-                    "Bon deal : grande superficie dans le budget"
+                    "Bon deal : grande superficie et prix faible"
                 )
             adjusted.append(
                 replace(
