@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     llm_candidate_limit: int = Field(default=15, ge=10, le=30)
     llm_relevance_threshold: int = Field(default=55, ge=0, le=100)
     llm_deadline_seconds: float = Field(default=25.0, ge=0.05, le=60.0)
+    database_deadline_seconds: float = Field(default=15.0, ge=0.05, le=30.0)
 
     model_config = SettingsConfigDict(
         env_file=".env",
