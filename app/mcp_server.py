@@ -54,6 +54,7 @@ def _criteria_payload(criteria) -> dict[str, Any]:
         "viabilite": criteria.viability,
         "document": criteria.document_status,
         "contraintes_obligatoires": sorted(criteria.required_fields),
+        "anciennete_maximale_jours": criteria.max_age_days,
     }
 
 
@@ -93,11 +94,14 @@ def rechercher_annonces(
     description: str,
     limit: int = 10,
     criteres_obligatoires: list[str] | None = None,
+    anciennete_jours: int = 30,
 ) -> dict[str, Any]:
     """Recherche et filtre les annonces correspondant à une description."""
 
     if len(description.strip()) < 3:
         return {"erreur": "La description doit contenir au moins 3 caractères."}
+    if anciennete_jours not in {7, 30, 90}:
+        return {"erreur": "La période doit être de 7, 30 ou 90 jours."}
 
     allowed = {
         "quartier",
@@ -118,11 +122,11 @@ def rechercher_annonces(
     criteria = replace(
         parse_search_description(description),
         required_fields=frozenset(required),
-        max_age_days=None,
+        max_age_days=anciennete_jours,
     )
 
     try:
-        candidates = load_recent_candidates(None)
+        candidates = load_recent_candidates(anciennete_jours)
     except (DatabaseNotConfiguredError, psycopg.Error):
         return {"erreur": "La base d'annonces est temporairement indisponible."}
 
