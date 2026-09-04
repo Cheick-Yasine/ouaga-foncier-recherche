@@ -364,3 +364,17 @@ def test_requested_neighborhood_precedes_a_better_price() -> None:
     )
 
     assert results[0].candidate.identifier == "saaba"
+
+
+def test_missing_price_is_excluded_when_budget_is_requested() -> None:
+    criteria = parse_search_description(
+        "Avec un budget de 10 000 000 donne-moi les annonces de bon deal"
+    )
+    candidate = SearchCandidate(
+        identifier="unknown-price",
+        text="Grande parcelle disponible",
+        price_fcfa=None,
+        area_m2=320_000,
+    )
+
+    assert score_candidate(criteria, candidate) is None
