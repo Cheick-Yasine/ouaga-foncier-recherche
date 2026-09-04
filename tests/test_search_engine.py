@@ -183,3 +183,36 @@ def test_budget_without_currency_excludes_more_expensive_candidate() -> None:
     )
 
     assert score_candidate(criteria, candidate) is None
+
+
+def test_good_deal_prioritizes_large_area_within_budget() -> None:
+    criteria = parse_search_description(
+        "Avec un budget de 10 000 000 donne moi les annonces de bon deal"
+    )
+    results = rank_candidates(
+        criteria,
+        [
+            SearchCandidate(
+                identifier="small",
+                text="Terrain à vendre",
+                price_fcfa=9_800_000,
+                area_m2=300,
+            ),
+            SearchCandidate(
+                identifier="large",
+                text="Terrain à vendre",
+                price_fcfa=9_000_000,
+                area_m2=700,
+            ),
+            SearchCandidate(
+                identifier="over-budget",
+                text="Terrain à vendre",
+                price_fcfa=11_000_000,
+                area_m2=1_000,
+            ),
+        ],
+        limit=10,
+    )
+
+    assert [result.candidate.identifier for result in results] == ["large", "small"]
+    assert "grande superficie" in results[0].explanations[-1]
