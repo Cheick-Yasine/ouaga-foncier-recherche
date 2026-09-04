@@ -185,6 +185,14 @@ def _normalized_equal(left: str | None, right: str | None) -> bool:
     return bool(left and right and normalize_text(left) == normalize_text(right))
 
 
+def _same_optional_value(left: str | None, right: str | None) -> bool:
+    """Deux valeurs absentes sont équivalentes pour identifier une republication."""
+
+    if left is None or right is None:
+        return left is right
+    return _normalized_equal(left, right)
+
+
 def _requested_components(criteria: SearchCriteria) -> list[str]:
     requested = ["texte"]
     if criteria.neighborhood:
@@ -340,8 +348,8 @@ def _same_announcement(
     same_characteristics = (
         candidate.price_fcfa == other.price_fcfa
         and candidate.area_m2 == other.area_m2
-        and _normalized_equal(candidate.neighborhood, other.neighborhood)
-        and _normalized_equal(candidate.property_type, other.property_type)
+        and _same_optional_value(candidate.neighborhood, other.neighborhood)
+        and _same_optional_value(candidate.property_type, other.property_type)
     )
     if not same_characteristics:
         return False
