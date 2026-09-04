@@ -18,6 +18,12 @@ def test_root_serves_search_interface() -> None:
     assert 'id="search-form"' in response.text
     assert 'id="max-age-days"' in response.text
     assert '<option value="30" selected>1 mois</option>' in response.text
+    assert "Trouvez les annonces qui vous correspondent." in response.text
+    assert "<th>Contact</th>" in response.text
+    assert "Critères compris" not in response.text
+    assert "Comparer les annonces" not in response.text
+    assert "Annonces publiées par des tiers." not in response.text
+    assert 'id="result-count"' not in response.text
 
 
 def test_api_information() -> None:
@@ -39,6 +45,9 @@ def test_static_assets_are_available() -> None:
     assert "50000" not in javascript.text
     assert "max_age_days:Number(maxAgeInput.value)" in javascript.text
     assert "emptyState" not in javascript.text
+    assert "function appendContact" in javascript.text
+    assert "resultCount" not in javascript.text
+    assert "criteriaSummary" not in javascript.text
 
 
 def test_health() -> None:
