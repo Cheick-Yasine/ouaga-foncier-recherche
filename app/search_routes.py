@@ -25,7 +25,7 @@ from app.search_repository import load_recent_candidates
 from app.semantic_filter import apply_semantic_filter
 
 
-LOGGER = logging.getLogger(__name__)
+LOGGER = logging.getLogger("uvicorn.error")
 
 
 RequiredField = Literal[
