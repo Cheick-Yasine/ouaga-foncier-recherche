@@ -35,8 +35,8 @@ def test_static_assets_are_available() -> None:
     assert "--accent" in css.text
     assert javascript.status_code == 200
     assert 'fetch("/search"' in javascript.text
-    assert "AbortController" in javascript.text
-    assert "50000" in javascript.text
+    assert "AbortController" not in javascript.text
+    assert "50000" not in javascript.text
     assert "max_age_days:Number(maxAgeInput.value)" in javascript.text
     assert "emptyState" not in javascript.text
 
