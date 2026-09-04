@@ -14,7 +14,7 @@ def test_root_serves_search_interface() -> None:
 
     assert response.status_code == 200
     assert "text/html" in response.headers["content-type"]
-    assert "Ouaga Foncier" in response.text
+    assert "Foncier Ouaga" in response.text
     assert 'id="search-form"' in response.text
 
 
@@ -30,7 +30,7 @@ def test_static_assets_are_available() -> None:
     javascript = client.get("/static/app.js")
 
     assert css.status_code == 200
-    assert "--green" in css.text
+    assert "--forest" in css.text
     assert javascript.status_code == 200
     assert 'fetch("/search"' in javascript.text
 
