@@ -69,6 +69,7 @@ class SearchResult(BaseModel):
     quartier: str | None
     prix_fcfa: float | None
     superficie_m2: float | None
+    note_prix: str | None
     statut_document: str | None
     proximite: str | None
     viabilite: str | None
@@ -142,6 +143,7 @@ def _result_response(
         quartier=candidate.neighborhood,
         prix_fcfa=candidate.price_fcfa,
         superficie_m2=candidate.area_m2,
+        note_prix=candidate.pricing_note,
         statut_document=candidate.document_status,
         proximite=candidate.proximity,
         viabilite=candidate.viability,
