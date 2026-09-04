@@ -18,6 +18,7 @@ const closeAuth = document.querySelector("#close-auth");
 
 let currentUser = null;
 let authMode = "login";
+let pendingAnnouncementReference = new URLSearchParams(window.location.search).get("annonce");
 
 const formatNumber = new Intl.NumberFormat("fr-FR", {
   maximumFractionDigits: 0,
@@ -300,10 +301,10 @@ authForm.addEventListener("submit", async (event) => {
     accountButton.textContent = currentUser.email;
     authDialog.close();
     authForm.reset();
-    setFeedback(
-      "Connexion réussie. Relancez la recherche pour afficher les contacts complets.",
-      "loading"
-    );
+    setFeedback("Connexion réussie. Chargement de l’annonce…", "loading");
+    if (pendingAnnouncementReference) {
+      await loadLinkedAnnouncement(pendingAnnouncementReference);
+    }
   } catch (error) {
     authFeedback.textContent = error.message;
   } finally {
@@ -311,4 +312,47 @@ authForm.addEventListener("submit", async (event) => {
   }
 });
 
-refreshSession();
+async function loadLinkedAnnouncement(reference) {
+  if (!reference) return;
+
+  setFeedback("Chargement sécurisé de l’annonce…", "loading");
+  try {
+    const response = await fetch(`/annonces/${encodeURIComponent(reference)}`);
+    const payload = await response.json();
+
+    if (response.status === 401) {
+      setFeedback("Connectez-vous pour consulter le contact et le lien de cette annonce.");
+      updateAuthMode("login");
+      if (!authDialog.open) authDialog.showModal();
+      return;
+    }
+    if (!response.ok) {
+      throw new Error(payload.detail || "L’annonce n’a pas pu être chargée.");
+    }
+
+    criteriaPanel.replaceChildren();
+    criteriaPanel.append(createElement("h2", "", "Annonce sélectionnée depuis ChatGPT"));
+    resultsContainer.replaceChildren();
+    resultsContainer.append(renderResult({
+      ...payload,
+      score: 100,
+      couverture: 100,
+      explications: ["Fiche complète accessible après authentification."],
+      contact_masque: payload.contact,
+      connexion_requise_pour_contact: false,
+    }, 0));
+    resultCount.textContent = "Détail sécurisé de l’annonce";
+    emptyState.hidden = true;
+    output.hidden = false;
+    setFeedback();
+    output.scrollIntoView({ behavior: "smooth", block: "start" });
+  } catch (error) {
+    setFeedback(error.message || "Une erreur inattendue est survenue.", "error");
+  }
+}
+
+refreshSession().then(() => {
+  if (pendingAnnouncementReference) {
+    loadLinkedAnnouncement(pendingAnnouncementReference);
+  }
+});
