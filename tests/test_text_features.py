@@ -6,6 +6,7 @@ from app.text_features import (
     build_text_features_audit,
     extract_document_status,
     extract_proximity,
+    extract_proximity_details,
     extract_text_features,
     extract_viability,
 )
@@ -138,3 +139,18 @@ def test_directional_landmark_does_not_imply_paved_proximity() -> None:
         extract_proximity("Après Boassa facilement accessible par le goudron")
         == "acces_voie_bitumee"
     )
+
+
+def test_school_destination_is_not_school_proximity() -> None:
+    assert (
+        extract_proximity("Terrain d'un hectare. Destination école.")
+        == "non_precisee"
+    )
+
+
+def test_requested_multiple_proximities_keep_their_identity() -> None:
+    details = extract_proximity_details(
+        "Proche d'une voie bitumée et d'une école"
+    )
+
+    assert set(details.split("+")) == {"voie_bitumee", "ecole"}
