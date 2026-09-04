@@ -30,7 +30,7 @@ def test_static_assets_are_available() -> None:
     javascript = client.get("/static/app.js")
 
     assert css.status_code == 200
-    assert "--forest" in css.text
+    assert "--accent" in css.text
     assert javascript.status_code == 200
     assert 'fetch("/search"' in javascript.text
 
