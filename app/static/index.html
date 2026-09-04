@@ -8,8 +8,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/styles.css?v=20260904-3">
-  <script src="/static/app.js?v=20260904-3" defer></script>
+  <link rel="stylesheet" href="/static/styles.css?v=20260904-4">
+  <script src="/static/app.js?v=20260904-4" defer></script>
 </head>
 <body>
   <header class="site-header">
@@ -23,7 +23,7 @@
     <nav class="main-nav" aria-label="Navigation principale">
       <button class="nav-link is-active" type="button" data-view="search">Recherche</button>
       <button class="nav-link member-only" type="button" data-view="saved" hidden>Annonces enregistrées</button>
-      <button class="nav-link member-only" type="button" data-view="history" hidden>Recherches</button>
+      <button class="nav-link member-only" type="button" data-view="history" hidden>Historique</button>
       <button class="nav-link member-only" type="button" data-view="alerts" hidden>Surveillances</button>
     </nav>
     <button id="account-button" class="account-button" type="button">Se connecter</button>
@@ -35,24 +35,18 @@
         <div class="hero-inner">
           <div class="hero-copy">
             <p class="kicker">Ouagadougou et périphérie</p>
-            <h1>Une recherche foncière plus précise, à partir de vos propres mots</h1>
-            <p class="hero-lead">Indiquez le bien recherché, le quartier, le prix, la superficie et les caractéristiques indispensables. La plateforme vérifie chaque critère avant de classer les annonces.</p>
-            <div class="scope-line">
-              <span>10 annonces au maximum</span>
-              <span>Résultats sans republication</span>
-            </div>
+            <h1>Trouvez les annonces qui correspondent vraiment.</h1>
+            <p class="hero-lead">Décrivez le bien recherché en une phrase.</p>
           </div>
 
           <div class="search-panel">
             <div class="panel-heading">
               <p class="panel-label">Votre recherche</p>
-              <p>Une phrase suffit. Plus elle est précise, plus la sélection sera fiable.</p>
             </div>
             <form id="search-form" class="search-box">
               <label class="sr-only" for="description">Décrivez le bien recherché</label>
               <textarea id="description" name="description" rows="5" minlength="3" maxlength="2000" required placeholder="Je cherche une parcelle de 300 m² à Saaba, avec un budget de 6 millions FCFA et une attestation de possession."></textarea>
               <div class="search-actions">
-                <p><span class="status-dot"></span>Analyse multicritère</p>
                 <button id="submit-button" type="submit">Rechercher</button>
               </div>
             </form>
@@ -63,83 +57,75 @@
       <section id="feedback" class="feedback" aria-live="polite"></section>
 
       <section id="search-output" class="search-output" hidden>
-        <div class="results-intro">
-          <div>
-            <p class="kicker">Résultats</p>
-            <h2 id="selection-title">Recommandation principale</h2>
-            <p id="result-count" class="subtle"></p>
-          </div>
-          <button id="create-alert" class="secondary-button" type="button">Créer une surveillance</button>
-        </div>
+        <div class="results-layout">
+          <aside class="criteria-panel">
+            <p class="criteria-eyebrow">Votre demande</p>
+            <h2>Critères compris</h2>
+            <div id="criteria-summary" class="criteria-summary"></div>
+            <button id="edit-search" class="criteria-edit" type="button">Modifier la recherche</button>
+          </aside>
 
-        <section id="winner" class="winner"></section>
-
-        <div class="comparison-shell">
-          <div class="table-heading">
-            <div>
-              <h2>Comparer les annonces</h2>
-              <p class="subtle">Les informations sont issues des annonces et vérifiées selon votre demande.</p>
+          <div class="results-main">
+            <div class="results-intro">
+              <div>
+                <p class="kicker">Résultats</p>
+                <h2 id="selection-title">Recommandation principale</h2>
+                <p id="result-count" class="subtle"></p>
+              </div>
+              <button id="create-alert" class="secondary-button" type="button">Créer une surveillance</button>
             </div>
-          </div>
-          <div class="table-scroll">
-            <table class="comparison-table">
-              <thead>
-                <tr>
-                  <th>Rang</th>
-                  <th>Localisation</th>
-                  <th>Superficie</th>
-                  <th>Prix</th>
-                  <th>Document</th>
-                  <th>Analyse</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody id="results-table"></tbody>
-            </table>
-          </div>
-        </div>
 
-        <div id="result-cards" class="result-cards"></div>
-        <aside class="safety-note">
-          <strong>Vérification indispensable</strong>
-          <p>Avant tout engagement, contrôlez l’identité du vendeur, la parcelle et les documents auprès des services fonciers compétents.</p>
-        </aside>
-      </section>
+            <section id="winner" class="winner"></section>
 
-      <section id="empty-state" class="capabilities">
-        <p class="capabilities-title">Contrôles appliqués à chaque recherche</p>
-        <div class="capabilities-grid">
-          <article><strong>Localisation</strong><span>Quartier réel et périmètre autorisé</span></article>
-          <article><strong>Valeur</strong><span>Prix total, prix unitaire et superficie</span></article>
-          <article><strong>Conformité</strong><span>Documents et caractéristiques demandés</span></article>
-          <article><strong>Unicité</strong><span>Republications détectées entre groupes</span></article>
+            <div class="comparison-shell">
+              <div class="table-heading">
+                <h2>Comparer les annonces</h2>
+              </div>
+              <div class="table-scroll">
+                <table class="comparison-table">
+                  <thead>
+                    <tr>
+                      <th>Rang</th>
+                      <th>Localisation</th>
+                      <th>Superficie</th>
+                      <th>Prix</th>
+                      <th>Document</th>
+                      <th>Analyse</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="results-table"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <div id="result-cards" class="result-cards"></div>
+            <aside class="safety-note">
+              <strong>À vérifier avant tout paiement</strong>
+              <p>Identité du vendeur, parcelle et documents fonciers.</p>
+            </aside>
+          </div>
         </div>
       </section>
     </section>
 
     <section id="saved-view" class="view account-view" hidden>
       <div class="page-heading">
-        <p class="kicker">Espace personnel</p>
         <h1>Annonces enregistrées</h1>
-        <p>Les biens conservés pour une consultation ou une comparaison ultérieure.</p>
       </div>
       <div id="saved-list" class="dashboard-list"></div>
     </section>
 
     <section id="history-view" class="view account-view" hidden>
       <div class="page-heading">
-        <p class="kicker">Espace personnel</p>
-        <h1>Recherches précédentes</h1>
-        <p>Retrouvez et relancez vos demandes récentes.</p>
+        <h1>Historique</h1>
       </div>
       <div id="history-list" class="dashboard-list"></div>
     </section>
 
     <section id="alerts-view" class="view account-view" hidden>
       <div class="page-heading">
-        <p class="kicker">Espace personnel</p>
         <h1>Surveillances</h1>
-        <p>Les critères enregistrés pour repérer de nouvelles annonces.</p>
       </div>
       <div id="alerts-list" class="dashboard-list"></div>
     </section>
@@ -148,7 +134,6 @@
   <dialog id="auth-dialog" class="modal">
     <form id="auth-form">
       <button id="close-auth" class="modal-close" type="button" aria-label="Fermer">×</button>
-      <p class="kicker">Espace personnel</p>
       <h2 id="auth-title">Se connecter</h2>
       <p id="auth-description" class="subtle">Connectez-vous pour enregistrer vos annonces et vos recherches.</p>
       <label for="auth-email">Adresse e-mail</label>
@@ -164,9 +149,7 @@
   <dialog id="alert-dialog" class="modal">
     <form id="alert-form">
       <button id="close-alert" class="modal-close" type="button" aria-label="Fermer">×</button>
-      <p class="kicker">Surveillance</p>
       <h2>Suivre cette recherche</h2>
-      <p class="subtle">Enregistrez ces critères pour retrouver les nouvelles annonces correspondantes.</p>
       <label for="alert-name">Nom de la surveillance</label>
       <input id="alert-name" maxlength="80" required placeholder="Parcelles à Saaba">
       <label class="check-line"><input id="alert-daily" type="checkbox" checked> Vérification quotidienne</label>
@@ -175,11 +158,8 @@
   </dialog>
 
   <footer>
-    <div>
-      <strong>Foncier Ouaga</strong>
-      <p>Recherche foncière assistée à Ouagadougou.</p>
-    </div>
-    <p>Les annonces restent sous la responsabilité de leurs auteurs.</p>
+    <strong>Foncier Ouaga</strong>
+    <p>Annonces publiées par des tiers.</p>
   </footer>
 </body>
 </html>
