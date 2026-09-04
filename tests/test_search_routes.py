@@ -1,5 +1,7 @@
 """Tests des routes de recherche."""
 
+import time
+
 from fastapi.testclient import TestClient
 
 from app.main import app
@@ -179,3 +181,53 @@ def test_contact_is_visible_for_authenticated_user(monkeypatch) -> None:
     assert result["contact"] == "70 12 34 56"
     assert result["lien_whatsapp"] == "https://wa.me/22670123456"
     assert result["connexion_requise_pour_contact"] is False
+
+
+def test_search_returns_local_results_when_semantic_filter_times_out(
+    monkeypatch,
+) -> None:
+    from app.config import Settings
+    from app.search_engine import SearchCandidate
+    from app.semantic_filter import SemanticFilterOutcome
+
+    candidate = SearchCandidate(
+        identifier="local-fallback",
+        text="Parcelle à Saaba de 300 m2",
+        property_type="parcelle",
+        neighborhood="Saaba",
+        price_fcfa=5_000_000,
+        area_m2=300,
+    )
+    monkeypatch.setattr(
+        "app.search_routes.load_recent_candidates",
+        lambda _days: [candidate],
+    )
+    monkeypatch.setattr(
+        "app.search_routes.get_settings",
+        lambda: Settings(llm_deadline_seconds=0.05),
+    )
+
+    def slow_filter(_criteria, results, **_kwargs):
+        time.sleep(0.2)
+        return SemanticFilterOutcome(
+            results=[],
+            used=True,
+            model="gpt-4o-mini",
+            fallback=False,
+        )
+
+    monkeypatch.setattr(
+        "app.search_routes.apply_semantic_filter",
+        slow_filter,
+    )
+
+    response = client.post(
+        "/search",
+        json={"description": "parcelle à Saaba"},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["repli_classement_local"] is True
+    assert payload["filtre_semantique_utilise"] is False
+    assert payload["resultats"][0]["id"] == "local-fallback"
