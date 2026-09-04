@@ -439,13 +439,9 @@ def _good_deal_priority(
     criteria: SearchCriteria,
     result: RankedResult,
 ) -> tuple[float, float]:
-    """À superficie comparable, impose le prix total le plus faible."""
+    """À superficie demandée comparable, impose le prix total le plus faible."""
 
-    is_good_deal = any(
-        marker in normalize_text(criteria.description)
-        for marker in _GOOD_DEAL_MARKERS
-    )
-    if not is_good_deal or criteria.area_m2 is None:
+    if criteria.area_m2 is None:
         return (0.0, 0.0)
     candidate = result.candidate
     area_match = (
