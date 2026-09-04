@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from dataclasses import replace
 import logging
 from time import perf_counter
@@ -22,7 +23,7 @@ from app.search_engine import (
     rank_candidates,
 )
 from app.search_repository import load_recent_candidates
-from app.semantic_filter import apply_semantic_filter
+from app.semantic_filter import SemanticFilterOutcome, apply_semantic_filter
 
 
 LOGGER = logging.getLogger("uvicorn.error")
@@ -171,7 +172,7 @@ def interpret_search(payload: InterpretRequest) -> InterpretedCriteria:
 
 
 @router.post("", response_model=SearchResponse)
-def search(
+async def search(
     payload: SearchRequest,
     session_token: str | None = Cookie(default=None, alias=SESSION_COOKIE),
 ) -> SearchResponse:
@@ -189,7 +190,10 @@ def search(
 
     neon_started = perf_counter()
     try:
-        candidates = load_recent_candidates(criteria.max_age_days)
+        candidates = await asyncio.to_thread(
+            load_recent_candidates,
+            criteria.max_age_days,
+        )
     except DatabaseNotConfiguredError as error:
         raise HTTPException(status_code=503, detail=str(error)) from None
     except psycopg.Error:
@@ -206,7 +210,9 @@ def search(
 
     session_started = perf_counter()
     try:
-        authenticated = get_session_user(session_token) is not None
+        authenticated = (
+            await asyncio.to_thread(get_session_user, session_token)
+        ) is not None
     except (DatabaseNotConfiguredError, psycopg.Error):
         authenticated = False
     session_ms = (perf_counter() - session_started) * 1_000
@@ -218,7 +224,12 @@ def search(
     settings = get_settings()
     local_started = perf_counter()
     local_limit = max(payload.limit, settings.llm_candidate_limit)
-    ranked_local = rank_candidates(criteria, candidates, limit=local_limit)
+    ranked_local = await asyncio.to_thread(
+        rank_candidates,
+        criteria,
+        candidates,
+        limit=local_limit,
+    )
     local_ms = (perf_counter() - local_started) * 1_000
     LOGGER.info(
         (
@@ -234,11 +245,30 @@ def search(
         len(ranked_local),
     )
     semantic_started = perf_counter()
-    semantic = apply_semantic_filter(
-        criteria,
-        ranked_local,
-        settings=settings,
-    )
+    try:
+        semantic = await asyncio.wait_for(
+            asyncio.to_thread(
+                apply_semantic_filter,
+                criteria,
+                ranked_local,
+                settings=settings,
+            ),
+            timeout=settings.llm_deadline_seconds,
+        )
+    except TimeoutError:
+        LOGGER.warning(
+            (
+                "search_stage stage=semantic status=timeout "
+                "deadline_seconds=%.1f fallback=local"
+            ),
+            settings.llm_deadline_seconds,
+        )
+        semantic = SemanticFilterOutcome(
+            results=ranked_local,
+            used=False,
+            model=None,
+            fallback=True,
+        )
     semantic_ms = (perf_counter() - semantic_started) * 1_000
     LOGGER.info(
         (
