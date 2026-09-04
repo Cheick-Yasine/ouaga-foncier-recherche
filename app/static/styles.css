@@ -391,94 +391,16 @@ main {
 }
 
 .results-layout {
-  display: grid;
-  grid-template-columns: 240px minmax(0, 1fr);
-  gap: 32px;
-  align-items: start;
+  display: block;
 }
 
 .results-main {
+  width: min(1120px, 100%);
+  margin: 0 auto;
   min-width: 0;
 }
 
-.criteria-panel {
-  position: sticky;
-  top: 102px;
-  padding: 24px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: var(--surface);
-  box-shadow: var(--shadow-sm);
-}
-
-.criteria-eyebrow {
-  margin: 0 0 8px;
-  color: var(--accent);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-
-.criteria-panel h2 {
-  margin: 0;
-  font-size: 20px;
-  font-weight: 700;
-  letter-spacing: -0.025em;
-}
-
-.criteria-summary {
-  margin-top: 22px;
-  display: grid;
-}
-
-.criteria-item {
-  padding: 13px 0;
-  display: grid;
-  gap: 3px;
-  border-top: 1px solid var(--border);
-}
-
-.criteria-key {
-  color: var(--muted);
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.criteria-value {
-  color: var(--ink);
-  font-size: 13px;
-  font-weight: 600;
-  overflow-wrap: anywhere;
-}
-
-.criteria-empty {
-  margin: 18px 0 0;
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.criteria-edit {
-  width: 100%;
-  margin-top: 18px;
-  padding: 10px 12px;
-  border: 1px solid var(--border-strong);
-  border-radius: 8px;
-  background: var(--surface);
-  color: var(--ink-soft);
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.criteria-edit:hover {
-  border-color: var(--accent);
-  color: var(--accent);
-}
-
-.results-intro,
-.table-heading {
+.results-intro {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
@@ -486,7 +408,6 @@ main {
 }
 
 .results-intro h2,
-.comparison-shell h2,
 .winner h2,
 .modal h2 {
   margin: 0;
@@ -586,6 +507,48 @@ main {
   font-size: 14px;
 }
 
+.winner-contact,
+.mobile-contact {
+  margin: 10px 0 0;
+  color: var(--ink-soft);
+  font-size: 13px;
+}
+
+.winner-contact::before,
+.mobile-contact::before {
+  margin-right: 8px;
+  color: var(--muted);
+  content: "Contact";
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.contact-link {
+  color: var(--accent);
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.contact-link:hover {
+  text-decoration: underline;
+}
+
+.contact-value {
+  color: var(--ink-soft);
+  font-weight: 600;
+}
+
+.contact-unavailable {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.contact-cell {
+  white-space: nowrap;
+}
+
 .winner-opinion {
   margin: 12px 0 0;
   color: var(--ink-soft);
@@ -636,20 +599,7 @@ main {
 }
 
 .comparison-shell {
-  margin-top: 52px;
-}
-
-.table-heading {
-  margin-bottom: 16px;
-}
-
-.table-heading h2 {
-  font-size: 25px;
-}
-
-.table-heading p {
-  margin: 5px 0 0;
-  font-size: 13px;
+  margin-top: 38px;
 }
 
 .table-scroll {
@@ -662,7 +612,7 @@ main {
 
 .comparison-table {
   width: 100%;
-  min-width: 1010px;
+  min-width: 940px;
   border-collapse: collapse;
 }
 
@@ -860,6 +810,15 @@ main {
   border: 1px solid var(--border-strong);
   border-radius: 8px;
   outline: 0;
+  background: #ffffff;
+  color: var(--ink);
+}
+
+.modal input:-webkit-autofill,
+.modal input:-webkit-autofill:hover,
+.modal input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px #ffffff inset;
+  -webkit-text-fill-color: var(--ink);
 }
 
 .modal input:focus {
@@ -958,11 +917,6 @@ footer strong {
     gap: 38px;
   }
 
-  .results-layout {
-    grid-template-columns: 220px minmax(0, 1fr);
-    gap: 24px;
-  }
-
   .winner-grid {
     grid-template-columns: 96px 1fr;
   }
@@ -988,19 +942,6 @@ footer strong {
 
   .hero-copy {
     max-width: 680px;
-  }
-
-  .results-layout {
-    grid-template-columns: 1fr;
-  }
-
-  .criteria-panel {
-    position: static;
-  }
-
-  .criteria-summary {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 0 20px;
   }
 
   .search-panel {
@@ -1111,11 +1052,6 @@ footer strong {
   .search-actions {
     align-items: stretch;
     flex-direction: column;
-  }
-
-  .criteria-summary {
-    grid-template-columns: 1fr 1fr;
-    gap: 0 16px;
   }
 
   .results-intro {
