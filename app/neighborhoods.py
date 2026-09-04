@@ -36,6 +36,15 @@ ADMINISTRATIVE_AREAS = frozenset({"Baskuy", "Nongr-Massom"})
 BROAD_AREAS = frozenset({"Centre Ville", "Zone Industrielle", "Zone Commerciale"})
 CITY_LEVEL_AREAS = frozenset({"Ouagadougou"})
 
+# Localités explicitement hors du périmètre validé Ouagadougou + périphérie.
+# Leur présence comme lieu principal invalide les faux quartiers homonymes
+# rencontrés dans des noms de personnes ou de structures (ex. Norbert Zongo).
+OUT_OF_SCOPE_LOCALITIES = (
+    "Bobo-Dioulasso", "Koudougou", "Sapouy", "Tenkodogo", "Ouahigouya",
+    "Fada N'Gourma", "Koupéla", "Manga", "Réo", "Kindi", "Kokologho",
+    "Saponé", "Ziniaré", "Dédougou", "Banfora", "Kaya", "Dori",
+)
+
 _NON_ALPHANUMERIC = re.compile(r"[^a-z0-9]+")
 _SPACE_BETWEEN_TEXT_AND_NUMBER = re.compile(r"(?<=[a-z])(?=\d)|(?<=\d)(?=[a-z])")
 
@@ -166,6 +175,52 @@ def detect_neighborhoods(text: str | None) -> tuple[str, ...]:
     return tuple(ordered)
 
 
+def detect_explicit_neighborhood(text: str | None) -> str | None:
+    """Détecte le lieu principal à partir de formulations géographiques fortes."""
+
+    searchable = neighborhood_key(text)
+    if not searchable:
+        return None
+
+    priority_prefixes = (
+        r"(?:localisation|quartier|secteur|village)\s*(?::|-)?\s*",
+        r"(?:situee?|localisee?|se trouve|est)\s+a\s+",
+        r"\ba\s+",
+    )
+    aliases = sorted(
+        KNOWN_NEIGHBORHOOD_ALIASES.items(),
+        key=lambda item: len(item[0]),
+        reverse=True,
+    )
+    for prefix in priority_prefixes:
+        matches: list[tuple[int, str]] = []
+        for alias, canonical in aliases:
+            pattern = re.compile(
+                rf"{prefix}{re.escape(alias)}(?![a-z0-9])"
+            )
+            matches.extend(
+                (match.start(), canonical)
+                for match in pattern.finditer(searchable)
+            )
+        if matches:
+            return min(matches, key=lambda item: item[0])[1]
+    return None
+
+
+def detect_out_of_scope_locality(text: str | None) -> str | None:
+    """Repère une localisation principale connue hors du périmètre autorisé."""
+
+    searchable = neighborhood_key(text)
+    for locality in OUT_OF_SCOPE_LOCALITIES:
+        key = neighborhood_key(locality)
+        if re.search(
+            rf"(?<![a-z0-9]){re.escape(key)}(?![a-z0-9])",
+            searchable,
+        ):
+            return locality
+    return None
+
+
 def resolve_neighborhood(
     text: str | None,
     fallback: str | None,
@@ -174,8 +229,16 @@ def resolve_neighborhood(
 
     candidates = detect_neighborhoods(text)
     fallback_canonical = suggest_canonical_neighborhood(fallback)
+    explicit = detect_explicit_neighborhood(text)
+    outside = detect_out_of_scope_locality(text)
 
-    if len(candidates) == 1:
+    if outside:
+        canonical = None
+        source = "hors_perimetre"
+    elif explicit:
+        canonical = explicit
+        source = "texte_localisation_explicite"
+    elif len(candidates) == 1:
         canonical = candidates[0]
         source = "texte_nettoye"
     elif fallback_canonical:
