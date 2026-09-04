@@ -6,6 +6,7 @@ from app.neighborhoods import (
     is_in_geographic_scope,
     neighborhood_key,
     neighborhood_metadata,
+    resolve_neighborhood,
     suggest_canonical_neighborhood,
 )
 from scripts.audit_neighborhoods import build_neighborhood_report
@@ -76,3 +77,24 @@ def test_report_is_read_only_and_counts_missing_rows() -> None:
     assert report["known_alias_rows"] == 7
     assert report["database_modified"] is False
     assert report["read_only"] is True
+
+
+def test_sapouy_is_not_confused_with_norbert_zongo() -> None:
+    resolution = resolve_neighborhood(
+        "13 ha avec APFR au goudron Sapouy à côté de ferme Norbert Zongo",
+        "Zongo",
+    )
+
+    assert resolution.canonical is None
+    assert resolution.in_scope is False
+    assert resolution.source == "hors_perimetre"
+
+
+def test_actual_kamboinsin_location_precedes_route_to_yagma() -> None:
+    resolution = resolve_neighborhood(
+        "Parcelle à vendre au quartier Kamboinsin sur la route de Yagma",
+        "Yagma",
+    )
+
+    assert resolution.canonical == "Kamboinsin"
+    assert resolution.source == "texte_localisation_explicite"
