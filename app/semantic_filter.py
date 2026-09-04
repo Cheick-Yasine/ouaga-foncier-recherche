@@ -46,7 +46,7 @@ class SemanticFilterOutcome:
     fallback: bool
 
 
-def sanitize_external_text(value: str | None, *, limit: int = 1_500) -> str:
+def sanitize_external_text(value: str | None, *, limit: int = 900) -> str:
     """Retire URL, e-mail et téléphone avant tout envoi externe."""
 
     text = value or ""
@@ -163,8 +163,8 @@ def apply_semantic_filter(
     )
     api_client = client or OpenAI(
         api_key=current.openai_api_key.get_secret_value(),
-        timeout=20.0,
-        max_retries=1,
+        timeout=25.0,
+        max_retries=0,
     )
 
     try:
