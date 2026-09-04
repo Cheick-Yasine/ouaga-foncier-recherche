@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import re
 from typing import Any
 
 import psycopg
@@ -33,6 +34,58 @@ def _optional_float(value: Any) -> float | None:
     return float(value)
 
 
+_PER_HECTARE_RE = re.compile(
+    r"(?i)(?:/|par)\s*(?:hectare|ha)\b|\bl['’]?hectare\b"
+)
+_PER_SQUARE_METRE_RE = re.compile(
+    r"(?i)(?:/|par)\s*(?:m[²2]|metres?\s+carres?)\b"
+)
+_MINIMUM_HECTARES_RE = re.compile(
+    r"(?i)(?:bloc\s+de|minimum(?:\s+de)?)\s*"
+    r"(\d+(?:[.,]\d+)?)\s*(?:hectares?|ha)\b"
+)
+
+
+def _effective_price_and_area(
+    text: str,
+    price_fcfa: float | None,
+    area_m2: float | None,
+) -> tuple[float | None, float | None, str | None]:
+    """Convertit un tarif unitaire en ticket et surface réellement achetables."""
+
+    if price_fcfa is None:
+        return price_fcfa, area_m2, None
+
+    if _PER_HECTARE_RE.search(text):
+        minimum_match = _MINIMUM_HECTARES_RE.search(text)
+        hectares = (
+            float(minimum_match.group(1).replace(",", "."))
+            if minimum_match
+            else 1.0
+        )
+        purchasable_area = hectares * 10_000
+        if area_m2 is not None:
+            purchasable_area = min(area_m2, purchasable_area)
+        return (
+            price_fcfa * hectares,
+            purchasable_area,
+            (
+                f"Prix calculé pour le lot minimum de {hectares:g} hectare(s)"
+                if minimum_match
+                else "Prix et superficie présentés pour 1 hectare"
+            ),
+        )
+
+    if _PER_SQUARE_METRE_RE.search(text) and area_m2 is not None:
+        return (
+            price_fcfa * area_m2,
+            area_m2,
+            "Prix total calculé à partir du tarif au m²",
+        )
+
+    return price_fcfa, area_m2, None
+
+
 def _candidate_from_row(
     row: dict[str, Any],
     *,
@@ -61,6 +114,11 @@ def _candidate_from_row(
         _optional_text(row.get("statut_document")),
         text,
     )
+    effective_price, effective_area, pricing_note = _effective_price_and_area(
+        text,
+        _optional_float(row.get("prix_fcfa")),
+        _optional_float(row.get("superficie_m2")),
+    )
 
     return SearchCandidate(
         identifier=str(row["id"]),
@@ -71,8 +129,8 @@ def _candidate_from_row(
             text,
         ),
         neighborhood=neighborhood.canonical if neighborhood.in_scope else None,
-        price_fcfa=_optional_float(row.get("prix_fcfa")),
-        area_m2=_optional_float(row.get("superficie_m2")),
+        price_fcfa=effective_price,
+        area_m2=effective_area,
         proximity=None if proximity == "non_precisee" else proximity,
         viability=None if viability == "non_precisee" else viability,
         document_status=None if document == "non_precise" else document,
@@ -81,6 +139,7 @@ def _candidate_from_row(
         publication_label=_optional_text(row.get("date_publication")),
         collected_at=collected_at.isoformat() if collected_at else None,
         contact=_optional_text(row.get("contacts_whatsapp")),
+        pricing_note=pricing_note,
     )
 
 
