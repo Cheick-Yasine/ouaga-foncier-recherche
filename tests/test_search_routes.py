@@ -138,6 +138,39 @@ def test_search_reports_missing_database(monkeypatch) -> None:
     assert response.json()["detail"] == "DATABASE_URL absente"
 
 
+def test_search_distinguishes_neon_connection_error(monkeypatch) -> None:
+    import psycopg
+
+    def fail(_max_age_days: int):
+        raise psycopg.OperationalError("connection failed")
+
+    monkeypatch.setattr("app.search_routes.load_recent_candidates", fail)
+    response = client.post(
+        "/search",
+        json={"description": "terrain à Saaba"},
+    )
+
+    assert response.status_code == 503
+    assert "connexion à Neon" in response.json()["detail"]
+    assert "/health/database" in response.json()["detail"]
+
+
+def test_search_distinguishes_neon_query_timeout(monkeypatch) -> None:
+    import psycopg
+
+    def fail(_max_age_days: int):
+        raise psycopg.errors.QueryCanceled("statement timeout")
+
+    monkeypatch.setattr("app.search_routes.load_recent_candidates", fail)
+    response = client.post(
+        "/search",
+        json={"description": "terrain à Saaba"},
+    )
+
+    assert response.status_code == 503
+    assert "sélection des annonces est trop lente" in response.json()["detail"]
+
+
 def test_contact_is_masked_for_visitor(monkeypatch) -> None:
     from app.search_engine import SearchCandidate
 
