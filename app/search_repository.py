@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import hashlib
 import re
+from threading import Lock
+from time import monotonic
 from typing import Any
 
 import psycopg
@@ -19,6 +22,31 @@ from app.text_features import (
     extract_proximity_details,
     extract_viability,
 )
+
+_CANDIDATE_CACHE_TTL_SECONDS = 300.0
+_candidate_cache: dict[
+    tuple[str, int | None, int],
+    tuple[float, tuple[SearchCandidate, ...]],
+] = {}
+_candidate_cache_lock = Lock()
+
+
+def clear_candidate_cache() -> None:
+    """Vide le cache local des annonces, notamment après un rafraîchissement."""
+
+    with _candidate_cache_lock:
+        _candidate_cache.clear()
+
+
+def _candidate_cache_key(
+    database_url: str,
+    max_age_days: int | None,
+    pool_limit: int,
+) -> tuple[str, int | None, int]:
+    database_key = hashlib.sha256(database_url.encode("utf-8")).hexdigest()
+    return database_key, max_age_days, pool_limit
+
+
 
 
 def _optional_text(value: Any) -> str | None:
@@ -178,8 +206,25 @@ def load_recent_candidates(
         )
 
     current_time = now or datetime.now(timezone.utc)
+    database_url = current_settings.database_url.get_secret_value()
+    cache_enabled = settings is None and now is None
+    cache_key = _candidate_cache_key(
+        database_url,
+        max_age_days,
+        pool_limit,
+    )
+
+    if cache_enabled:
+        with _candidate_cache_lock:
+            cached = _candidate_cache.get(cache_key)
+            if (
+                cached is not None
+                and monotonic() - cached[0] < _CANDIDATE_CACHE_TTL_SECONDS
+            ):
+                return list(cached[1])
+
     with psycopg.connect(
-        current_settings.database_url.get_secret_value(),
+        database_url,
         connect_timeout=10,
         row_factory=dict_row,
     ) as connection:
@@ -230,8 +275,18 @@ def load_recent_candidates(
         _candidate_from_row(dict(row), now=current_time)
         for row in rows
     ]
-    return [
+    prepared = [
         candidate
         for candidate in candidates
         if _is_prepared_candidate(candidate)
     ]
+
+    if cache_enabled:
+        with _candidate_cache_lock:
+            _candidate_cache.clear()
+            _candidate_cache[cache_key] = (
+                monotonic(),
+                tuple(prepared),
+            )
+
+    return prepared
