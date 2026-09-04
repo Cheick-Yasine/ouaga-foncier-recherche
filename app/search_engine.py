@@ -225,13 +225,12 @@ def score_candidate(
         and candidate.age_days > criteria.max_age_days
     ):
         return None
-    if (
-        criteria.price_is_maximum
-        and criteria.price_fcfa is not None
-        and candidate.price_fcfa is not None
-        and candidate.price_fcfa > criteria.price_fcfa
-    ):
-        return None
+    if criteria.price_is_maximum and criteria.price_fcfa is not None:
+        # Sans prix vérifiable, impossible d'affirmer que le budget est respecté.
+        if candidate.price_fcfa is None:
+            return None
+        if candidate.price_fcfa > criteria.price_fcfa:
+            return None
 
     requested = _requested_components(criteria)
     components: dict[str, float | None] = {
