@@ -1,5 +1,7 @@
 """Routes de création de compte, connexion et session."""
 
+import logging
+
 import psycopg
 from fastapi import APIRouter, Cookie, HTTPException, Response, status
 from pydantic import BaseModel, Field
@@ -19,6 +21,9 @@ from app.config import get_settings
 from app.database import DatabaseNotConfiguredError
 
 
+LOGGER = logging.getLogger("uvicorn.error")
+
+
 class Credentials(BaseModel):
     email: str = Field(min_length=5, max_length=254)
     password: str = Field(min_length=10, max_length=128)
@@ -34,6 +39,15 @@ router = APIRouter(prefix="/auth", tags=["Authentification"])
 
 def _user_response(user: AuthenticatedUser) -> UserResponse:
     return UserResponse(id=user.id, email=user.email)
+
+
+def _log_database_error(action: str, error: Exception) -> None:
+    LOGGER.error(
+        "auth_database_error action=%s error_type=%s sqlstate=%s",
+        action,
+        type(error).__name__,
+        getattr(error, "sqlstate", None),
+    )
 
 
 def _set_session_cookie(response: Response, token: str) -> None:
@@ -60,7 +74,8 @@ def register(payload: Credentials, response: Response) -> UserResponse:
         token = create_session(user.id)
     except AuthenticationError as error:
         raise HTTPException(status_code=409, detail=str(error)) from None
-    except (DatabaseNotConfiguredError, psycopg.Error):
+    except (DatabaseNotConfiguredError, psycopg.Error) as error:
+        _log_database_error("register", error)
         raise HTTPException(
             status_code=503,
             detail="Le service de connexion est temporairement indisponible.",
@@ -85,7 +100,8 @@ def login(payload: Credentials, response: Response) -> UserResponse:
             status_code=401,
             detail="Adresse e-mail ou mot de passe incorrect.",
         ) from None
-    except (DatabaseNotConfiguredError, psycopg.Error):
+    except (DatabaseNotConfiguredError, psycopg.Error) as error:
+        _log_database_error("login", error)
         raise HTTPException(
             status_code=503,
             detail="Le service de connexion est temporairement indisponible.",
@@ -101,7 +117,8 @@ def me(
 ) -> UserResponse:
     try:
         user = get_session_user(session_token)
-    except (DatabaseNotConfiguredError, psycopg.Error):
+    except (DatabaseNotConfiguredError, psycopg.Error) as error:
+        _log_database_error("session", error)
         raise HTTPException(
             status_code=503,
             detail="Le service de connexion est temporairement indisponible.",
