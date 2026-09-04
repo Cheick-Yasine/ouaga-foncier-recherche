@@ -216,13 +216,43 @@ async def search(
         ) from None
     except DatabaseNotConfiguredError as error:
         raise HTTPException(status_code=503, detail=str(error)) from None
-    except psycopg.Error:
-        LOGGER.error("search_stage stage=neon status=error")
+    except psycopg.errors.QueryCanceled as error:
+        LOGGER.warning(
+            "search_stage stage=neon status=query_timeout error_type=%s sqlstate=%s",
+            type(error).__name__,
+            error.sqlstate,
+        )
         raise HTTPException(
             status_code=503,
             detail=(
-                "Neon est temporairement indisponible. "
-                "Réessayez dans quelques instants."
+                "Neon répond, mais la sélection des annonces est trop lente. "
+                "Réessayez avec une période plus courte."
+            ),
+        ) from None
+    except psycopg.OperationalError as error:
+        LOGGER.error(
+            "search_stage stage=neon status=connection_error error_type=%s sqlstate=%s",
+            type(error).__name__,
+            error.sqlstate,
+        )
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "La connexion à Neon a échoué. Vérifiez /health/database, "
+                "puis réessayez."
+            ),
+        ) from None
+    except psycopg.Error as error:
+        LOGGER.error(
+            "search_stage stage=neon status=query_error error_type=%s sqlstate=%s",
+            type(error).__name__,
+            error.sqlstate,
+        )
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "La requête Neon a échoué. Consultez le terminal "
+                "pour connaître le type d'erreur."
             ),
         ) from None
     neon_ms = (perf_counter() - neon_started) * 1_000
