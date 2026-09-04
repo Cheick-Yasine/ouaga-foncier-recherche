@@ -125,7 +125,11 @@ def parse_search_description(description: str) -> SearchCriteria:
     price: float | None = None
     if price_match:
         price = _parse_number(price_match.group(1))
-        unit = price_match.group(2)
+        unit = (
+            price_match.group(2)
+            if price_match.lastindex is not None and price_match.lastindex >= 2
+            else None
+        )
         if unit and unit.startswith("million"):
             price *= 1_000_000
         elif unit and unit.startswith("milliard"):
