@@ -98,3 +98,32 @@ def test_actual_kamboinsin_location_precedes_route_to_yagma() -> None:
 
     assert resolution.canonical == "Kamboinsin"
     assert resolution.source == "texte_nettoye"
+
+
+def test_hashtag_location_precedes_after_directional_landmark() -> None:
+    resolution = resolve_neighborhood(
+        "#Lougsi Après Boassa facilement accessible par le goudron",
+        "Boassa",
+    )
+
+    assert resolution.canonical == "Lougsi"
+    assert resolution.in_scope is True
+
+
+def test_directional_landmark_is_not_used_as_location() -> None:
+    resolution = resolve_neighborhood(
+        "Parcelle disponible après Boassa facilement accessible",
+        "Boassa",
+    )
+
+    assert resolution.canonical is None
+    assert resolution.in_scope is False
+
+
+def test_explicit_location_precedes_route_landmark_generically() -> None:
+    resolution = resolve_neighborhood(
+        "Terrain situé à Saaba sur la route de Koubri",
+        "Koubri",
+    )
+
+    assert resolution.canonical == "Saaba"
