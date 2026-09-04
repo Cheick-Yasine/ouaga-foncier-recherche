@@ -475,3 +475,32 @@ def test_same_phone_identifies_shortened_cross_group_repost() -> None:
     )
 
     assert len(results) == 1
+
+
+def test_exact_requested_area_is_ordered_by_lowest_price() -> None:
+    criteria = parse_search_description(
+        "Donne-moi les bons deals pour une parcelle de 300 m2"
+    )
+    results = rank_candidates(
+        criteria,
+        [
+            SearchCandidate(
+                identifier="eleven-million",
+                text="Parcelle exceptionnelle de 300 m2 à Saaba",
+                property_type="parcelle",
+                neighborhood="Saaba",
+                price_fcfa=11_000_000,
+                area_m2=300,
+            ),
+            SearchCandidate(
+                identifier="ten-million",
+                text="Parcelle de 300 m2",
+                property_type="parcelle",
+                neighborhood="Saaba",
+                price_fcfa=10_000_000,
+                area_m2=300,
+            ),
+        ],
+    )
+
+    assert results[0].candidate.identifier == "ten-million"
