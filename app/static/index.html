@@ -8,8 +8,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/styles.css?v=20260904-8">
-  <script src="/static/app.js?v=20260904-8" defer></script>
+  <link rel="stylesheet" href="/static/styles.css?v=20260904-9">
+  <script src="/static/app.js?v=20260904-9" defer></script>
 </head>
 <body>
   <header class="site-header">
@@ -34,8 +34,7 @@
       <section class="hero">
         <div class="hero-inner">
           <div class="hero-copy">
-            <p class="kicker">Ouagadougou et périphérie</p>
-            <h1>Trouvez les annonces qui correspondent vraiment.</h1>
+            <h1>Trouvez les annonces qui vous correspondent.</h1>
             <p class="hero-lead">Décrivez le bien recherché en une phrase.</p>
           </div>
 
@@ -66,19 +65,10 @@
 
       <section id="search-output" class="search-output" hidden>
         <div class="results-layout">
-          <aside class="criteria-panel">
-            <p class="criteria-eyebrow">Votre demande</p>
-            <h2>Critères compris</h2>
-            <div id="criteria-summary" class="criteria-summary"></div>
-            <button id="edit-search" class="criteria-edit" type="button">Modifier la recherche</button>
-          </aside>
-
           <div class="results-main">
             <div class="results-intro">
               <div>
-                <p class="kicker">Résultats</p>
-                <h2 id="selection-title">Recommandation principale</h2>
-                <p id="result-count" class="subtle"></p>
+                <h2 id="selection-title">Recommandation personnalisée</h2>
               </div>
               <button id="create-alert" class="secondary-button" type="button">Créer une surveillance</button>
             </div>
@@ -86,9 +76,6 @@
             <section id="winner" class="winner"></section>
 
             <div class="comparison-shell">
-              <div class="table-heading">
-                <h2>Comparer les annonces</h2>
-              </div>
               <div class="table-scroll">
                 <table class="comparison-table">
                   <thead>
@@ -98,7 +85,7 @@
                       <th>Superficie</th>
                       <th>Prix</th>
                       <th>Document</th>
-                      <th>Analyse</th>
+                      <th>Contact</th>
                       <th>Actions</th>
                     </tr>
                   </thead>
@@ -167,7 +154,7 @@
 
   <footer>
     <strong>Foncier Ouaga</strong>
-    <p>Annonces publiées par des tiers.</p>
+    <p>Données issues d’annonces Facebook à Ouagadougou et dans sa périphérie.</p>
   </footer>
 </body>
 </html>
