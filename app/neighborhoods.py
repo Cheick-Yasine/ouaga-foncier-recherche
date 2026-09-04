@@ -28,7 +28,7 @@ CANONICAL_NEIGHBORHOODS = (
     "Cité Abbé Simard", "Cité Bonheur", "Cité Azimo", "Cité Railtel",
     "Cité Bolesse", "Zone Commerciale", "Centre Ville", "Paglayiri",
     "Bilibambili", "Mogho Naaba", "Kuinima", "Bindougousso", "Zéca", "Baskuy",
-    "Pabré", "Koubri", "Komsilga", "Ouagadougou", "Karpala",
+    "Pabré", "Koubri", "Komsilga", "Ouagadougou", "Karpala", "Lougsi",
 )
 
 PERIPHERAL_COMMUNES = frozenset({"Loumbila", "Saaba", "Pabré", "Koubri", "Komsilga"})
@@ -178,21 +178,26 @@ def detect_neighborhoods(text: str | None) -> tuple[str, ...]:
 def detect_explicit_neighborhood(text: str | None) -> str | None:
     """Détecte le lieu principal à partir de formulations géographiques fortes."""
 
-    searchable = neighborhood_key(text)
+    raw_text = str(text or "")
+    searchable = neighborhood_key(raw_text)
     if not searchable:
         return None
 
-    priority_prefixes = (
-        r"(?:localisation|quartier|secteur|village)\s*(?::|-)?\s*",
-        r"(?:situee?|localisee?|se trouve|est)\s+a\s+",
-        r"\ba\s+",
-    )
     aliases = sorted(
         KNOWN_NEIGHBORHOOD_ALIASES.items(),
         key=lambda item: len(item[0]),
         reverse=True,
     )
-    for prefix in priority_prefixes:
+
+    # Un hashtag de lieu placé dans une annonce est une indication très forte.
+    raw_without_accents = neighborhood_key(raw_text.replace("#", " hashtag "))
+    priority_prefixes = (
+        (raw_without_accents, r"\bhashtag\s+"),
+        (searchable, r"(?:localisation|quartier|secteur|village|site(?:\s+de)?)\s*(?::|-)?\s*"),
+        (searchable, r"(?:situee?|localisee?|se trouve|est)\s+a\s+"),
+        (searchable, r"\ba\s+"),
+    )
+    for haystack, prefix in priority_prefixes:
         matches: list[tuple[int, str]] = []
         for alias, canonical in aliases:
             pattern = re.compile(
@@ -200,11 +205,28 @@ def detect_explicit_neighborhood(text: str | None) -> str | None:
             )
             matches.extend(
                 (match.start(), canonical)
-                for match in pattern.finditer(searchable)
+                for match in pattern.finditer(haystack)
             )
         if matches:
             return min(matches, key=lambda item: item[0])[1]
     return None
+
+
+def is_only_directional_reference(text: str | None, canonical: str) -> bool:
+    """Vrai lorsque le lieu sert uniquement de repère et non de destination."""
+
+    searchable = neighborhood_key(text)
+    alias = neighborhood_key(canonical)
+    directional = re.compile(
+        rf"(?:apres|avant|route\s+de|route\s+du|vers|non\s+loin\s+de"
+        rf"|proche\s+de|a\s+\d+\s*(?:m|km)\s+de)\s+"
+        rf"{re.escape(alias)}(?![a-z0-9])"
+    )
+    occurrences = list(
+        re.finditer(rf"(?<![a-z0-9]){re.escape(alias)}(?![a-z0-9])", searchable)
+    )
+    directional_occurrences = list(directional.finditer(searchable))
+    return bool(occurrences) and len(directional_occurrences) >= len(occurrences)
 
 
 def detect_out_of_scope_locality(text: str | None) -> str | None:
@@ -238,10 +260,16 @@ def resolve_neighborhood(
     elif explicit:
         canonical = explicit
         source = "texte_nettoye"
-    elif len(candidates) == 1:
+    elif (
+        len(candidates) == 1
+        and not is_only_directional_reference(text, candidates[0])
+    ):
         canonical = candidates[0]
         source = "texte_nettoye"
-    elif fallback_canonical:
+    elif (
+        fallback_canonical
+        and not is_only_directional_reference(text, fallback_canonical)
+    ):
         canonical = fallback_canonical
         source = "quartier_zone"
     else:
