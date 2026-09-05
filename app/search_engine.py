@@ -47,7 +47,15 @@ _BUDGET_PATTERN = re.compile(
     r"(\d[\d ]*(?:[.,]\d+)?)\s*"
     r"(milliards?|millions?|fcfa|f cfa|cfa)?\b"
 )
-_GOOD_DEAL_MARKERS = ("bon deal", "bonne affaire", "meilleur deal")
+_GOOD_DEAL_MARKERS = (
+    "bon deal",
+    "bonne affaire",
+    "meilleur deal",
+    "bon prix",
+    "meilleur prix",
+    "prix interessant",
+    "prix avantageux",
+)
 
 
 @dataclass(frozen=True)
@@ -201,6 +209,16 @@ def numeric_similarity(expected: float, observed: float) -> float:
     if expected <= 0 or observed <= 0:
         return 0.0
     return min(expected, observed) / max(expected, observed)
+
+
+def price_per_square_metre(candidate: SearchCandidate) -> float | None:
+    """Calcule le prix total ramené au m² lorsque les deux valeurs sont fiables."""
+
+    price = candidate.price_fcfa
+    area = candidate.area_m2
+    if price is None or area is None or price <= 0 or area <= 0:
+        return None
+    return round(price / area, 2)
 
 
 def _normalized_equal(left: str | None, right: str | None) -> bool:
@@ -452,26 +470,60 @@ def _price_match_priority(
     return numeric_similarity(criteria.price_fcfa, candidate_price)
 
 
-def _good_deal_priority(
+def _is_good_deal_request(criteria: SearchCriteria) -> bool:
+    normalized = normalize_text(criteria.description)
+    return any(marker in normalized for marker in _GOOD_DEAL_MARKERS)
+
+
+def _requested_area_price_priority(
     criteria: SearchCriteria,
     result: RankedResult,
 ) -> tuple[float, float]:
-    """À superficie demandée comparable, impose le prix total le plus faible."""
+    """À superficie comparable, préfère le prix total le plus faible."""
 
-    if criteria.area_m2 is None:
-        return (0.0, 0.0)
+    candidate = result.candidate
+    if criteria.area_m2 is None or candidate.area_m2 is None:
+        return (0.0, float("-inf"))
+    area_match = numeric_similarity(criteria.area_m2, candidate.area_m2)
+    price = candidate.price_fcfa if candidate.price_fcfa is not None else float("inf")
+    return (round(area_match, 3), -price)
+
+
+def _good_deal_priority(
+    criteria: SearchCriteria,
+    result: RankedResult,
+) -> tuple[float, float, float, float]:
+    """Classe un bon prix par surface comparable, puis par prix au m²."""
+
+    if not _is_good_deal_request(criteria):
+        return (0.0, 0.0, 0.0, 0.0)
     candidate = result.candidate
     area_match = (
         numeric_similarity(criteria.area_m2, candidate.area_m2)
-        if candidate.area_m2 is not None
+        if criteria.area_m2 is not None and candidate.area_m2 is not None
         else 0.0
     )
+    unit_price = price_per_square_metre(candidate)
+    unit_price_known = float(unit_price is not None)
+    unit_price_priority = -unit_price if unit_price is not None else float("-inf")
     price = (
         candidate.price_fcfa
         if candidate.price_fcfa is not None
         else float("inf")
     )
-    return (round(area_match, 3), -price)
+    if criteria.area_m2 is not None:
+        return (
+            round(area_match, 3),
+            unit_price_known,
+            unit_price_priority,
+            -price,
+        )
+    return (
+        unit_price_known,
+        unit_price_priority,
+        candidate.area_m2 or 0.0,
+        -price,
+    )
 
 
 def rank_candidates(
@@ -494,74 +546,47 @@ def rank_candidates(
         for candidate in unique_candidates
         if (result := score_candidate(criteria, candidate)) is not None
     ]
-    good_deal = (
-        (criteria.price_fcfa is not None or criteria.area_m2 is not None)
-        and any(
-            marker in normalize_text(criteria.description)
-            for marker in _GOOD_DEAL_MARKERS
-        )
-    )
+    good_deal = _is_good_deal_request(criteria)
     if good_deal and results:
-        known_areas = [
-            result.candidate.area_m2
+        known_unit_prices = [
+            unit_price
             for result in results
-            if result.candidate.area_m2 is not None
-            and result.candidate.area_m2 > 0
+            if (unit_price := price_per_square_metre(result.candidate)) is not None
         ]
-        known_prices = [
-            result.candidate.price_fcfa
-            for result in results
-            if result.candidate.price_fcfa is not None
-            and result.candidate.price_fcfa > 0
-        ]
-        largest_area = max(known_areas, default=1.0)
-        lowest_price = min(known_prices, default=1.0)
+        lowest_unit_price = min(known_unit_prices, default=1.0)
         adjusted: list[RankedResult] = []
         for result in results:
             candidate = result.candidate
+            unit_price = price_per_square_metre(candidate)
+            unit_price_value = (
+                lowest_unit_price / unit_price
+                if unit_price is not None and unit_price > 0
+                else 0.0
+            )
             if criteria.area_m2 is not None:
                 area_value = (
                     numeric_similarity(criteria.area_m2, candidate.area_m2)
                     if candidate.area_m2 is not None
                     else 0.0
                 )
-                price_value = (
-                    lowest_price / candidate.price_fcfa
+                deal_score = 0.70 * area_value + 0.30 * unit_price_value
+                deal_explanation = "Bon deal : superficie demandée au prix le plus faible"
+            elif criteria.price_fcfa is not None and not criteria.price_is_maximum:
+                price_match = (
+                    numeric_similarity(criteria.price_fcfa, candidate.price_fcfa)
                     if candidate.price_fcfa is not None
-                    and candidate.price_fcfa > 0
                     else 0.0
                 )
-                deal_score = 0.70 * area_value + 0.30 * price_value
-                deal_explanation = (
-                    "Bon deal : superficie demandée au prix le plus faible"
-                )
+                deal_score = 0.70 * price_match + 0.30 * unit_price_value
+                deal_explanation = "Bon deal : grande superficie au prix demandé"
+            elif criteria.price_is_maximum:
+                deal_score = unit_price_value
+                deal_explanation = "Bon deal : grande superficie et prix faible"
             else:
-                area_value = (
-                    candidate.area_m2 / largest_area
-                    if candidate.area_m2 is not None and candidate.area_m2 > 0
-                    else 0.0
-                )
-                price_value = (
-                    lowest_price / candidate.price_fcfa
-                    if candidate.price_fcfa is not None
-                    and candidate.price_fcfa > 0
-                    else 0.0
-                )
-                if criteria.price_is_maximum:
-                    # Avec un budget plafond : grande surface et prix faible.
-                    deal_score = 0.50 * area_value + 0.50 * price_value
-                    deal_explanation = (
-                        "Bon deal : grande superficie et prix faible"
-                    )
-                else:
-                    price_match = numeric_similarity(
-                        criteria.price_fcfa,
-                        candidate.price_fcfa,
-                    )
-                    deal_score = 0.70 * area_value + 0.30 * price_match
-                    deal_explanation = (
-                        "Bon deal : grande superficie au prix demandé"
-                    )
+                deal_score = unit_price_value
+                deal_explanation = "Bon prix : prix au m² le plus avantageux"
+            if unit_price is not None:
+                deal_explanation += f"; {unit_price:,.0f} FCFA/m²".replace(",", " ")
             adjusted.append(
                 replace(
                     result,
@@ -576,6 +601,7 @@ def rank_candidates(
         key=lambda result: (
             _descriptive_priority(criteria, result),
             _price_match_priority(criteria, result),
+            _requested_area_price_priority(criteria, result),
             _good_deal_priority(criteria, result),
             result.score,
             result.candidate.area_m2 or 0.0 if good_deal else result.coverage,

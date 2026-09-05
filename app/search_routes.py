@@ -20,6 +20,7 @@ from app.search_engine import (
     RankedResult,
     SearchCriteria,
     parse_search_description,
+    price_per_square_metre,
     rank_candidates,
 )
 from app.search_repository import load_recent_candidates
@@ -74,6 +75,7 @@ class SearchResult(BaseModel):
     type_bien: str | None
     quartier: str | None
     prix_fcfa: float | None
+    prix_m2_fcfa: float | None
     superficie_m2: float | None
     note_prix: str | None
     statut_document: str | None
@@ -148,6 +150,7 @@ def _result_response(
         type_bien=candidate.property_type,
         quartier=candidate.neighborhood,
         prix_fcfa=candidate.price_fcfa,
+        prix_m2_fcfa=price_per_square_metre(candidate),
         superficie_m2=candidate.area_m2,
         note_prix=candidate.pricing_note,
         statut_document=candidate.document_status,

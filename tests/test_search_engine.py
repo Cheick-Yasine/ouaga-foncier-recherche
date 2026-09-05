@@ -6,6 +6,7 @@ from app.search_engine import (
     cosine_similarity,
     numeric_similarity,
     parse_search_description,
+    price_per_square_metre,
     rank_candidates,
     score_candidate,
 )
@@ -34,6 +35,28 @@ def test_numeric_similarity_penalizes_large_distance() -> None:
     assert numeric_similarity(300, 300) == 1
     assert numeric_similarity(300, 600) == 0.5
     assert numeric_similarity(300, 3_000) == 0.1
+
+
+def test_price_per_square_metre_uses_total_price_and_area() -> None:
+    candidate = SearchCandidate(
+        identifier="unit-price",
+        text="Parcelle de 500 m2 à 8 millions",
+        price_fcfa=8_000_000,
+        area_m2=500,
+    )
+
+    assert price_per_square_metre(candidate) == 16_000
+
+
+def test_price_per_square_metre_requires_price_and_area() -> None:
+    candidate = SearchCandidate(
+        identifier="missing-area",
+        text="Parcelle à vendre",
+        price_fcfa=8_000_000,
+        area_m2=None,
+    )
+
+    assert price_per_square_metre(candidate) is None
 
 
 def test_maximum_budget_is_a_hard_limit() -> None:
@@ -364,6 +387,46 @@ def test_requested_neighborhood_precedes_a_better_price() -> None:
     )
 
     assert results[0].candidate.identifier == "saaba"
+
+
+def test_good_price_prefers_lowest_unit_price_in_requested_neighborhood() -> None:
+    criteria = parse_search_description(
+        "Je cherche une parcelle à Saaba à bon prix"
+    )
+    results = rank_candidates(
+        criteria,
+        [
+            SearchCandidate(
+                identifier="saaba-low-unit-price",
+                text="Parcelle de 600 m2 à Saaba",
+                property_type="parcelle",
+                neighborhood="Saaba",
+                price_fcfa=9_000_000,
+                area_m2=600,
+            ),
+            SearchCandidate(
+                identifier="saaba-high-unit-price",
+                text="Parcelle de 300 m2 à Saaba",
+                property_type="parcelle",
+                neighborhood="Saaba",
+                price_fcfa=6_000_000,
+                area_m2=300,
+            ),
+            SearchCandidate(
+                identifier="outside-cheapest",
+                text="Parcelle de 800 m2 à Karpala",
+                property_type="parcelle",
+                neighborhood="Karpala",
+                price_fcfa=4_000_000,
+                area_m2=800,
+            ),
+        ],
+    )
+
+    assert results[0].candidate.identifier == "saaba-low-unit-price"
+    assert results[1].candidate.identifier == "saaba-high-unit-price"
+    assert results[2].candidate.identifier == "outside-cheapest"
+    assert "15 000 FCFA/m²" in results[0].explanations[-1]
 
 
 def test_missing_price_is_excluded_when_budget_is_requested() -> None:

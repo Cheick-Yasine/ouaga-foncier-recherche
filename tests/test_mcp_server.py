@@ -56,6 +56,7 @@ def test_search_never_returns_contact(monkeypatch) -> None:
     assert periods == [30]
     assert response["criteres"]["anciennete_maximale_jours"] == 30
     assert response["results"][0]["id"] != "post-1"
+    assert response["results"][0]["prix_m2_fcfa"] == 16_666.67
     assert response["results"][0]["url"].startswith("https://ouaga-foncier-mcp.onrender.com/?annonce=")
     assert "facebook.com" not in response["results"][0]["url"]
     assert "contact" not in response["results"][0]
