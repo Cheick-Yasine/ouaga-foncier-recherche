@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
 from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass
@@ -15,6 +16,9 @@ from openai import AsyncOpenAI
 
 from app.config import Settings, get_settings
 from app.semantic_filter import sanitize_external_text
+
+
+LOGGER = logging.getLogger("uvicorn.error")
 
 
 class AssistantNotConfiguredError(RuntimeError):
@@ -152,7 +156,10 @@ async def call_mcp_tool(
 
     current = settings or get_settings()
     try:
-        async with httpx.AsyncClient(trust_env=False) as http_client:
+        async with httpx.AsyncClient(
+            trust_env=False,
+            timeout=httpx.Timeout(30.0),
+        ) as http_client:
             async with streamable_http_client(
                 current.mcp_server_url,
                 http_client=http_client,
@@ -162,8 +169,18 @@ async def call_mcp_tool(
                     await session.initialize()
                     result = await session.call_tool(tool_name, arguments)
     except Exception as error:
+        LOGGER.exception("assistant_mcp_connection_error")
+        detail = ""
+        if current.app_env.casefold() == "development":
+            cause: BaseException = error
+            while isinstance(cause, BaseExceptionGroup) and cause.exceptions:
+                cause = cause.exceptions[0]
+            while cause.__cause__ is not None:
+                cause = cause.__cause__
+            detail = f" Détail local : {type(cause).__name__}: {cause}"
         raise MCPAssistantError(
-            "Le serveur MCP local ne répond pas. Vérifiez qu'il fonctionne sur le port 8001."
+            "La communication avec le serveur MCP local a échoué."
+            + detail
         ) from error
 
     if getattr(result, "isError", False):
