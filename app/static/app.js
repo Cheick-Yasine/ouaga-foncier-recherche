@@ -1,6 +1,7 @@
 const $=(s)=>document.querySelector(s),$$=(s)=>Array.from(document.querySelectorAll(s));
-const form=$("#search-form"),descriptionInput=$("#description"),maxAgeInput=$("#max-age-days"),submitButton=$("#submit-button"),feedback=$("#feedback"),output=$("#search-output"),resultsTable=$("#results-table"),resultCards=$("#result-cards"),winner=$("#winner"),accountButton=$("#account-button"),authDialog=$("#auth-dialog"),authForm=$("#auth-form"),authFeedback=$("#auth-feedback"),alertDialog=$("#alert-dialog"),alertForm=$("#alert-form");
+const form=$("#search-form"),descriptionInput=$("#description"),maxAgeInput=$("#max-age-days"),submitButton=$("#submit-button"),feedback=$("#feedback"),output=$("#search-output"),resultsTable=$("#results-table"),resultCards=$("#result-cards"),winner=$("#winner"),accountButton=$("#account-button"),authDialog=$("#auth-dialog"),authForm=$("#auth-form"),authFeedback=$("#auth-feedback"),alertDialog=$("#alert-dialog"),alertForm=$("#alert-form"),assistantForm=$("#assistant-form"),assistantInput=$("#assistant-input"),assistantSubmit=$("#assistant-submit"),assistantMessages=$("#assistant-messages"),assistantMaxAge=$("#assistant-max-age-days");
 let currentUser=null,authMode="login",lastSearch=null,lastResults=[];
+let assistantHistory=[];
 const fmt=new Intl.NumberFormat("fr-FR",{maximumFractionDigits:0});
 function el(tag,cls,value){const node=document.createElement(tag);if(cls)node.className=cls;if(value!==undefined)node.textContent=value;return node}
 function showValue(v,suffix=""){return v===null||v===undefined||v===""?"Non précisé":typeof v==="number"?fmt.format(v)+suffix:String(v)+suffix}
@@ -68,9 +69,41 @@ function updateAccountUI(){accountButton.textContent=currentUser?(currentUser.na
 accountButton.addEventListener("click",async()=>{if(!currentUser){setAuthMode("login");authDialog.showModal();return}await fetch("/auth/logout",{method:"POST"});currentUser=null;showView("search");updateAccountUI();setFeedback("Vous êtes déconnecté.")});
 $("#close-auth").addEventListener("click",()=>authDialog.close());$("#auth-switch").addEventListener("click",()=>setAuthMode(authMode==="login"?"register":"login"));
 authForm.addEventListener("submit",async event=>{event.preventDefault();authFeedback.textContent="";$("#auth-submit").disabled=true;try{const response=await fetch("/auth/"+authMode,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name:$("#auth-name").value.trim(),password:$("#auth-password").value})}),payload=await response.json();if(!response.ok)throw new Error(payload.detail||"La connexion a échoué.");currentUser=payload;authDialog.close();authForm.reset();updateAccountUI();setFeedback("Connexion réussie.","loading")}catch(error){authFeedback.textContent=error.message}finally{$("#auth-submit").disabled=false}});
-function showView(name){$$(".view").forEach(node=>node.hidden=node.id!==name+"-view");$$(".nav-link").forEach(node=>node.classList.toggle("is-active",node.dataset.view===name));if(name!=="search")renderDashboard(name)}
+function showView(name){$$(".view").forEach(node=>node.hidden=node.id!==name+"-view");$$(".nav-link").forEach(node=>node.classList.toggle("is-active",node.dataset.view===name));if(["saved","history","alerts"].includes(name))renderDashboard(name);if(name==="assistant")assistantInput.focus()}
 $$(".nav-link").forEach(button=>button.addEventListener("click",()=>{if(button.classList.contains("member-only")&&!requireLogin())return;showView(button.dataset.view)}));
 function renderDashboard(kind){const list=$("#"+kind+"-list");if(!list)return;const items=read(kind);list.replaceChildren();if(!items.length){const labels={saved:"Aucune annonce enregistrée pour le moment.",history:"Votre historique apparaîtra après votre première recherche.",alerts:"Aucune surveillance active."};list.append(el("div","empty-dashboard",labels[kind]));return}items.forEach((item,index)=>{const row=el("article","dashboard-item"),copy=el("div");if(kind==="saved")copy.append(el("h3","",title(item)),el("p","",facts(item)));else if(kind==="history")copy.append(el("h3","",item.query),el("p","",item.count+" résultat(s) · "+new Date(item.date).toLocaleDateString("fr-FR")));else copy.append(el("h3","",item.name),el("p","",item.query+" · vérification "+(item.daily?"quotidienne":"manuelle")));const action=el("button","secondary-button",kind==="history"?"Relancer":"Retirer");action.type="button";action.addEventListener("click",()=>{if(kind==="history"){descriptionInput.value=item.query;if(item.max_age_days)maxAgeInput.value=String(item.max_age_days);showView("search");form.requestSubmit()}else{write(kind,read(kind).filter((_,i)=>i!==index));renderDashboard(kind)}});row.append(copy,action);list.append(row)})}
 $("#create-alert").addEventListener("click",()=>{if(!lastSearch)return;if(!requireLogin("Connectez-vous pour activer une surveillance."))return;$("#alert-name").value=lastSearch.length>45?lastSearch.slice(0,42)+"...":lastSearch;alertDialog.showModal()});$("#close-alert").addEventListener("click",()=>alertDialog.close());
 alertForm.addEventListener("submit",event=>{event.preventDefault();const alerts=read("alerts");if(!alerts.some(x=>x.query===lastSearch))alerts.unshift({name:$("#alert-name").value.trim(),query:lastSearch,max_age_days:Number(maxAgeInput.value),daily:$("#alert-daily").checked,date:new Date().toISOString()});write("alerts",alerts);alertDialog.close();renderDashboard("alerts");setFeedback("Surveillance enregistrée. La notification automatique sera activée lors de la mise en production.","loading")});
+
+function assistantResultCard(result){
+ const card=el("article","assistant-result"),heading=el("div","assistant-result-heading");
+ heading.append(el("h3","",result.title||"Annonce immobilière"),el("strong","",Math.round(Number(result.score)||0)+"%"));
+ const meta=[showValue(result.prix_fcfa," FCFA"),formatArea(result.superficie_m2),documentLabel(result.document)].join(" · ");
+ const explanation=Array.isArray(result.explications)&&result.explications.length?result.explications[result.explications.length-1]:"Correspondance proposée par le moteur Ouaga Foncier.";
+ card.append(heading,el("p","assistant-result-meta",meta),el("p","assistant-result-reason",explanation),el("span","assistant-result-id","Référence : "+showValue(result.id)));
+ return card
+}
+
+function appendChatMessage(role,text,results=[]){
+ const row=el("article","chat-row is-"+role),avatar=el("div","chat-avatar",role==="assistant"?"OF":"Vous"),content=el("div","chat-content"),bubble=el("div","chat-bubble",text);
+ content.append(bubble);
+ if(results.length){const list=el("div","assistant-results");results.forEach(result=>list.append(assistantResultCard(result)));content.append(list)}
+ row.append(avatar,content);assistantMessages.append(row);assistantMessages.scrollTop=assistantMessages.scrollHeight;return row
+}
+
+assistantForm.addEventListener("submit",async event=>{
+ event.preventDefault();
+ const message=assistantInput.value.trim();if(!message)return;
+ const previous=assistantHistory.slice(-12);appendChatMessage("user",message);assistantHistory.push({role:"user",content:message});assistantInput.value="";assistantSubmit.disabled=true;assistantSubmit.textContent="Réflexion…";
+ const pending=appendChatMessage("assistant","Je consulte votre demande…");pending.classList.add("is-pending");
+ try{
+  const response=await fetch("/assistant/message",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message,history:previous,max_age_days:Number(assistantMaxAge.value)})}),payload=await response.json();
+  if(!response.ok)throw new Error(payload.detail||"L’assistant n’a pas pu répondre.");
+  pending.remove();appendChatMessage("assistant",payload.answer,payload.results||[]);assistantHistory.push({role:"assistant",content:payload.answer});
+ }catch(error){pending.remove();appendChatMessage("assistant",error.message||"Une erreur inattendue est survenue.")}
+ finally{assistantSubmit.disabled=false;assistantSubmit.textContent="Envoyer";assistantInput.focus()}
+});
+
+assistantInput.addEventListener("keydown",event=>{if(event.key==="Enter"&&!event.shiftKey){event.preventDefault();assistantForm.requestSubmit()}});
+$$("[data-assistant-prompt]").forEach(button=>button.addEventListener("click",()=>{assistantInput.value=button.dataset.assistantPrompt;assistantInput.focus()}));
 refreshSession();

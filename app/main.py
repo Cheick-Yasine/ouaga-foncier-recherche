@@ -9,6 +9,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from app.announcement_routes import router as announcement_router
+from app.assistant_routes import router as assistant_router
 from app.auth_routes import router as auth_router
 from app.config import get_settings
 from app.database import DatabaseNotConfiguredError, check_database_connection
@@ -32,6 +33,7 @@ app = FastAPI(
     version="0.6.0",
 )
 app.include_router(search_router)
+app.include_router(assistant_router)
 app.include_router(auth_router)
 app.include_router(announcement_router)
 

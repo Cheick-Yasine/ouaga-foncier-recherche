@@ -100,6 +100,7 @@ def rechercher_annonces(
     limit: int = 10,
     criteres_obligatoires: list[str] | None = None,
     anciennete_jours: int = 30,
+    utiliser_filtre_llm: bool = True,
 ) -> dict[str, Any]:
     """Recherche et filtre les annonces correspondant à une description."""
 
@@ -135,18 +136,31 @@ def rechercher_annonces(
     except (DatabaseNotConfiguredError, psycopg.Error):
         return {"erreur": "La base d'annonces est temporairement indisponible."}
 
-    local_limit = max(safe_limit, settings.llm_candidate_limit)
+    local_limit = (
+        max(safe_limit, settings.llm_candidate_limit)
+        if utiliser_filtre_llm
+        else safe_limit
+    )
     ranked = rank_candidates(criteria, candidates, limit=local_limit)
-    semantic = apply_semantic_filter(criteria, ranked, settings=settings)
-    selected = semantic.results[:safe_limit]
+    if utiliser_filtre_llm:
+        semantic = apply_semantic_filter(criteria, ranked, settings=settings)
+        selected = semantic.results[:safe_limit]
+        semantic_used = semantic.used
+        semantic_model = semantic.model
+        semantic_fallback = semantic.fallback
+    else:
+        selected = ranked[:safe_limit]
+        semantic_used = False
+        semantic_model = None
+        semantic_fallback = False
 
     return {
         "criteres": _criteria_payload(criteria),
         "candidats_evalues": len(candidates),
         "nombre_resultats": len(selected),
-        "filtre_semantique_utilise": semantic.used,
-        "modele_semantique": semantic.model,
-        "repli_classement_local": semantic.fallback,
+        "filtre_semantique_utilise": semantic_used,
+        "modele_semantique": semantic_model,
+        "repli_classement_local": semantic_fallback,
         "results": [_public_result(result) for result in selected],
     }
 

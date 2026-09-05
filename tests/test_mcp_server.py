@@ -118,3 +118,34 @@ def test_search_alias_uses_compatibility_results(monkeypatch) -> None:
     )
     response = mcp_server.search("terrain à Saaba")
     assert response["results"][0]["title"] == "terrain à Saaba"
+
+
+def test_search_can_skip_internal_llm_for_conversational_assistant(
+    monkeypatch,
+) -> None:
+    candidate = SearchCandidate(
+        identifier="post-local",
+        text="Terrain à Saaba",
+        property_type="terrain",
+        neighborhood="Saaba",
+        price_fcfa=4_000_000,
+        area_m2=300,
+    )
+    monkeypatch.setattr(
+        mcp_server,
+        "load_recent_candidates",
+        lambda _max_age: [candidate],
+    )
+
+    def forbidden_filter(*_args, **_kwargs):
+        raise AssertionError("Le filtre LLM interne ne doit pas être appelé")
+
+    monkeypatch.setattr(mcp_server, "apply_semantic_filter", forbidden_filter)
+    response = mcp_server.rechercher_annonces(
+        "Terrain à Saaba",
+        utiliser_filtre_llm=False,
+    )
+
+    assert response["nombre_resultats"] == 1
+    assert response["filtre_semantique_utilise"] is False
+    assert response["repli_classement_local"] is False

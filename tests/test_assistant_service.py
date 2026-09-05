@@ -1,0 +1,160 @@
+"""Tests du cerveau conversationnel et de son appel MCP."""
+
+import json
+from types import SimpleNamespace
+
+import pytest
+
+from app.assistant_service import (
+    AssistantNotConfiguredError,
+    ChatMessage,
+    run_assistant,
+)
+from app.config import Settings
+
+
+class FakeResponses:
+    def __init__(self, responses):
+        self._responses = iter(responses)
+        self.calls = []
+
+    async def create(self, **kwargs):
+        self.calls.append(kwargs)
+        return next(self._responses)
+
+
+class FakeClient:
+    def __init__(self, responses):
+        self.responses = FakeResponses(responses)
+
+
+def text_response(text):
+    return SimpleNamespace(output=[], output_text=text)
+
+
+def tool_response(arguments):
+    return SimpleNamespace(
+        output=[
+            SimpleNamespace(
+                type="function_call",
+                name="rechercher_annonces",
+                arguments=json.dumps(arguments),
+                call_id="call-1",
+            )
+        ],
+        output_text="",
+    )
+
+
+@pytest.mark.anyio
+async def test_assistant_asks_question_without_calling_mcp() -> None:
+    client = FakeClient([text_response("Quel est votre budget maximum ?")])
+    called = False
+
+    async def execute(_name, _arguments):
+        nonlocal called
+        called = True
+        return {}
+
+    outcome = await run_assistant(
+        "Je cherche une parcelle",
+        [],
+        max_age_days=30,
+        settings=Settings(openai_api_key="test", assistant_model="gpt-4o-mini"),
+        client=client,
+        tool_executor=execute,
+    )
+
+    assert outcome.answer == "Quel est votre budget maximum ?"
+    assert outcome.mcp_used is False
+    assert outcome.results == []
+    assert called is False
+
+
+@pytest.mark.anyio
+async def test_assistant_executes_search_through_mcp_and_returns_results() -> None:
+    client = FakeClient(
+        [
+            tool_response(
+                {
+                    "description": "Parcelle à Saaba, budget maximum 6 millions",
+                    "criteres_obligatoires": ["quartier", "prix"],
+                }
+            ),
+            text_response("J’ai trouvé une parcelle adaptée à Saaba."),
+        ]
+    )
+    received = {}
+    result = {
+        "id": "annonce-publique",
+        "title": "Parcelle à Saaba",
+        "prix_fcfa": 5_500_000,
+        "score": 91,
+        "url": "https://example.test/annonce",
+        "contact": "70 12 34 56",
+    }
+
+    async def execute(name, arguments):
+        received["name"] = name
+        received["arguments"] = arguments
+        return {"results": [result]}
+
+    outcome = await run_assistant(
+        "Je cherche à Saaba",
+        [ChatMessage("user", "Mon budget maximum est de 6 millions")],
+        max_age_days=7,
+        settings=Settings(openai_api_key="test", assistant_model="gpt-4o-mini"),
+        client=client,
+        tool_executor=execute,
+    )
+
+    assert outcome.mcp_used is True
+    assert outcome.results == [result]
+    assert received["name"] == "rechercher_annonces"
+    assert received["arguments"]["anciennete_jours"] == 7
+    assert received["arguments"]["utiliser_filtre_llm"] is False
+    assert received["arguments"]["limit"] == 10
+    second_input = client.responses.calls[1]["input"]
+    outputs = [item for item in second_input if isinstance(item, dict)]
+    assert any(item.get("type") == "function_call_output" for item in outputs)
+    serialized_output = next(
+        item["output"]
+        for item in outputs
+        if item.get("type") == "function_call_output"
+    )
+    assert "example.test" not in serialized_output
+    assert "70 12 34 56" not in serialized_output
+
+
+@pytest.mark.anyio
+async def test_assistant_requires_key_without_injected_client() -> None:
+    with pytest.raises(AssistantNotConfiguredError):
+        await run_assistant(
+            "Je cherche un terrain",
+            [],
+            max_age_days=30,
+            settings=Settings(openai_api_key=None),
+        )
+
+
+@pytest.mark.anyio
+async def test_conversation_sent_to_llm_is_anonymized() -> None:
+    client = FakeClient([text_response("Quel quartier préférez-vous ?")])
+
+    async def execute(_name, _arguments):
+        return {}
+
+    await run_assistant(
+        "Appelez-moi au 70 12 34 56",
+        [ChatMessage("user", "Mon e-mail est test@example.com")],
+        max_age_days=30,
+        settings=Settings(openai_api_key="test"),
+        client=client,
+        tool_executor=execute,
+    )
+
+    rendered = json.dumps(client.responses.calls[0]["input"])
+    assert "70 12 34 56" not in rendered
+    assert "test@example.com" not in rendered
+    assert "[contact retire]" in rendered
+    assert "[email retire]" in rendered

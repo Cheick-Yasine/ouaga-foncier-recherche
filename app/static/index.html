@@ -8,8 +8,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/styles.css?v=20260905-11">
-  <script src="/static/app.js?v=20260905-11" defer></script>
+  <link rel="stylesheet" href="/static/styles.css?v=20260905-assistant-1">
+  <script src="/static/app.js?v=20260905-assistant-1" defer></script>
 </head>
 <body>
   <header class="site-header">
@@ -22,6 +22,7 @@
     </a>
     <nav class="main-nav" aria-label="Navigation principale">
       <button class="nav-link is-active" type="button" data-view="search">Recherche</button>
+      <button class="nav-link" type="button" data-view="assistant">Assistant</button>
       <button class="nav-link member-only" type="button" data-view="saved" hidden>Annonces enregistrées</button>
       <button class="nav-link member-only" type="button" data-view="history" hidden>Historique</button>
       <button class="nav-link member-only" type="button" data-view="alerts" hidden>Surveillances</button>
@@ -103,6 +104,47 @@
           </div>
         </div>
       </section>
+    </section>
+
+    <section id="assistant-view" class="view assistant-page" hidden>
+      <div class="assistant-heading">
+        <div>
+          <p class="kicker">Conseiller immobilier</p>
+          <h1>Parlez à l’assistant Ouaga Foncier</h1>
+          <p>Décrivez votre besoin naturellement. L’assistant peut poser une question, puis chercher les annonces avec le moteur MCP.</p>
+        </div>
+        <label class="assistant-period" for="assistant-max-age-days">
+          <span>Période des annonces</span>
+          <select id="assistant-max-age-days">
+            <option value="7">7 jours</option>
+            <option value="30" selected>1 mois</option>
+            <option value="90">3 mois</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="assistant-shell">
+        <div id="assistant-messages" class="assistant-messages" aria-live="polite">
+          <article class="chat-row is-assistant">
+            <div class="chat-avatar" aria-hidden="true">OF</div>
+            <div class="chat-content">
+              <div class="chat-bubble">Bonjour ! Décrivez-moi le terrain, la parcelle ou la maison que vous recherchez.</div>
+            </div>
+          </article>
+        </div>
+
+        <div class="assistant-suggestions" aria-label="Exemples de demandes">
+          <button type="button" data-assistant-prompt="Je cherche une parcelle à Saaba avec un budget maximum de 6 millions FCFA.">Parcelle à Saaba</button>
+          <button type="button" data-assistant-prompt="Aide-moi à trouver un bon terrain autour de Ouagadougou.">Trouver un bon terrain</button>
+        </div>
+
+        <form id="assistant-form" class="assistant-composer">
+          <label class="sr-only" for="assistant-input">Votre message</label>
+          <textarea id="assistant-input" rows="2" minlength="2" maxlength="2000" required placeholder="Exemple : Je cherche une parcelle de 300 m² à Saaba..."></textarea>
+          <button id="assistant-submit" type="submit">Envoyer</button>
+        </form>
+        <p class="assistant-disclaimer">Les résultats proviennent du moteur Ouaga Foncier. Vérifiez toujours le vendeur et les documents avant tout paiement.</p>
+      </div>
     </section>
 
     <section id="saved-view" class="view account-view" hidden>
