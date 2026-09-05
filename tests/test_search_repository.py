@@ -2,7 +2,13 @@
 
 from datetime import datetime, timedelta, timezone
 
-from app.search_repository import _candidate_from_row
+from app.config import Settings
+from app.search_repository import (
+    _candidate_from_row,
+    _is_prepared_candidate,
+    clear_candidate_cache,
+    load_recent_candidates,
+)
 
 
 def test_row_is_mapped_to_search_candidate() -> None:
@@ -62,3 +68,177 @@ def test_missing_numeric_value_is_preserved() -> None:
     assert candidate.price_fcfa is None
     assert candidate.area_m2 == 400
     assert candidate.text == "Terrain à Karpala"
+
+
+def test_price_per_hectare_uses_minimum_sale_block() -> None:
+    now = datetime(2026, 9, 3, 12, tzinfo=timezone.utc)
+    candidate = _candidate_from_row(
+        {
+            "id": "unit-hectare",
+            "type_bien": "Terrain",
+            "type_bien_normalise": "terrain",
+            "quartier_zone": "Sankoinsé",
+            "superficie_m2": 970_000,
+            "prix_fcfa": 3_500_000,
+            "statut_document": None,
+            "resume_court": None,
+            "texte_nettoye": (
+                "Superficie 97 hectares. Prix 3.500.000 FCFA / hectare. "
+                "Vente possible par bloc de 10 hectares minimum."
+            ),
+            "premiere_collecte": now,
+        },
+        now=now,
+    )
+
+    assert candidate.price_fcfa == 35_000_000
+    assert candidate.area_m2 == 100_000
+    assert candidate.pricing_note == (
+        "Prix calculé pour le lot minimum de 10 hectare(s)"
+    )
+
+
+def test_price_per_hectare_without_minimum_uses_one_hectare() -> None:
+    now = datetime(2026, 9, 3, 12, tzinfo=timezone.utc)
+    candidate = _candidate_from_row(
+        {
+            "id": "unit-hectare-simple",
+            "type_bien": "Terrain",
+            "type_bien_normalise": "terrain",
+            "quartier_zone": None,
+            "superficie_m2": 200_000,
+            "prix_fcfa": 2_250_000,
+            "statut_document": None,
+            "resume_court": "Terrain à 2 250 000 FCFA par hectare",
+            "texte_nettoye": None,
+            "premiere_collecte": now,
+        },
+        now=now,
+    )
+
+    assert candidate.price_fcfa == 2_250_000
+    assert candidate.area_m2 == 10_000
+    assert candidate.pricing_note == "Prix et superficie présentés pour 1 hectare"
+
+
+def test_candidate_outside_geographic_scope_is_rejected() -> None:
+    candidate = _candidate_from_row(
+        {
+            "id": "outside",
+            "type_bien": "Terrain",
+            "type_bien_normalise": "terrain",
+            "quartier_zone": "Bobo-Dioulasso",
+            "superficie_m2": 500,
+            "prix_fcfa": 5_000_000,
+            "texte_nettoye": "Terrain à Bobo-Dioulasso",
+            "premiere_collecte": datetime(2026, 9, 3, tzinfo=timezone.utc),
+        },
+        now=datetime(2026, 9, 3, tzinfo=timezone.utc),
+    )
+
+    assert candidate.neighborhood is None
+    assert _is_prepared_candidate(candidate) is False
+
+
+def test_candidate_in_periphery_is_kept() -> None:
+    candidate = _candidate_from_row(
+        {
+            "id": "periphery",
+            "type_bien": "Parcelle",
+            "type_bien_normalise": "parcelle",
+            "quartier_zone": "Saaba",
+            "superficie_m2": 300,
+            "prix_fcfa": None,
+            "texte_nettoye": "Parcelle à Saaba",
+            "premiere_collecte": datetime(2026, 9, 3, tzinfo=timezone.utc),
+        },
+        now=datetime(2026, 9, 3, tzinfo=timezone.utc),
+    )
+
+    assert _is_prepared_candidate(candidate) is True
+
+
+def test_unwanted_property_type_is_rejected() -> None:
+    candidate = _candidate_from_row(
+        {
+            "id": "villa",
+            "type_bien": "Villa",
+            "type_bien_normalise": "villa",
+            "quartier_zone": "Saaba",
+            "superficie_m2": 300,
+            "prix_fcfa": 20_000_000,
+            "texte_nettoye": "Villa à Saaba",
+            "premiere_collecte": datetime(2026, 9, 3, tzinfo=timezone.utc),
+        },
+        now=datetime(2026, 9, 3, tzinfo=timezone.utc),
+    )
+
+    assert _is_prepared_candidate(candidate) is False
+
+
+def test_recent_candidates_are_cached_between_searches(monkeypatch) -> None:
+    now = datetime.now(timezone.utc)
+    rows = [
+        {
+            "id": "cached-post",
+            "url": None,
+            "date_publication": None,
+            "type_bien": "Parcelle",
+            "type_bien_normalise": "parcelle",
+            "quartier_zone": "Saaba",
+            "superficie_m2": 300,
+            "prix_fcfa": 5_000_000,
+            "statut_document": None,
+            "contacts_whatsapp": None,
+            "resume_court": None,
+            "texte_nettoye": "Parcelle de 300 m2 à Saaba",
+            "premiere_collecte": now,
+        }
+    ]
+    connections = 0
+
+    class Result:
+        def fetchall(self):
+            return rows
+
+    class Transaction:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+    class Connection:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def transaction(self):
+            return Transaction()
+
+        def execute(self, statement, _parameters=None):
+            if "FROM public.annonces" in statement:
+                return Result()
+            return None
+
+    def connect(*_args, **_kwargs):
+        nonlocal connections
+        connections += 1
+        return Connection()
+
+    monkeypatch.setattr(
+        "app.search_repository.get_settings",
+        lambda: Settings(database_url="postgresql://example.test/database"),
+    )
+    monkeypatch.setattr("app.search_repository.psycopg.connect", connect)
+    clear_candidate_cache()
+
+    first = load_recent_candidates()
+    second = load_recent_candidates()
+
+    assert [item.identifier for item in first] == ["cached-post"]
+    assert [item.identifier for item in second] == ["cached-post"]
+    assert connections == 1
+    clear_candidate_cache()

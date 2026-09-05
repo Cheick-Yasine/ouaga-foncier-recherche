@@ -12,7 +12,15 @@ from openai import OpenAI
 from pydantic import BaseModel, Field
 
 from app.config import Settings, get_settings
-from app.search_engine import RankedResult, SearchCriteria
+from app.search_engine import (
+    RankedResult,
+    SearchCriteria,
+    _descriptive_priority,
+    _good_deal_priority,
+    _price_match_priority,
+    _requested_area_price_priority,
+    price_per_square_metre,
+)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -40,7 +48,7 @@ class SemanticFilterOutcome:
     fallback: bool
 
 
-def sanitize_external_text(value: str | None, *, limit: int = 1_500) -> str:
+def sanitize_external_text(value: str | None, *, limit: int = 900) -> str:
     """Retire URL, e-mail et téléphone avant tout envoi externe."""
 
     text = value or ""
@@ -80,7 +88,9 @@ def build_anonymized_payload(
                 "type_bien": result.candidate.property_type,
                 "quartier": result.candidate.neighborhood,
                 "prix_fcfa": result.candidate.price_fcfa,
+                "prix_m2_fcfa": price_per_square_metre(result.candidate),
                 "superficie_m2": result.candidate.area_m2,
+                "base_prix": result.candidate.pricing_note,
                 "proximite": result.candidate.proximity,
                 "viabilite": result.candidate.viability,
                 "document": result.candidate.document_status,
@@ -94,11 +104,50 @@ def build_anonymized_payload(
 
 def _instructions() -> str:
     return (
-        "Tu es le filtre final d'un moteur immobilier à Ouagadougou. "
-        "Évalue chaque annonce uniquement par rapport à la demande. "
-        "Une annonce pertinente respecte le sens global et les contraintes obligatoires. "
-        "Ne transforme jamais une information absente en correspondance. "
-        "Retourne exactement une décision par candidate_key, sans en inventer."
+        "Tu es l'analyste final d'un moteur immobilier à Ouagadougou. "
+        "Ta mission est de choisir et classer au maximum les 10 annonces qui répondent "
+        "le mieux à la description complète de l'utilisateur. Analyse simultanément "
+        "le type de bien, la localisation, le budget, la superficie, le document, "
+        "la proximité et la viabilité lorsqu'ils sont demandés. "
+        "Le sens de la phrase de l'utilisateur prime sur une simple ressemblance de mots. "
+        "Les critères descriptifs explicitement demandés sont prioritaires dans cet ordre : "
+        "quartier ou zone, type de bien, document, proximité et viabilité. Classe d'abord "
+        "les annonces qui respectent ces critères; prix et superficie servent ensuite à "
+        "départager les annonces du même niveau descriptif. "
+        "N'invente aucune information absente et signale clairement les compromis. "
+        "Pour la proximité, ne confonds jamais proche d'une voie bitumée avec "
+        "simplement accessible par une voie bitumée; ce sont deux catégories différentes. "
+        "De même, destination école signifie usage prévu pour une école et ne prouve "
+        "jamais la présence d'une école à proximité. "
+        "Pour le document, recopie strictement la catégorie fournie : une attestation "
+        "de possession n'est jamais une attestation d'attribution, et inversement. "
+        "Ne confonds jamais un prix total avec un prix par hectare ou par m². "
+        "Quand base_prix est renseignée, utilise uniquement le coût et la surface "
+        "recalculés du lot réellement achetable. "
+        "Quand l'utilisateur demande un bon prix, une bonne affaire ou un bon deal "
+        "dans un quartier donné, conserve d'abord le quartier et le type de bien "
+        "demandés, puis privilégie le prix_m2_fcfa le plus faible parmi les annonces "
+        "comparables. Une annonce moins chère au total n'est pas forcément une meilleure "
+        "affaire si sa superficie est beaucoup plus petite. "
+        "Un montant introduit par le mot budget est un plafond strict. Un prix "
+        "demandé sans le mot budget est une cible : favorise d'abord les annonces à ce "
+        "prix ou au prix le plus proche. Si un bon deal est demandé à un prix cible, "
+        "départage les annonces à ce prix par la plus grande superficie. "
+        "Une superficie exprimée en hectare doit être comprise avec 1 ha = 10 000 m². "
+        "Quand l'utilisateur demande un bon deal avec seulement un budget, compare les "
+        "annonces sous ce plafond et recherche le meilleur compromis entre la plus "
+        "grande superficie réellement achetable et le prix total le plus faible. "
+        "Ne récompense jamais une annonce parce qu'elle consomme davantage le budget. "
+        "Quand une superficie est demandée, favorise d'abord les annonces proches de "
+        "cette superficie, puis le prix total le plus faible; une surface énorme très "
+        "éloignée de la demande n'est pas automatiquement un meilleur deal. "
+        "Ensuite, départage avec le document et la complétude des informations. "
+        "Écarte les annonces hors sujet et les répétitions d'une même annonce, même si "
+        "elles ont des identifiants différents. Deux biens réellement distincts peuvent "
+        "toutefois avoir le même quartier, le même prix et la même superficie. "
+        "Attribue un score comparable de 0 à 100 et écris une raison courte, concrète, "
+        "directement utile au choix. Retourne exactement une décision par candidate_key "
+        "évaluée, sans clé inventée ni clé répétée."
     )
 
 
@@ -122,8 +171,6 @@ def apply_semantic_filter(
     )
     api_client = client or OpenAI(
         api_key=current.openai_api_key.get_secret_value(),
-        timeout=20.0,
-        max_retries=1,
     )
 
     try:
@@ -144,6 +191,7 @@ def apply_semantic_filter(
 
         filtered: list[RankedResult] = []
         seen: set[str] = set()
+        seen_announcements: set[str] = set()
         for decision in parsed.decisions:
             if decision.candidate_key in seen:
                 continue
@@ -155,6 +203,12 @@ def apply_semantic_filter(
                 or decision.score_pertinence < current.llm_relevance_threshold
             ):
                 continue
+            signature = sanitize_external_text(local.candidate.text).casefold()
+            signature = " ".join(signature.split())
+            if signature and signature in seen_announcements:
+                continue
+            if signature:
+                seen_announcements.add(signature)
             combined = round(
                 0.45 * local.score + 0.55 * decision.score_pertinence,
                 2,
@@ -169,11 +223,18 @@ def apply_semantic_filter(
             )
 
         filtered.sort(
-            key=lambda item: (item.score, item.coverage),
+            key=lambda item: (
+                _descriptive_priority(criteria, item),
+                _price_match_priority(criteria, item),
+                _requested_area_price_priority(criteria, item),
+                _good_deal_priority(criteria, item),
+                item.score,
+                item.coverage,
+            ),
             reverse=True,
         )
         return SemanticFilterOutcome(
-            results=filtered,
+            results=filtered[:10],
             used=True,
             model=current.llm_model,
             fallback=False,

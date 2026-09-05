@@ -6,6 +6,7 @@ from app.text_features import (
     build_text_features_audit,
     extract_document_status,
     extract_proximity,
+    extract_proximity_details,
     extract_text_features,
     extract_viability,
 )
@@ -84,7 +85,7 @@ def test_structured_document_and_text_are_combined() -> None:
     row = _row("document", "Terrain avec accès au goudron")
     row["statut_document"] = "Attestation d'attribution"
     features = extract_text_features(row)
-    assert features["proximite"] == "voie_bitumee"
+    assert features["proximite"] == "acces_voie_bitumee"
     assert features["statut_document_normalise"] == "attestation_attribution"
 
 
@@ -93,3 +94,63 @@ def test_published_report_contains_only_aggregates() -> None:
     assert "private-id" not in repr(report)
     assert report["identifiers_exported"] is False
     assert report["database_modified"] is False
+
+
+def test_possession_is_not_confused_with_attribution() -> None:
+    assert (
+        extract_document_status(
+            None,
+            "Attestation de possession disponible.",
+        )
+        == "attestation_possession"
+    )
+    assert (
+        extract_document_status(
+            None,
+            "Fiche d'attribution disponible.",
+        )
+        == "attestation_attribution"
+    )
+
+
+def test_explicit_ad_text_overrides_stale_structured_document() -> None:
+    assert (
+        extract_document_status(
+            "attestation_attribution",
+            "Attestation de possession disponible.",
+        )
+        == "attestation_possession"
+    )
+
+
+def test_paved_proximity_and_paved_access_are_distinct() -> None:
+    assert (
+        extract_proximity("Parcelle proche d'une voie bitumée")
+        == "voie_bitumee"
+    )
+    assert (
+        extract_proximity("Parcelle facilement accessible par le goudron")
+        == "acces_voie_bitumee"
+    )
+
+
+def test_directional_landmark_does_not_imply_paved_proximity() -> None:
+    assert (
+        extract_proximity("Après Boassa facilement accessible par le goudron")
+        == "acces_voie_bitumee"
+    )
+
+
+def test_school_destination_is_not_school_proximity() -> None:
+    assert (
+        extract_proximity("Terrain d'un hectare. Destination école.")
+        == "non_precisee"
+    )
+
+
+def test_requested_multiple_proximities_keep_their_identity() -> None:
+    details = extract_proximity_details(
+        "Proche d'une voie bitumée et d'une école"
+    )
+
+    assert set(details.split("+")) == {"voie_bitumee", "ecole"}

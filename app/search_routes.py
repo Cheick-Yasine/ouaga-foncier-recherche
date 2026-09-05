@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import asyncio
 from dataclasses import replace
+import logging
+from time import perf_counter
 from typing import Literal
 
 import psycopg
@@ -17,10 +20,14 @@ from app.search_engine import (
     RankedResult,
     SearchCriteria,
     parse_search_description,
+    price_per_square_metre,
     rank_candidates,
 )
 from app.search_repository import load_recent_candidates
 from app.semantic_filter import apply_semantic_filter
+
+
+LOGGER = logging.getLogger("uvicorn.error")
 
 
 RequiredField = Literal[
@@ -37,11 +44,11 @@ RequiredField = Literal[
 class InterpretRequest(BaseModel):
     description: str = Field(min_length=3, max_length=2_000)
     required_fields: set[RequiredField] = Field(default_factory=set)
-    max_age_days: int | None = Field(default=None, ge=1, le=365)
+    max_age_days: Literal[7, 30, 90] = 30
 
 
 class SearchRequest(InterpretRequest):
-    limit: int = Field(default=20, ge=1, le=100)
+    limit: int = Field(default=10, ge=1, le=10)
 
 
 class InterpretedCriteria(BaseModel):
@@ -68,7 +75,9 @@ class SearchResult(BaseModel):
     type_bien: str | None
     quartier: str | None
     prix_fcfa: float | None
+    prix_m2_fcfa: float | None
     superficie_m2: float | None
+    note_prix: str | None
     statut_document: str | None
     proximite: str | None
     viabilite: str | None
@@ -130,7 +139,7 @@ def _result_response(
     return SearchResult(
         id=candidate.identifier,
         texte=candidate.text,
-        url=candidate.url,
+        url=candidate.url if authenticated else None,
         date_publication=candidate.publication_label,
         premiere_collecte=candidate.collected_at,
         anciennete_jours=(
@@ -141,7 +150,9 @@ def _result_response(
         type_bien=candidate.property_type,
         quartier=candidate.neighborhood,
         prix_fcfa=candidate.price_fcfa,
+        prix_m2_fcfa=price_per_square_metre(candidate),
         superficie_m2=candidate.area_m2,
+        note_prix=candidate.pricing_note,
         statut_document=candidate.document_status,
         proximite=candidate.proximity,
         viabilite=candidate.viability,
@@ -164,37 +175,156 @@ def interpret_search(payload: InterpretRequest) -> InterpretedCriteria:
 
 
 @router.post("", response_model=SearchResponse)
-def search(
+async def search(
     payload: SearchRequest,
     session_token: str | None = Cookie(default=None, alias=SESSION_COOKIE),
 ) -> SearchResponse:
-    """Interprète la demande, lit Neon puis classe les annonces récentes."""
+    """Interprète la demande, lit Neon et retourne au plus dix annonces uniques."""
 
+    total_started = perf_counter()
+    settings = get_settings()
+
+    criteria_started = perf_counter()
     criteria = _with_options(payload)
+    criteria_ms = (perf_counter() - criteria_started) * 1_000
+    LOGGER.info(
+        "search_stage stage=criteria status=completed elapsed_ms=%.1f",
+        criteria_ms,
+    )
+
+    neon_started = perf_counter()
+    LOGGER.info(
+        "search_stage stage=neon status=started max_age_days=%d",
+        criteria.max_age_days,
+    )
     try:
-        candidates = load_recent_candidates(criteria.max_age_days)
+        candidates = await asyncio.to_thread(
+            load_recent_candidates,
+            criteria.max_age_days,
+        )
     except DatabaseNotConfiguredError as error:
         raise HTTPException(status_code=503, detail=str(error)) from None
-    except psycopg.Error:
+    except psycopg.errors.QueryCanceled as error:
+        LOGGER.warning(
+            "search_stage stage=neon status=query_timeout error_type=%s sqlstate=%s",
+            type(error).__name__,
+            error.sqlstate,
+        )
         raise HTTPException(
             status_code=503,
-            detail="La lecture des annonces dans Neon a échoué.",
+            detail=(
+                "Neon répond, mais la sélection des annonces est trop lente. "
+                "Réessayez avec une période plus courte."
+            ),
         ) from None
+    except psycopg.OperationalError as error:
+        LOGGER.error(
+            "search_stage stage=neon status=connection_error error_type=%s sqlstate=%s",
+            type(error).__name__,
+            error.sqlstate,
+        )
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "La connexion à Neon a échoué. Vérifiez /health/database, "
+                "puis réessayez."
+            ),
+        ) from None
+    except psycopg.Error as error:
+        LOGGER.error(
+            "search_stage stage=neon status=query_error error_type=%s sqlstate=%s",
+            type(error).__name__,
+            error.sqlstate,
+        )
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "La requête Neon a échoué. Consultez le terminal "
+                "pour connaître le type d'erreur."
+            ),
+        ) from None
+    neon_ms = (perf_counter() - neon_started) * 1_000
+    LOGGER.info(
+        "search_stage stage=neon status=completed elapsed_ms=%.1f candidates=%d",
+        neon_ms,
+        len(candidates),
+    )
 
+    session_started = perf_counter()
     try:
-        authenticated = get_session_user(session_token) is not None
+        authenticated = (
+            await asyncio.to_thread(get_session_user, session_token)
+        ) is not None
     except (DatabaseNotConfiguredError, psycopg.Error):
         authenticated = False
+    session_ms = (perf_counter() - session_started) * 1_000
+    LOGGER.info(
+        "search_stage stage=session status=completed elapsed_ms=%.1f",
+        session_ms,
+    )
 
-    settings = get_settings()
+    local_started = perf_counter()
     local_limit = max(payload.limit, settings.llm_candidate_limit)
-    ranked_local = rank_candidates(criteria, candidates, limit=local_limit)
-    semantic = apply_semantic_filter(
+    ranked_local = await asyncio.to_thread(
+        rank_candidates,
+        criteria,
+        candidates,
+        limit=local_limit,
+    )
+    local_ms = (perf_counter() - local_started) * 1_000
+    LOGGER.info(
+        (
+            "search_stage stage=local_rank status=completed "
+            "elapsed_ms=%.1f results=%d"
+        ),
+        local_ms,
+        len(ranked_local),
+    )
+
+    LOGGER.info(
+        "search_stage stage=semantic status=started candidates=%d",
+        len(ranked_local),
+    )
+    semantic_started = perf_counter()
+    semantic = await asyncio.to_thread(
+        apply_semantic_filter,
         criteria,
         ranked_local,
         settings=settings,
     )
+    semantic_ms = (perf_counter() - semantic_started) * 1_000
+    LOGGER.info(
+        (
+            "search_stage stage=semantic status=completed elapsed_ms=%.1f "
+            "llm_used=%s fallback=%s"
+        ),
+        semantic_ms,
+        semantic.used,
+        semantic.fallback,
+    )
+
     ranked = semantic.results[: payload.limit]
+    total_ms = (perf_counter() - total_started) * 1_000
+    LOGGER.info(
+        (
+            "search_timing total_ms=%.1f criteria_ms=%.1f neon_ms=%.1f "
+            "session_ms=%.1f local_rank_ms=%.1f openai_ms=%.1f "
+            "candidates=%d local_results=%d final_results=%d "
+            "llm_used=%s fallback=%s"
+        ),
+        total_ms,
+        criteria_ms,
+        neon_ms,
+        session_ms,
+        local_ms,
+        semantic_ms,
+        len(candidates),
+        len(ranked_local),
+        len(ranked),
+        semantic.used,
+        semantic.fallback,
+    )
+
     return SearchResponse(
         criteres=_criteria_response(criteria),
         candidats_evalues=len(candidates),

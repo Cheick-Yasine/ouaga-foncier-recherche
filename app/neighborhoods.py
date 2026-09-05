@@ -28,13 +28,22 @@ CANONICAL_NEIGHBORHOODS = (
     "Cité Abbé Simard", "Cité Bonheur", "Cité Azimo", "Cité Railtel",
     "Cité Bolesse", "Zone Commerciale", "Centre Ville", "Paglayiri",
     "Bilibambili", "Mogho Naaba", "Kuinima", "Bindougousso", "Zéca", "Baskuy",
-    "Pabré", "Koubri", "Komsilga", "Ouagadougou", "Karpala",
+    "Pabré", "Koubri", "Komsilga", "Ouagadougou", "Karpala", "Lougsi",
 )
 
 PERIPHERAL_COMMUNES = frozenset({"Loumbila", "Saaba", "Pabré", "Koubri", "Komsilga"})
 ADMINISTRATIVE_AREAS = frozenset({"Baskuy", "Nongr-Massom"})
 BROAD_AREAS = frozenset({"Centre Ville", "Zone Industrielle", "Zone Commerciale"})
 CITY_LEVEL_AREAS = frozenset({"Ouagadougou"})
+
+# Localités explicitement hors du périmètre validé Ouagadougou + périphérie.
+# Leur présence comme lieu principal invalide les faux quartiers homonymes
+# rencontrés dans des noms de personnes ou de structures (ex. Norbert Zongo).
+OUT_OF_SCOPE_LOCALITIES = (
+    "Bobo-Dioulasso", "Koudougou", "Sapouy", "Tenkodogo", "Ouahigouya",
+    "Fada N'Gourma", "Koupéla", "Manga", "Réo", "Kindi", "Kokologho",
+    "Saponé", "Ziniaré", "Dédougou", "Banfora", "Kaya", "Dori",
+)
 
 _NON_ALPHANUMERIC = re.compile(r"[^a-z0-9]+")
 _SPACE_BETWEEN_TEXT_AND_NUMBER = re.compile(r"(?<=[a-z])(?=\d)|(?<=\d)(?=[a-z])")
@@ -166,6 +175,74 @@ def detect_neighborhoods(text: str | None) -> tuple[str, ...]:
     return tuple(ordered)
 
 
+def detect_explicit_neighborhood(text: str | None) -> str | None:
+    """Détecte le lieu principal à partir de formulations géographiques fortes."""
+
+    raw_text = str(text or "")
+    searchable = neighborhood_key(raw_text)
+    if not searchable:
+        return None
+
+    aliases = sorted(
+        KNOWN_NEIGHBORHOOD_ALIASES.items(),
+        key=lambda item: len(item[0]),
+        reverse=True,
+    )
+
+    # Un hashtag de lieu placé dans une annonce est une indication très forte.
+    raw_without_accents = neighborhood_key(raw_text.replace("#", " hashtag "))
+    priority_prefixes = (
+        (raw_without_accents, r"\bhashtag\s+"),
+        (searchable, r"(?:localisation|quartier|secteur|village|site(?:\s+de)?)\s*(?::|-)?\s*"),
+        (searchable, r"(?:situee?|localisee?|se trouve|est)\s+a\s+"),
+        (searchable, r"\ba\s+"),
+    )
+    for haystack, prefix in priority_prefixes:
+        matches: list[tuple[int, str]] = []
+        for alias, canonical in aliases:
+            pattern = re.compile(
+                rf"{prefix}{re.escape(alias)}(?![a-z0-9])"
+            )
+            matches.extend(
+                (match.start(), canonical)
+                for match in pattern.finditer(haystack)
+            )
+        if matches:
+            return min(matches, key=lambda item: item[0])[1]
+    return None
+
+
+def is_only_directional_reference(text: str | None, canonical: str) -> bool:
+    """Vrai lorsque le lieu sert uniquement de repère et non de destination."""
+
+    searchable = neighborhood_key(text)
+    alias = neighborhood_key(canonical)
+    directional = re.compile(
+        rf"(?:apres|avant|route\s+de|route\s+du|vers|non\s+loin\s+de"
+        rf"|proche\s+de|a\s+\d+\s*(?:m|km)\s+de)\s+"
+        rf"{re.escape(alias)}(?![a-z0-9])"
+    )
+    occurrences = list(
+        re.finditer(rf"(?<![a-z0-9]){re.escape(alias)}(?![a-z0-9])", searchable)
+    )
+    directional_occurrences = list(directional.finditer(searchable))
+    return bool(occurrences) and len(directional_occurrences) >= len(occurrences)
+
+
+def detect_out_of_scope_locality(text: str | None) -> str | None:
+    """Repère une localisation principale connue hors du périmètre autorisé."""
+
+    searchable = neighborhood_key(text)
+    for locality in OUT_OF_SCOPE_LOCALITIES:
+        key = neighborhood_key(locality)
+        if re.search(
+            rf"(?<![a-z0-9]){re.escape(key)}(?![a-z0-9])",
+            searchable,
+        ):
+            return locality
+    return None
+
+
 def resolve_neighborhood(
     text: str | None,
     fallback: str | None,
@@ -174,11 +251,25 @@ def resolve_neighborhood(
 
     candidates = detect_neighborhoods(text)
     fallback_canonical = suggest_canonical_neighborhood(fallback)
+    explicit = detect_explicit_neighborhood(text)
+    outside = detect_out_of_scope_locality(text)
 
-    if len(candidates) == 1:
+    if outside:
+        canonical = None
+        source = "hors_perimetre"
+    elif explicit:
+        canonical = explicit
+        source = "texte_nettoye"
+    elif (
+        len(candidates) == 1
+        and not is_only_directional_reference(text, candidates[0])
+    ):
         canonical = candidates[0]
         source = "texte_nettoye"
-    elif fallback_canonical:
+    elif (
+        fallback_canonical
+        and not is_only_directional_reference(text, fallback_canonical)
+    ):
         canonical = fallback_canonical
         source = "quartier_zone"
     else:

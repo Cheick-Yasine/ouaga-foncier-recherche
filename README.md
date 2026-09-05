@@ -8,7 +8,7 @@ L'utilisateur décrit le terrain, la parcelle ou la maison qu'il recherche. La p
 
 ## Règles essentielles
 
-- conserver les annonces quelle que soit leur date et afficher leur date lorsqu’elle existe ;
+- filtrer les annonces sur 7 jours, 1 mois ou 3 mois, avec 1 mois par défaut, et afficher leur ancienneté ;
 - séparer les contraintes obligatoires des préférences ;
 - ne jamais dépasser un budget exprimé comme maximum ;
 - ne jamais inventer un prix, une superficie ou un document absent ;

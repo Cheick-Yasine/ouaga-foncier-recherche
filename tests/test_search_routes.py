@@ -31,6 +31,25 @@ def test_interpret_search_description() -> None:
     assert payload["contraintes_obligatoires"] == ["prix", "quartier"]
 
 
+def test_interpret_uses_one_month_by_default() -> None:
+    response = client.post(
+        "/search/interpret",
+        json={"description": "terrain à Saaba"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["anciennete_maximale_jours"] == 30
+
+
+def test_interpret_rejects_unsupported_period() -> None:
+    response = client.post(
+        "/search/interpret",
+        json={"description": "terrain à Saaba", "max_age_days": 14},
+    )
+
+    assert response.status_code == 422
+
+
 def test_interpret_rejects_too_short_description() -> None:
     response = client.post(
         "/search/interpret",
@@ -98,6 +117,7 @@ def test_search_returns_ranked_neon_candidates(monkeypatch) -> None:
     assert payload["nombre_resultats"] == 2
     assert payload["resultats"][0]["id"] == "post-1"
     assert payload["resultats"][0]["date_publication"] == "Il y a une heure"
+    assert payload["resultats"][0]["prix_m2_fcfa"] == 16_666.67
     assert payload["resultats"][0]["score"] > payload["resultats"][1]["score"]
 
 
@@ -115,6 +135,39 @@ def test_search_reports_missing_database(monkeypatch) -> None:
 
     assert response.status_code == 503
     assert response.json()["detail"] == "DATABASE_URL absente"
+
+
+def test_search_distinguishes_neon_connection_error(monkeypatch) -> None:
+    import psycopg
+
+    def fail(_max_age_days: int):
+        raise psycopg.OperationalError("connection failed")
+
+    monkeypatch.setattr("app.search_routes.load_recent_candidates", fail)
+    response = client.post(
+        "/search",
+        json={"description": "terrain à Saaba"},
+    )
+
+    assert response.status_code == 503
+    assert "connexion à Neon" in response.json()["detail"]
+    assert "/health/database" in response.json()["detail"]
+
+
+def test_search_distinguishes_neon_query_timeout(monkeypatch) -> None:
+    import psycopg
+
+    def fail(_max_age_days: int):
+        raise psycopg.errors.QueryCanceled("statement timeout")
+
+    monkeypatch.setattr("app.search_routes.load_recent_candidates", fail)
+    response = client.post(
+        "/search",
+        json={"description": "terrain à Saaba"},
+    )
+
+    assert response.status_code == 503
+    assert "sélection des annonces est trop lente" in response.json()["detail"]
 
 
 def test_contact_is_masked_for_visitor(monkeypatch) -> None:

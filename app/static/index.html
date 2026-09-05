@@ -3,135 +3,159 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Recherche d'annonces immobilières récentes à Ouagadougou">
-  <title>Ouaga Foncier</title>
-  <link rel="stylesheet" href="/static/styles.css">
-  <script src="/static/app.js" defer></script>
+  <meta name="description" content="Recherche et comparaison d’annonces foncières à Ouagadougou et dans sa périphérie.">
+  <title>Foncier Ouaga | Recherche foncière assistée</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/styles.css?v=20260904-10">
+  <script src="/static/app.js?v=20260904-10" defer></script>
 </head>
 <body>
   <header class="site-header">
-    <a class="brand" href="/" aria-label="Ouaga Foncier, accueil">
-      <span class="brand-mark" aria-hidden="true">OF</span>
-      <span>Ouaga Foncier</span>
+    <a class="brand" href="/" aria-label="Foncier Ouaga, accueil">
+      <span class="brand-symbol" aria-hidden="true">OF</span>
+      <span class="brand-copy">
+        <strong>Foncier Ouaga</strong>
+        <small>Recherche foncière assistée</small>
+      </span>
     </a>
-    <div class="header-actions">
-      <p class="header-note">Toutes les annonces disponibles</p>
-      <button id="account-button" class="account-button" type="button">Se connecter</button>
-    </div>
+    <nav class="main-nav" aria-label="Navigation principale">
+      <button class="nav-link is-active" type="button" data-view="search">Recherche</button>
+      <button class="nav-link member-only" type="button" data-view="saved" hidden>Annonces enregistrées</button>
+      <button class="nav-link member-only" type="button" data-view="history" hidden>Historique</button>
+      <button class="nav-link member-only" type="button" data-view="alerts" hidden>Surveillances</button>
+    </nav>
+    <button id="account-button" class="account-button" type="button">Se connecter</button>
   </header>
 
   <main>
-    <section class="hero">
-      <div class="hero-copy">
-        <p class="eyebrow">Recherche immobilière à Ouagadougou</p>
-        <h1>Décrivez le bien que vous recherchez.</h1>
-        <p class="hero-text">
-          Le moteur analyse votre demande, compare les annonces disponibles et
-          explique clairement pourquoi chaque résultat vous est proposé.
-        </p>
-      </div>
-
-      <form id="search-form" class="search-panel">
-        <label for="description">Votre recherche</label>
-        <textarea
-          id="description"
-          name="description"
-          rows="5"
-          minlength="3"
-          maxlength="2000"
-          required
-          placeholder="Exemple : Je cherche une parcelle à Saaba de 300 m² avec un budget maximum de 5 millions et un PUH"
-        ></textarea>
-
-        <div class="form-line">
-          <div>
-            <label for="limit">Nombre de résultats</label>
-            <select id="limit" name="limit">
-              <option value="10">10 résultats</option>
-              <option value="20" selected>20 résultats</option>
-              <option value="50">50 résultats</option>
-            </select>
+    <section id="search-view" class="view">
+      <section class="hero">
+        <div class="hero-inner">
+          <div class="hero-copy">
+            <h1>Trouvez les annonces qui vous correspondent.</h1>
+            <p class="hero-lead">Décrivez le bien recherché en une phrase.</p>
           </div>
-          <button id="submit-button" type="submit">Rechercher les annonces</button>
+
+          <div class="search-panel">
+            <div class="panel-heading">
+              <p class="panel-label">Votre recherche</p>
+            </div>
+            <form id="search-form" class="search-box">
+              <label class="sr-only" for="description">Décrivez le bien recherché</label>
+              <textarea id="description" name="description" rows="5" minlength="3" maxlength="2000" required placeholder="Je cherche une parcelle de 300 m² à Saaba, avec un budget de 6 millions FCFA et une attestation de possession."></textarea>
+              <div class="search-actions">
+                <label class="period-control" for="max-age-days">
+                  <span>Période des annonces</span>
+                  <select id="max-age-days" name="max_age_days">
+                    <option value="7">7 jours</option>
+                    <option value="30" selected>1 mois</option>
+                    <option value="90">3 mois</option>
+                  </select>
+                </label>
+                <button id="submit-button" type="submit">Rechercher</button>
+              </div>
+            </form>
+          </div>
         </div>
+      </section>
 
-        <details class="requirements">
-          <summary>Définir des critères obligatoires</summary>
-          <p>
-            Une annonce sera exclue si une information cochée est absente ou
-            différente.
-          </p>
-          <div class="checkbox-grid">
-            <label><input type="checkbox" value="quartier"> Quartier</label>
-            <label><input type="checkbox" value="prix"> Prix</label>
-            <label><input type="checkbox" value="superficie"> Superficie</label>
-            <label><input type="checkbox" value="type_bien"> Type de bien</label>
-            <label><input type="checkbox" value="statut_document"> Document</label>
+      <section id="feedback" class="feedback" aria-live="polite"></section>
+
+      <section id="search-output" class="search-output" hidden>
+        <div class="results-layout">
+          <div class="results-main">
+            <div class="results-intro">
+              <div>
+                <h2 id="selection-title">Recommandation personnalisée</h2>
+              </div>
+              <button id="create-alert" class="secondary-button" type="button">Créer une surveillance</button>
+            </div>
+
+            <section id="winner" class="winner"></section>
+
+            <div class="comparison-shell">
+              <div class="table-scroll">
+                <table class="comparison-table">
+                  <thead>
+                    <tr>
+                      <th>Rang</th>
+                      <th>Localisation</th>
+                      <th>Superficie</th>
+                      <th>Prix</th>
+                      <th>Prix / m²</th>
+                      <th>Document</th>
+                      <th>Contact</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="results-table"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <div id="result-cards" class="result-cards"></div>
+            <aside class="safety-note">
+              <strong>À vérifier avant tout paiement</strong>
+              <p>Identité du vendeur, parcelle et documents fonciers.</p>
+            </aside>
           </div>
-        </details>
-      </form>
+        </div>
+      </section>
     </section>
 
-    <section id="feedback" class="feedback" aria-live="polite"></section>
-
-    <section id="search-output" class="search-output" hidden>
-      <div id="criteria-panel" class="criteria-panel"></div>
-      <div class="results-heading">
-        <div>
-          <p class="eyebrow">Résultats classés</p>
-          <h2>Annonces correspondantes</h2>
-          <p id="result-count" class="muted"></p>
-        </div>
+    <section id="saved-view" class="view account-view" hidden>
+      <div class="page-heading">
+        <h1>Annonces enregistrées</h1>
       </div>
-      <div id="results" class="results-grid"></div>
+      <div id="saved-list" class="dashboard-list"></div>
     </section>
 
-    <section id="empty-state" class="empty-state">
-      <p class="eyebrow">Comment ça fonctionne</p>
-      <h2>Une sélection précise et transparente</h2>
-      <div class="steps">
-        <article>
-          <span>01</span>
-          <h3>Compréhension</h3>
-          <p>Le quartier, le budget, la superficie et le document sont extraits de votre description.</p>
-        </article>
-        <article>
-          <span>02</span>
-          <h3>Comparaison</h3>
-          <p>Chaque annonce admissible est comparée au texte et aux critères demandés.</p>
-        </article>
-        <article>
-          <span>03</span>
-          <h3>Explication</h3>
-          <p>Le score et les informations manquantes sont affichés sans inventer de données.</p>
-        </article>
+    <section id="history-view" class="view account-view" hidden>
+      <div class="page-heading">
+        <h1>Historique</h1>
       </div>
+      <div id="history-list" class="dashboard-list"></div>
+    </section>
+
+    <section id="alerts-view" class="view account-view" hidden>
+      <div class="page-heading">
+        <h1>Surveillances</h1>
+      </div>
+      <div id="alerts-list" class="dashboard-list"></div>
     </section>
   </main>
 
-  <dialog id="auth-dialog" class="auth-dialog">
+  <dialog id="auth-dialog" class="modal">
     <form id="auth-form">
-      <div class="dialog-heading">
-        <div>
-          <p class="eyebrow">Espace personnel</p>
-          <h2 id="auth-title">Se connecter</h2>
-        </div>
-        <button id="close-auth" class="close-button" type="button" aria-label="Fermer">×</button>
-      </div>
-      <p id="auth-description" class="muted">Connectez-vous pour afficher les contacts complets.</p>
+      <button id="close-auth" class="modal-close" type="button" aria-label="Fermer">×</button>
+      <h2 id="auth-title">Se connecter</h2>
+      <p id="auth-description" class="subtle">Connectez-vous pour enregistrer vos annonces et vos recherches.</p>
       <label for="auth-email">Adresse e-mail</label>
       <input id="auth-email" name="email" type="email" autocomplete="email" required>
       <label for="auth-password">Mot de passe</label>
       <input id="auth-password" name="password" type="password" minlength="10" maxlength="128" autocomplete="current-password" required>
       <p id="auth-feedback" class="auth-feedback" aria-live="polite"></p>
-      <button id="auth-submit" type="submit">Se connecter</button>
+      <button id="auth-submit" class="primary-wide" type="submit">Se connecter</button>
       <button id="auth-switch" class="text-button" type="button">Créer un compte</button>
     </form>
   </dialog>
 
+  <dialog id="alert-dialog" class="modal">
+    <form id="alert-form">
+      <button id="close-alert" class="modal-close" type="button" aria-label="Fermer">×</button>
+      <h2>Suivre cette recherche</h2>
+      <label for="alert-name">Nom de la surveillance</label>
+      <input id="alert-name" maxlength="80" required placeholder="Parcelles à Saaba">
+      <label class="check-line"><input id="alert-daily" type="checkbox" checked> Vérification quotidienne</label>
+      <button class="primary-wide" type="submit">Enregistrer</button>
+    </form>
+  </dialog>
+
   <footer>
-    <p>Ouaga Foncier Recherche</p>
-    <a href="/docs">Documentation de l’API</a>
+    <strong>Foncier Ouaga</strong>
+    <p>Données issues d’annonces Facebook à Ouagadougou et dans sa périphérie.</p>
   </footer>
 </body>
 </html>

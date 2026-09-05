@@ -6,6 +6,7 @@ from app.neighborhoods import (
     is_in_geographic_scope,
     neighborhood_key,
     neighborhood_metadata,
+    resolve_neighborhood,
     suggest_canonical_neighborhood,
 )
 from scripts.audit_neighborhoods import build_neighborhood_report
@@ -76,3 +77,53 @@ def test_report_is_read_only_and_counts_missing_rows() -> None:
     assert report["known_alias_rows"] == 7
     assert report["database_modified"] is False
     assert report["read_only"] is True
+
+
+def test_sapouy_is_not_confused_with_norbert_zongo() -> None:
+    resolution = resolve_neighborhood(
+        "13 ha avec APFR au goudron Sapouy à côté de ferme Norbert Zongo",
+        "Zongo",
+    )
+
+    assert resolution.canonical is None
+    assert resolution.in_scope is False
+    assert resolution.source == "hors_perimetre"
+
+
+def test_actual_kamboinsin_location_precedes_route_to_yagma() -> None:
+    resolution = resolve_neighborhood(
+        "Parcelle à vendre au quartier Kamboinsin sur la route de Yagma",
+        "Yagma",
+    )
+
+    assert resolution.canonical == "Kamboinsin"
+    assert resolution.source == "texte_nettoye"
+
+
+def test_hashtag_location_precedes_after_directional_landmark() -> None:
+    resolution = resolve_neighborhood(
+        "#Lougsi Après Boassa facilement accessible par le goudron",
+        "Boassa",
+    )
+
+    assert resolution.canonical == "Lougsi"
+    assert resolution.in_scope is True
+
+
+def test_directional_landmark_is_not_used_as_location() -> None:
+    resolution = resolve_neighborhood(
+        "Parcelle disponible après Boassa facilement accessible",
+        "Boassa",
+    )
+
+    assert resolution.canonical is None
+    assert resolution.in_scope is False
+
+
+def test_explicit_location_precedes_route_landmark_generically() -> None:
+    resolution = resolve_neighborhood(
+        "Terrain situé à Saaba sur la route de Koubri",
+        "Koubri",
+    )
+
+    assert resolution.canonical == "Saaba"

@@ -30,10 +30,16 @@ def test_search_never_returns_contact(monkeypatch) -> None:
         url="https://facebook.com/posts/1",
         contact="70 12 34 56",
     )
+    periods = []
+
+    def load_candidates(max_age_days):
+        periods.append(max_age_days)
+        return [candidate]
+
     monkeypatch.setattr(
         mcp_server,
         "load_recent_candidates",
-        lambda _max_age: [candidate],
+        load_candidates,
     )
 
     def keep_local(_criteria, ranked, *, settings):
@@ -47,7 +53,10 @@ def test_search_never_returns_contact(monkeypatch) -> None:
     rendered = str(response)
 
     assert response["nombre_resultats"] == 1
+    assert periods == [30]
+    assert response["criteres"]["anciennete_maximale_jours"] == 30
     assert response["results"][0]["id"] != "post-1"
+    assert response["results"][0]["prix_m2_fcfa"] == 16_666.67
     assert response["results"][0]["url"].startswith("https://ouaga-foncier-mcp.onrender.com/?annonce=")
     assert "facebook.com" not in response["results"][0]["url"]
     assert "contact" not in response["results"][0]
@@ -80,6 +89,15 @@ def test_fetch_excludes_source_identity_link_and_contact(monkeypatch) -> None:
     assert "facebook.com" not in rendered
     assert "contact" not in response
     assert "76 00 00 00" not in rendered
+
+def test_unsupported_period_is_rejected() -> None:
+    response = mcp_server.rechercher_annonces(
+        "Terrain à Saaba",
+        anciennete_jours=14,
+    )
+
+    assert response["erreur"] == "La période doit être de 7, 30 ou 90 jours."
+
 
 def test_unknown_required_criterion_is_rejected() -> None:
     response = mcp_server.rechercher_annonces(

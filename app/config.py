@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     max_ad_age_days: int | None = Field(default=None, ge=1, le=365)
     openai_api_key: SecretStr | None = None
     llm_model: str = "gpt-4o-mini"
-    llm_candidate_limit: int = Field(default=30, ge=5, le=50)
+    llm_candidate_limit: int = Field(default=15, ge=10, le=30)
     llm_relevance_threshold: int = Field(default=55, ge=0, le=100)
 
     model_config = SettingsConfigDict(
