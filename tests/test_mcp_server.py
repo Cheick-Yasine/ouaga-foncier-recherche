@@ -150,3 +150,24 @@ def test_search_can_skip_internal_llm_for_conversational_assistant(
     assert response["nombre_resultats"] == 1
     assert response["filtre_semantique_utilise"] is False
     assert response["repli_classement_local"] is False
+
+
+def test_evaluation_returns_evidence_and_preserves_private_contacts(monkeypatch):
+    candidates=[SearchCandidate(identifier=str(i),text=f'Offre {i} à Saaba, contact 70 12 34 56',property_type='parcelle',neighborhood='Saaba',price_fcfa=price,area_m2=300,age_days=1) for i,price in enumerate([3_000_000,4_000_000,5_000_000])]
+    monkeypatch.setattr(mcp_server,'load_recent_candidates',lambda _:candidates)
+    result=mcp_server.evaluer_annonce('Parcelle à Saaba 300 m² à 12 000 000 FCFA. APFR déposée. Contact 70 12 34 56',anciennete_jours=30)
+    assert result['analyse']['bien']['prix_fcfa']==12_000_000
+    assert result['analyse']['qualite']['document_etat']=='en_cours'
+    assert '70 12 34 56' not in str(result)
+    assert result['nombre_resultats']==3
+    assert 'qualite' in result['results'][0]
+
+
+def test_compare_reloads_exact_public_references_in_requested_order(monkeypatch):
+    candidates=[SearchCandidate(identifier=str(i),text='Parcelle',property_type='parcelle',price_fcfa=i*1_000_000,area_m2=300) for i in range(1,4)]
+    monkeypatch.setattr(mcp_server,'load_recent_candidates',lambda _:candidates)
+    references=[public_announcement_id('3'),public_announcement_id('1')]
+    result=mcp_server.comparer_annonces(references)
+    assert [r['id'] for r in result['results']]==references
+    assert result['mode']=='comparaison'
+    assert result['results'][0]['prix_fcfa']==3_000_000

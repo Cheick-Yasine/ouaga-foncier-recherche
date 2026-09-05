@@ -157,3 +157,15 @@ def test_sanitizer_limits_default_announcement_length() -> None:
     cleaned = sanitize_external_text("a" * 1_200)
 
     assert len(cleaned) == 900
+
+
+
+def test_sanitization_keeps_explicit_amounts_and_masks_phones():
+    from app.semantic_filter import sanitize_external_text
+    text='Budget maximum 12 000 000 FCFA. Contact 70 12 34 56, tél. 70123456.'
+    safe=sanitize_external_text(text)
+    assert '12 000 000 FCFA' in safe
+    assert '70 12 34 56' not in safe
+    assert '70123456' not in safe
+    assert sanitize_external_text('prix_fcfa: 12000000') == 'prix_fcfa: 12000000'
+    assert sanitize_external_text('id: a123456789abcdef') == 'id: a123456789abcdef'

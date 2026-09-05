@@ -161,3 +161,47 @@ async def test_conversation_sent_to_llm_is_anonymized() -> None:
     assert "test@example.com" not in rendered
     assert "[contact retire]" in rendered
     assert "[email retire]" in rendered
+
+
+@pytest.mark.anyio
+async def test_multiple_calls_in_one_response_execute_only_one_search():
+    first=tool_response({'description':'Bonne affaire parcelle à Saaba','criteres_obligatoires':[]})
+    second=tool_response({'description':'Autre recherche','criteres_obligatoires':[]})
+    second.output[0].call_id='call-2'
+    first.output.extend(second.output)
+    client=FakeClient([first,text_response('Voici les offres retenues.')])
+    calls=[]
+    async def execute(name,arguments):
+        calls.append((name,arguments))
+        return {'criteres':{'quartier':'Saaba'},'results':[]}
+    outcome=await run_assistant('Une bonne affaire à Saaba',[],max_age_days=30,client=client,tool_executor=execute,settings=Settings(openai_api_key='test'))
+    assert len(calls)==1
+    assert outcome.criteria['quartier']=='Saaba'
+    assert client.responses.calls[1]['tool_choice']=='none'
+
+
+@pytest.mark.anyio
+async def test_copied_offer_uses_evaluation_and_returns_analysis():
+    response=tool_response({'publication':'Parcelle à Saaba 300 m² pour 8 millions','description':'Budget maximum 6 millions','criteres_obligatoires':[]})
+    response.output[0].name='evaluer_annonce'
+    client=FakeClient([response,text_response('Le prix est élevé par rapport aux annonces comparables.')])
+    calls=[]
+    async def execute(name,arguments):
+        calls.append((name,arguments))
+        return {'criteres':{'quartier':'Saaba','prix_fcfa':6_000_000},'analyse':{'verdict':'Prix élevé'},'results':[{'id':'public-1'}]}
+    outcome=await run_assistant('Est-ce une bonne affaire ? Parcelle à Saaba 300 m² pour 8 millions',[],max_age_days=7,client=client,tool_executor=execute,settings=Settings(openai_api_key='test'))
+    assert calls[0][0]=='evaluer_annonce'
+    assert calls[0][1]['anciennete_jours']==7
+    assert outcome.analysis['verdict']=='Prix élevé'
+    assert outcome.criteria['prix_fcfa']==6_000_000
+    assert outcome.results[0]['id']=='public-1'
+
+
+@pytest.mark.anyio
+async def test_mcp_error_is_not_returned_as_successful_empty_search():
+    from app.assistant_service import MCPAssistantError
+    client=FakeClient([tool_response({'description':'Parcelle à Saaba','criteres_obligatoires':[]})])
+    async def execute(name,arguments):
+        return {'erreur':'Base temporairement indisponible'}
+    with pytest.raises(MCPAssistantError,match='Base temporairement indisponible'):
+        await run_assistant('Parcelle à Saaba',[],max_age_days=30,client=client,tool_executor=execute,settings=Settings(openai_api_key='test'))

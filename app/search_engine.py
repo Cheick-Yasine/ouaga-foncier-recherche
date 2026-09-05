@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import math
 import re
-from collections import Counter
+from collections import Counter, defaultdict
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field, replace
+from app.offer_quality import land_family, offer_quality, document_evidence
 from app.neighborhoods import resolve_neighborhood
 from app.normalization import normalize_property_type
 from app.text_features import (
@@ -29,7 +30,7 @@ DEFAULT_WEIGHTS = {
 }
 
 _AREA_PATTERN = re.compile(
-    r"\b(\d+(?:[.,]\d+)?)\s*(?:m2|metres? carres?)\b"
+    r"\b((?:\d{1,3}(?: \d{3})+|\d+)(?:[.,]\d+)?)\s*(?:m2|metres? carres?)\b"
 )
 _HECTARE_PATTERN = re.compile(
     r"\b(\d+(?:[.,]\d+)?)\s*(?:hectares?|ha)\b"
@@ -55,6 +56,11 @@ _GOOD_DEAL_MARKERS = (
     "meilleur prix",
     "prix interessant",
     "prix avantageux",
+    "bonnes affaires",
+    "meilleure offre",
+    "meilleures offres",
+    "bon dill",
+    "bons deals",
 )
 
 
@@ -111,7 +117,11 @@ def _parse_number(value: str) -> float:
 def parse_search_description(description: str) -> SearchCriteria:
     """Interprète les critères explicites d'une description utilisateur."""
 
-    normalized = normalize_text(description)
+    # La normalisation textuelle efface les virgules : préserver 6,5 millions.
+    numeric_text = re.sub(r"\b\d{1,3}(?:[.,]\d{3})+\b", lambda m: re.sub(r"[.,]", "", m.group()), description)
+    numeric_text = re.sub(r"(?<=\d)[.,](?=\d)", "decimalmark", numeric_text)
+    numeric_text = re.sub(r"(?i)(millions?|milliards?)(?=\d)", r"\1 ", numeric_text)
+    normalized = normalize_text(numeric_text).replace("decimalmark", ".")
     area_match = _AREA_PATTERN.search(normalized)
     hectare_match = _HECTARE_PATTERN.search(normalized)
     if area_match:
@@ -140,9 +150,16 @@ def parse_search_description(description: str) -> SearchCriteria:
         )
         if unit and unit.startswith("million"):
             price *= 1_000_000
+            fraction = re.match(r"\s+(\d{3})\b(?!\s+\d)", text_without_area[price_match.end():])
+            if fraction:
+                price += int(fraction.group(1)) * 1_000
         elif unit and unit.startswith("milliard"):
             price *= 1_000_000_000
 
+    if price is not None and (not math.isfinite(price) or price <= 0):
+        price = None
+    if area is not None and (not math.isfinite(area) or area <= 0):
+        area = None
     property_type = normalize_property_type(None, description)
     resolution = resolve_neighborhood(description, None)
     neighborhood = resolution.canonical if resolution.in_scope else None
@@ -216,7 +233,7 @@ def price_per_square_metre(candidate: SearchCandidate) -> float | None:
 
     price = candidate.price_fcfa
     area = candidate.area_m2
-    if price is None or area is None or price <= 0 or area <= 0:
+    if price is None or area is None or not math.isfinite(price) or not math.isfinite(area) or price <= 0 or area <= 0:
         return None
     return round(price / area, 2)
 
@@ -313,6 +330,16 @@ def score_candidate(
                 if observed is None
                 else float(_normalized_equal(expected, observed))
             )
+    if criteria.document_status:
+        document, document_state, _, _ = document_evidence(candidate)
+        match = _normalized_equal(criteria.document_status, document)
+        if criteria.document_status == "attestation_non_precisee" and document:
+            match = document.startswith("attestation_") or document == "apfr"
+        components["statut_document"] = float(match and document_state in {"mentionne", "annonce_disponible"}) if document else None
+    if criteria.viability:
+        quality = offer_quality(candidate)
+        expected_utilities = {"eau"} if criteria.viability == "eau" else {"electricite"} if criteria.viability == "electricite" else {"eau", "electricite"}
+        components["viabilite"] = float(all(quality[name + "_etat"] in {"mentionne", "annonce_disponible"} for name in expected_utilities))
 
     if criteria.proximity:
         if candidate.proximity is None:
@@ -493,7 +520,7 @@ def _good_deal_priority(
     criteria: SearchCriteria,
     result: RankedResult,
 ) -> tuple[float, float, float, float]:
-    """Classe un bon prix par surface comparable, puis par prix au m²."""
+    """Classe les offres comparables selon prix et informations annoncées."""
 
     if not _is_good_deal_request(criteria):
         return (0.0, 0.0, 0.0, 0.0)
@@ -512,17 +539,16 @@ def _good_deal_priority(
         else float("inf")
     )
     if criteria.area_m2 is not None:
-        return (
-            round(area_match, 3),
-            unit_price_known,
-            unit_price_priority,
-            -price,
-        )
+        return (float(area_match >= 0.8), unit_price_known, result.score, unit_price_priority)
+    parcel_priority = float(
+        criteria.property_type is None and candidate.property_type == "parcelle"
+        and land_family(candidate) != "grand_terrain"
+    )
     return (
+        parcel_priority,
         unit_price_known,
+        result.score,
         unit_price_priority,
-        candidate.area_m2 or 0.0,
-        -price,
     )
 
 
@@ -548,52 +574,36 @@ def rank_candidates(
     ]
     good_deal = _is_good_deal_request(criteria)
     if good_deal and results:
-        known_unit_prices = [
-            unit_price
-            for result in results
-            if (unit_price := price_per_square_metre(result.candidate)) is not None
-        ]
-        lowest_unit_price = min(known_unit_prices, default=1.0)
+        groups: dict[tuple[str, str], list[SearchCandidate]] = defaultdict(list)
+        group_keys = {}
+        for item in results:
+            candidate = item.candidate
+            group_key = (normalize_text(candidate.neighborhood), land_family(candidate))
+            group_keys[candidate.identifier] = group_key
+            groups[group_key].append(candidate)
         adjusted: list[RankedResult] = []
         for result in results:
             candidate = result.candidate
             unit_price = price_per_square_metre(candidate)
-            unit_price_value = (
-                lowest_unit_price / unit_price
-                if unit_price is not None and unit_price > 0
-                else 0.0
-            )
-            if criteria.area_m2 is not None:
-                area_value = (
-                    numeric_similarity(criteria.area_m2, candidate.area_m2)
-                    if candidate.area_m2 is not None
-                    else 0.0
-                )
-                deal_score = 0.70 * area_value + 0.30 * unit_price_value
-                deal_explanation = "Bon deal : superficie demandée au prix le plus faible"
-            elif criteria.price_fcfa is not None and not criteria.price_is_maximum:
-                price_match = (
-                    numeric_similarity(criteria.price_fcfa, candidate.price_fcfa)
-                    if candidate.price_fcfa is not None
-                    else 0.0
-                )
-                deal_score = 0.70 * price_match + 0.30 * unit_price_value
-                deal_explanation = "Bon deal : grande superficie au prix demandé"
-            elif criteria.price_is_maximum:
-                deal_score = unit_price_value
-                deal_explanation = "Bon deal : grande superficie et prix faible"
-            else:
-                deal_score = unit_price_value
-                deal_explanation = None
+            peers = [
+                other for other in groups[group_keys[candidate.identifier]]
+                if other.identifier != candidate.identifier
+                and (criteria.area_m2 is None or (other.area_m2 and candidate.area_m2
+                    and numeric_similarity(candidate.area_m2, other.area_m2) >= 0.5))
+                and price_per_square_metre(other) is not None
+            ]
+            peer_prices = [price_per_square_metre(other) for other in peers]
+            price_value = min([unit_price, *peer_prices]) / unit_price if unit_price else 0.0
+            quality = offer_quality(candidate)
+            indices = quality["indices"]
+            deal_score = 0.40 * price_value + 0.40 * indices["document"] + 0.12 * indices["viabilite"] + 0.08 * indices["proximite"]
+            useful = quality["atouts"][:3]
+            deal_explanation = " ; ".join(useful) if useful else "Informations limitées : documents et équipements à préciser"
             adjusted.append(
                 replace(
                     result,
-                    score=round(0.40 * result.score + 60 * deal_score, 2),
-                    explanations=(
-                        result.explanations + (deal_explanation,)
-                        if deal_explanation
-                        else result.explanations
-                    ),
+                    score=round(100 * deal_score, 2),
+                    explanations=result.explanations + (deal_explanation,),
                 )
             )
         results = adjusted
@@ -602,7 +612,7 @@ def rank_candidates(
         key=lambda result: (
             _descriptive_priority(criteria, result),
             _price_match_priority(criteria, result),
-            _requested_area_price_priority(criteria, result),
+            (0.0, 0.0) if good_deal else _requested_area_price_priority(criteria, result),
             _good_deal_priority(criteria, result),
             result.score,
             result.candidate.area_m2 or 0.0 if good_deal else result.coverage,

@@ -52,6 +52,7 @@ def announcement_detail(
             item
             for item in candidates
             if public_announcement_id(item.identifier) == reference
+            or item.identifier == reference  # anciens enregistrements, après connexion
         ),
         None,
     )

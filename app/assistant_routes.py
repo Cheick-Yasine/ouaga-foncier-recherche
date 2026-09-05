@@ -23,11 +23,11 @@ router = APIRouter(prefix="/assistant", tags=["Assistant"])
 
 class ConversationMessage(BaseModel):
     role: Literal["user", "assistant"]
-    content: str = Field(min_length=1, max_length=2_000)
+    content: str = Field(min_length=1, max_length=6_000)
 
 
 class AssistantRequest(BaseModel):
-    message: str = Field(min_length=2, max_length=2_000)
+    message: str = Field(min_length=2, max_length=6_000)
     history: list[ConversationMessage] = Field(default_factory=list, max_length=30)
     max_age_days: Literal[7, 30, 90] = 30
 
@@ -37,6 +37,10 @@ class AssistantResponse(BaseModel):
     results: list[dict[str, Any]]
     mcp_used: bool
     model: str
+    criteria: dict[str, Any] = Field(default_factory=dict)
+    analysis: dict[str, Any] | None = None
+    suggestions: list[dict[str, str]] = Field(default_factory=list)
+    mode: str = "recherche"
 
 
 @router.post("/message", response_model=AssistantResponse)
@@ -63,4 +67,8 @@ async def assistant_message(payload: AssistantRequest) -> AssistantResponse:
         results=outcome.results,
         mcp_used=outcome.mcp_used,
         model=outcome.model,
+        criteria=outcome.criteria,
+        analysis=outcome.analysis,
+        suggestions=outcome.suggestions,
+        mode=outcome.mode,
     )
