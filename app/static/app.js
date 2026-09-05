@@ -5,6 +5,8 @@ const fmt=new Intl.NumberFormat("fr-FR",{maximumFractionDigits:0});
 function el(tag,cls,value){const node=document.createElement(tag);if(cls)node.className=cls;if(value!==undefined)node.textContent=value;return node}
 function showValue(v,suffix=""){return v===null||v===undefined||v===""?"Non précisé":typeof v==="number"?fmt.format(v)+suffix:String(v)+suffix}
 function formatArea(value){if(value===null||value===undefined||value==="")return"Non précisé";const area=Number(value);if(!Number.isFinite(area))return String(value);if(area>=10000){const hectares=area/10000;const ha=new Intl.NumberFormat("fr-FR",{maximumFractionDigits:2}).format(hectares);return ha+" ha ("+fmt.format(area)+" m²)"}return fmt.format(area)+" m²"}
+function unitPrice(r){if(r.prix_m2_fcfa!==null&&r.prix_m2_fcfa!==undefined){const value=Number(r.prix_m2_fcfa);if(Number.isFinite(value)&&value>0)return value}const price=Number(r.prix_fcfa),area=Number(r.superficie_m2);return Number.isFinite(price)&&price>0&&Number.isFinite(area)&&area>0?price/area:null}
+function formatUnitPrice(r){const value=unitPrice(r);return value===null?"Prix/m² non calculable":fmt.format(value)+" FCFA/m²"}
 function safeUrl(raw){if(!raw)return null;try{const u=new URL(raw);return["http:","https:"].includes(u.protocol)?u.href:null}catch{return null}}
 function setFeedback(message="",state=""){feedback.textContent=message;feedback.className=state?"feedback is-"+state:"feedback"}
 function key(kind){return"foncier-ouaga:"+(currentUser?.id||"visitor")+":"+kind}
@@ -31,7 +33,7 @@ function relativeDate(r){
  return showValue(r.date_publication)
 }
 function documentLabel(value){const labels={attestation_possession:"Attestation de possession",attestation_attribution:"Attestation d’attribution",attestation_non_precisee:"Attestation, type non précisé",apfr:"APFR",puh:"PUH",titre_foncier:"Titre foncier",plusieurs_documents:"Plusieurs documents",non_precise:"Non précisé"};return labels[value]||showValue(value)}
-function facts(r){return[showValue(r.prix_fcfa," FCFA"),formatArea(r.superficie_m2),documentLabel(r.statut_document),relativeDate(r)].join(" · ")}
+function facts(r){return[showValue(r.prix_fcfa," FCFA"),formatUnitPrice(r),formatArea(r.superficie_m2),documentLabel(r.statut_document),relativeDate(r)].join(" · ")}
 function contactLabel(r){return r.contact||r.contact_masque||"Non disponible"}
 function appendContact(container,r){const url=safeUrl(r.lien_whatsapp),label=contactLabel(r),className=label==="Non disponible"?"contact-value contact-unavailable":"contact-value";if(url){const link=el("a","contact-link",label);link.href=url;link.target="_blank";link.rel="noopener noreferrer";container.append(link)}else container.append(el("span",className,label))}
 function requireLogin(message){if(currentUser)return true;$("#auth-description").textContent=message||"Connectez-vous pour utiliser cette fonction.";setAuthMode("login");authDialog.showModal();return false}
@@ -44,8 +46,8 @@ function renderTable(results){
  resultCards.replaceChildren();
  results.forEach((r,index)=>{
   const row=document.createElement("tr");
-  const entries=[index+1,r.quartier||"Non précisée",formatArea(r.superficie_m2),showValue(r.prix_fcfa," FCFA"),documentLabel(r.statut_document)];
-  entries.forEach((entry,i)=>{const td=document.createElement("td");if(i===0)td.append(el("span","rank-badge",entry));else{td.textContent=entry;if(i===3)td.className="money"}row.append(td)});
+  const entries=[index+1,r.quartier||"Non précisée",formatArea(r.superficie_m2),showValue(r.prix_fcfa," FCFA"),formatUnitPrice(r),documentLabel(r.statut_document)];
+  entries.forEach((entry,i)=>{const td=document.createElement("td");if(i===0)td.append(el("span","rank-badge",entry));else{td.textContent=entry;if(i===3||i===4)td.className="money"}row.append(td)});
   const contactCell=el("td","contact-cell");appendContact(contactCell,r);row.append(contactCell);
   const td=document.createElement("td"),tableActions=el("div","table-actions"),url=safeUrl(r.url);
   if(url){const a=el("a","table-action","Voir");a.href=url;a.target="_blank";a.rel="noopener noreferrer";tableActions.append(a)}

@@ -12,7 +12,11 @@ from mcp.server.transport_security import TransportSecuritySettings
 from app.config import get_settings
 from app.database import DatabaseNotConfiguredError
 from app.public_references import public_announcement_id
-from app.search_engine import parse_search_description, rank_candidates
+from app.search_engine import (
+    parse_search_description,
+    price_per_square_metre,
+    rank_candidates,
+)
 from app.search_repository import load_recent_candidates
 from app.semantic_filter import apply_semantic_filter, sanitize_external_text
 
@@ -74,6 +78,7 @@ def _public_result(result) -> dict[str, Any]:
         "type_bien": candidate.property_type,
         "quartier": candidate.neighborhood,
         "prix_fcfa": candidate.price_fcfa,
+        "prix_m2_fcfa": price_per_square_metre(candidate),
         "superficie_m2": candidate.area_m2,
         "document": candidate.document_status,
         "score": result.score,
@@ -186,6 +191,7 @@ def fetch(id: str) -> dict[str, Any]:
             "type_bien": candidate.property_type,
             "quartier": candidate.neighborhood,
             "prix_fcfa": candidate.price_fcfa,
+            "prix_m2_fcfa": price_per_square_metre(candidate),
             "superficie_m2": candidate.area_m2,
             "document": candidate.document_status,
         },

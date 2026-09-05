@@ -18,6 +18,8 @@ from app.search_engine import (
     _descriptive_priority,
     _good_deal_priority,
     _price_match_priority,
+    _requested_area_price_priority,
+    price_per_square_metre,
 )
 
 LOGGER = logging.getLogger(__name__)
@@ -86,6 +88,7 @@ def build_anonymized_payload(
                 "type_bien": result.candidate.property_type,
                 "quartier": result.candidate.neighborhood,
                 "prix_fcfa": result.candidate.price_fcfa,
+                "prix_m2_fcfa": price_per_square_metre(result.candidate),
                 "superficie_m2": result.candidate.area_m2,
                 "base_prix": result.candidate.pricing_note,
                 "proximite": result.candidate.proximity,
@@ -121,6 +124,11 @@ def _instructions() -> str:
         "Ne confonds jamais un prix total avec un prix par hectare ou par m². "
         "Quand base_prix est renseignée, utilise uniquement le coût et la surface "
         "recalculés du lot réellement achetable. "
+        "Quand l'utilisateur demande un bon prix, une bonne affaire ou un bon deal "
+        "dans un quartier donné, conserve d'abord le quartier et le type de bien "
+        "demandés, puis privilégie le prix_m2_fcfa le plus faible parmi les annonces "
+        "comparables. Une annonce moins chère au total n'est pas forcément une meilleure "
+        "affaire si sa superficie est beaucoup plus petite. "
         "Un montant introduit par le mot budget est un plafond strict. Un prix "
         "demandé sans le mot budget est une cible : favorise d'abord les annonces à ce "
         "prix ou au prix le plus proche. Si un bon deal est demandé à un prix cible, "
@@ -218,6 +226,7 @@ def apply_semantic_filter(
             key=lambda item: (
                 _descriptive_priority(criteria, item),
                 _price_match_priority(criteria, item),
+                _requested_area_price_priority(criteria, item),
                 _good_deal_priority(criteria, item),
                 item.score,
                 item.coverage,

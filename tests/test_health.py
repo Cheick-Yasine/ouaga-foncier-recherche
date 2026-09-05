@@ -20,6 +20,7 @@ def test_root_serves_search_interface() -> None:
     assert '<option value="30" selected>1 mois</option>' in response.text
     assert "Trouvez les annonces qui vous correspondent." in response.text
     assert "<th>Contact</th>" in response.text
+    assert "<th>Prix / m²</th>" in response.text
     assert "Critères compris" not in response.text
     assert "Comparer les annonces" not in response.text
     assert "Annonces publiées par des tiers." not in response.text
@@ -46,6 +47,7 @@ def test_static_assets_are_available() -> None:
     assert "max_age_days:Number(maxAgeInput.value)" in javascript.text
     assert "emptyState" not in javascript.text
     assert "function appendContact" in javascript.text
+    assert "function formatUnitPrice" in javascript.text
     assert "resultCount" not in javascript.text
     assert "criteriaSummary" not in javascript.text
 

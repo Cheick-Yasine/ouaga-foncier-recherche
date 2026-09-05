@@ -117,6 +117,7 @@ def test_search_returns_ranked_neon_candidates(monkeypatch) -> None:
     assert payload["nombre_resultats"] == 2
     assert payload["resultats"][0]["id"] == "post-1"
     assert payload["resultats"][0]["date_publication"] == "Il y a une heure"
+    assert payload["resultats"][0]["prix_m2_fcfa"] == 16_666.67
     assert payload["resultats"][0]["score"] > payload["resultats"][1]["score"]
 
 
