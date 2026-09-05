@@ -54,3 +54,31 @@ class OfferAnalysisTests(unittest.TestCase):
         analysis,_,_=analyze_offer('Parcelle à Saaba, superficie 300 m². Prix 15 000 FCFA/m².',[])
         self.assertEqual(analysis['bien']['prix_fcfa'],4_500_000)
         self.assertEqual(analysis['bien']['prix_m2_fcfa'],15_000)
+
+    def test_unknown_literal_neighborhood_is_not_replaced_by_city(self):
+        data=[peer(1,3_000_000,text='Parcelle à Roumtenga (Songdin)',neighborhood='Ouagadougou'),peer(2,2_000_000,neighborhood='Karpala')]
+        analysis,criteria,alternatives=analyze_offer('Parcelle à ROUMTENGA (Songdin), 300 m², prix 3 500 000 FCFA',data)
+        self.assertEqual(analysis['bien']['quartier'],'Roumtenga')
+        self.assertEqual(analysis['bien']['prix_fcfa'],3_500_000)
+        self.assertEqual(analysis['bien']['prix_m2_fcfa'],11_666.67)
+        self.assertEqual([r.candidate.identifier for r in alternatives],['1'])
+
+    def test_other_neighborhoods_are_not_silent_alternatives(self):
+        data=[peer(1,1_000_000,neighborhood='Karpala')]
+        _,_,alternatives=analyze_offer('Parcelle à Saaba 300 m² à 9 millions FCFA',data)
+        self.assertEqual(alternatives,[])
+
+    def test_city_only_is_not_enough_for_local_comparison(self):
+        data=[peer(1,1_000_000,neighborhood='Ouagadougou')]
+        analysis,_,alternatives=analyze_offer('Parcelle à Ouagadougou 300 m² à 9 millions FCFA',data)
+        self.assertEqual(analysis['nombre_comparables'],0)
+        self.assertEqual(alternatives,[])
+
+    def test_replayed_budget_preserves_all_digits(self):
+        _,criteria,_=analyze_offer('Parcelle à Saaba 300 m² à 9 millions FCFA',[],preferences='Budget maximum 6 millions')
+        self.assertEqual(parse_search_description(criteria.description).price_fcfa,6_000_000)
+
+    def test_common_price_formats_preserve_millions(self):
+        for amount in ['3 500 000', '3\u202f500\u202f000', '3.500.000', '3 millions 500']:
+            analysis,_,_=analyze_offer('Parcelle à Saaba 300 m² prix '+amount+' FCFA',[])
+            self.assertEqual(analysis['bien']['prix_fcfa'],3_500_000)

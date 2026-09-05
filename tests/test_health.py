@@ -31,6 +31,13 @@ def test_root_serves_conversational_interface() -> None:
             if self.in_th: self.columns.append(data)
     parser=Headers(); parser.feed(response.text)
     assert parser.columns == ["Rang","Localisation","Superficie","Prix","Prix / m²","Document","Contact","Actions"]
+    sidebar=response.text.split('<aside',1)[1].split('</aside>',1)[0]
+    assert 'id="saved-list"' not in sidebar
+    assert 'id="alerts-list"' not in sidebar
+    assert 'HAKIMO' in response.text
+    assert 'id="theme-mode"' in response.text
+    assert 'Votre recherche, en résumé' not in response.text
+    assert 'id="detail-dialog"' not in response.text
     assert 'minlength="4"' in response.text
     assert 'Adresse e-mail' not in response.text
 
@@ -45,6 +52,7 @@ def test_api_information() -> None:
 def test_static_assets_are_available() -> None:
     assert client.get("/static/styles.css").status_code == 200
     assert client.get("/static/app.js").status_code == 200
+    assert client.get("/static/hakilab-logo.png").status_code == 200
 
 
 def test_health() -> None:

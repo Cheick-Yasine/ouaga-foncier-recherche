@@ -224,17 +224,28 @@ def comparer_annonces(
     if not 2 <= len(references) <= 3:
         return {"erreur": "Choisissez deux ou trois annonces à comparer."}
     from app.search_engine import RankedResult
+    from app.offer_analysis import local_neighborhood
+    from app.offer_quality import land_family
+    from app.text_features import normalize_text
     try:
         candidates = load_recent_candidates(None)
     except (DatabaseNotConfiguredError, psycopg.Error):
         return {"erreur": "La base d'annonces est temporairement indisponible."}
+    candidates = [replace(c, neighborhood=local_neighborhood(c.text, c.neighborhood)) for c in candidates]
     wanted = list(dict.fromkeys(references))
     matches = {public_announcement_id(c.identifier): c for c in candidates if public_announcement_id(c.identifier) in wanted}
     criteria = replace(parse_search_description(description or "Comparaison des annonces sélectionnées"), max_age_days=anciennete_jours)
     results = [_public_result(RankedResult(matches[ref], 0.0, 0.0, {}, ("Annonce sélectionnée pour comparaison",))) for ref in wanted if ref in matches]
+    selected = list(matches.values())
+    same_neighborhood = len(selected) >= 2 and all(c.neighborhood for c in selected) and len({normalize_text(c.neighborhood) for c in selected}) == 1
+    comparable = same_neighborhood and len({land_family(c) for c in selected}) == 1
+    information = "Compare ces annonces dans l'ordre demandé et explique les différences utiles."
+    if not comparable:
+        information += " Les quartiers sont distincts, non précisés ou les types de terrains différents : aucun repère de prix local ne peut être déduit de cette sélection."
     return {"criteres": _criteria_payload(criteria), "results": results, "nombre_resultats": len(results),
+            "comparaison_locale_possible": comparable,
             "references_introuvables": [ref for ref in wanted if ref not in matches],
-            "mode": "comparaison", "information": "Compare ces annonces dans l'ordre demandé. Aucune nouvelle recommandation n'a été calculée ; explique les avantages et les manques de chacune."}
+            "mode": "comparaison", "information": information}
 
 
 def fetch(id: str) -> dict[str, Any]:

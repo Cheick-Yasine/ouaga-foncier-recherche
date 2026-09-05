@@ -80,3 +80,23 @@ class OfferQualityTests(unittest.TestCase):
     def test_future_water_does_not_get_availability_points(self):
         q=offer_quality(offer(text='Eau et électricité prévues, raccordement en cours'))
         self.assertEqual(q['indices']['viabilite'],0)
+
+    def test_completeness_beats_extremely_cheap_incomplete_offer(self):
+        for request in ['Bonne affaire parcelle à Saaba de 300 m² budget maximum 6 millions', 'Parcelle à Saaba de 300 m² budget maximum 6 millions']:
+            criteria=parse_search_description(request)
+            bare=offer('bare',text='Parcelle à Saaba, PUH mentionné.',price_fcfa=100_000)
+            complete=offer('complete',text='PUH mentionné. Eau et électricité disponibles. Proche du goudron et de l’école.',price_fcfa=6_000_000)
+            self.assertTrue(offer_quality(complete)['informations_completes'])
+            self.assertFalse(offer_quality(bare)['informations_completes'])
+            self.assertEqual(rank_candidates(criteria,[bare,complete])[0].candidate.identifier,'complete')
+
+    def test_road_and_school_are_useful_before_lower_price(self):
+        criteria=parse_search_description('Bonne affaire parcelle à Saaba de 300 m² budget maximum 6 millions')
+        base='PUH disponible. Eau et électricité disponibles.'
+        road=offer('road',text=base+' Proche du goudron.',price_fcfa=4_000_000)
+        richer=offer('richer',text=base+' Proche du goudron et de l’école.',price_fcfa=5_000_000)
+        self.assertEqual(rank_candidates(criteria,[road,richer])[0].candidate.identifier,'richer')
+
+    def test_promised_utilities_do_not_make_complete_offer(self):
+        q=offer_quality(offer(text='PUH disponible. Eau et électricité en cours. Proche du goudron.'))
+        self.assertFalse(q['informations_completes'])

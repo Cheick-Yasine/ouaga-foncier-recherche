@@ -74,6 +74,7 @@ def offer_quality(candidate: SearchCandidate) -> dict[str, Any]:
     electricity, elec_score = _utility(text, r'\b(?:electricite|sonabel|courant|reseau electrique)\b', candidate.viability in {'electricite','eau_et_electricite'})
     if re.search(r'\bnon viabilise\w*\b', text):
         water_score = elec_score = 0.0
+        water = electricity = 'non_precise'
     detected = extract_proximity_details(candidate.text)
     proximities = set((candidate.proximity or '').split('+')) | set(detected.split('+'))
     if re.search(r'\b(?:proche|proximite|non loin|a cote|face|apres)(?:\s+\w+){0,5}\s+marche\b', text):
@@ -102,7 +103,9 @@ def offer_quality(candidate: SearchCandidate) -> dict[str, Any]:
         warnings.append('Prix au m² non calculable')
     if re.search(r'\b(?:bas fond|bafon|inondable)\b', text): warnings.append('Bas-fond ou caractère inondable mentionné')
     if re.search(r'\bnon loti\w*\b', text): warnings.append('Terrain annoncé non loti')
+    complete = state in {'mentionne', 'annonce_disponible'} and water in {'mentionne', 'annonce_disponible'} and electricity in {'mentionne', 'annonce_disponible'} and bool(proximities)
     return {
+        'informations_completes': complete,
         'document': document, 'document_etat': state, 'document_libelle': doc_label,
         'eau_etat': water, 'electricite_etat': electricity,
         'proximites': sorted(proximities), 'atouts': strengths, 'vigilances': warnings,

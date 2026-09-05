@@ -1,48 +1,39 @@
-# Espace conversationnel
+# HAKIMO — HAKILAB IMMOBILIER
 
-L’accueil est désormais la conversation. Le moteur `/search` reste disponible pour les intégrations existantes. L’assistant appelle le serveur MCP configuré dans `MCP_SERVER_URL` ; il ne lit pas directement les contacts.
+HAKIMO est l’interface conversationnelle. Le moteur `/search` et les outils MCP restent disponibles. Le logo HAKILAB fourni est conservé dans `app/static/hakilab-logo.png`.
 
-## Parcours
+## Présentation
 
-- Décrire un besoin, préciser les critères au fil des messages ou coller une publication de 6 000 caractères maximum.
-- Obtenir une réponse argumentée, un récapitulatif des critères réellement utilisés et le tableau à huit colonnes : Rang, Localisation, Superficie, Prix, Prix / m², Document, Contact, Actions.
-- Comparer deux ou trois annonces déjà affichées à partir de leurs références publiques ; elles sont rechargées et gardent l’ordre demandé.
-- Consulter le texte complet et un seul contact après connexion. Les anciennes annonces enregistrées avec un identifiant interne restent consultables après authentification.
-- Retrouver les conversations, enregistrements et surveillances dans le volet latéral. Le bouton d’agrandissement étend ce volet à toute la page ; sur mobile le volet s’ouvre depuis le menu.
+- Une recherche affiche directement la recommandation puis le tableau existant : Rang, Localisation, Superficie, Prix, Prix / m², Document, Contact, Actions. Le texte du modèle ne recopie ni les annonces ni les critères.
+- Une publication copiée reçoit une explication en français avec prix, documents, viabilité et proximités, puis les alternatives du même quartier. Le gras et les puces sont rendus comme des éléments DOM ; aucun HTML du modèle n’est exécuté. L’ancien encadré technique d’analyse est supprimé.
+- Le volet latéral contient seulement l’historique et peut s’étendre à toute la page. Les enregistrements et surveillances s’ouvrent depuis les boutons du bandeau supérieur.
+- Le menu Apparence permet les modes clair, sombre ou système et quatre couleurs. Ce choix reste dans le navigateur.
+- Après connexion, les contacts du tableau se chargent automatiquement en une seule requête `POST /annonces/selection`. Le lien Voir redirige vers la publication Facebook d’origine via `GET /annonces/{reference}/source`, sans fenêtre de détail intermédiaire.
 
-Les conversations et enregistrements restent dans le navigateur, sous une clé distincte pour chaque compte. Il n’y a pas de synchronisation entre appareils. Les nouveaux enregistrements ne persistent pas le contact révélé ni le lien WhatsApp. Les données anciennes sont conservées. Les surveillances se relancent à la demande par le bouton « Vérifier » ; le compteur compare les dix résultats renvoyés aux annonces déjà vues. Aucun envoi automatique de notification n’est annoncé ni implémenté dans cette version.
+Les conversations, enregistrements et surveillances restent dans ce navigateur, avec une clé distincte par compte. Les contacts chargés ne sont pas persistés avec les résultats ni envoyés au modèle. Les anciens identifiants d’enregistrements restent utilisables après connexion. Les surveillances sont manuelles : Vérifier relance la recherche. Aucun compteur de nouvelles annonces ni notification automatique n’est affiché.
 
-## Classement des bonnes affaires
+## Recommandations
 
-Les critères explicites de localisation et de type restent prioritaires. Le budget maximum est un plafond strict : une annonce sans prix ou au-dessus du plafond est exclue. Pour une superficie demandée, les offres proches (rapport min/max d’au moins 0,8) sont prioritaires. Sans type demandé, les parcelles de taille courante passent avant les grands terrains.
+Le budget maximum reste un plafond strict. Les critères explicites de quartier, type, document, proximité et viabilité sont prioritaires ; une superficie demandée favorise les biens comparables. Une demande générale de bonne affaire privilégie les parcelles courantes aux grands terrains agricoles.
 
-L’indice de bonne affaire est une règle de classement, pas une estimation de valeur ou une probabilité :
+À critères comparables, les annonces avec documentation, eau, électricité et proximité renseignées sont prioritaires. Viennent ensuite la complétude des informations utiles et leur disponibilité annoncée, puis le prix au m² le plus bas et le prix total. Le prix n’annule donc plus l’absence de documentation ou d’équipements. Si aucune annonce n’a ces informations, le tableau reste consultable sous « Offres à compléter », sans carte de recommandation.
 
-| Élément | Poids |
-| --- | ---: |
-| Prix au m² relatif aux offres du même groupe | 40 % |
-| Documentation annoncée | 40 % |
-| Eau et électricité annoncées | 12 % |
-| Proximités décrites | 8 % |
+Il s’agit d’informations annoncées : une mention n’est pas une vérification, une APFR déposée n’est pas délivrée et une conduite proche n’est pas un raccordement. Les documents en cours, négations et équipements futurs ne comptent pas comme disponibles. Le score technique ne constitue pas une estimation immobilière ni une probabilité.
 
-Les groupes distinguent la zone, les maisons, les parcelles, les terrains et les grands terrains (surface supérieure à 2 500 m² ou vocabulaire agricole). Quand une surface est demandée, le calcul relatif évite les surfaces sans rapport avec celle de chaque offre. Le prix le plus bas est préféré à qualité identique. Une annonce isolée peut recevoir des points de prix : cet indice ne permet donc pas, seul, d’affirmer une décote par rapport au marché. Les poids et le seuil de taille sont des choix de produit explicites, non une règle foncière.
+## Publications et comparaisons
 
-Un document annoncé disponible reçoit plus de poids qu’une simple mention ; un dossier déposé reçoit peu de poids. Un récépissé ou un croquis ne devient pas un titre délivré. Les négations et mentions de travaux à venir ne rapportent pas de points de disponibilité. Un raccordement à proximité ne devient pas un raccordement sur place. Ces règles sont des heuristiques textuelles : aucun document ni équipement n’est vérifié physiquement.
+L’outil d’évaluation reçoit le texte original fourni par l’utilisateur, après retrait des contacts, plutôt qu’une réécriture des nombres par le modèle. Les montants tels que 3 500 000, 3.500.000 ou 3 millions 500 restent 3 500 000 FCFA. Les préférences de budget restent séparées du prix vendeur.
 
-## Publication copiée
+Les comparables et alternatives proviennent du même quartier, du même type de bien et de surfaces proches (±25 %). Un lieu explicite absent du référentiel, tel que Roumtenga, reste une mention littérale ; il n’est ni assimilé à toute la ville ni ajouté automatiquement au périmètre de collecte. Une localisation à l’échelle de Ouagadougou seule ne suffit pas pour une comparaison locale. La publication analysée et ses republications sont écartées.
 
-`evaluer_annonce` calcule les éléments observables, recherche des comparables de même type, même zone normalisée et surface à ±25 %, et écarte la publication elle-même ainsi que ses republications détectées. Les hectares agricoles ne servent pas de référence aux petites parcelles.
+Un repère médian nécessite au moins trois comparables. Sinon l’assistant explique simplement qu’il manque des éléments pour conclure sur le prix. Aucun autre quartier n’est proposé silencieusement comme équivalent.
 
-Un repère médian demande au moins trois annonces comparables. Au-dessus ou en dessous de 10 % de cette médiane, le texte signale l’écart ; il ne s’agit que de prix demandés dans les annonces. La qualité des documents, l’accès et les particularités locales peuvent expliquer les écarts. Sans prix, surface ou comparables suffisants, la conclusion reste limitée. Les caractéristiques du vendeur ne sont pas imposées comme critères obligatoires aux alternatives ; les préférences déjà exprimées par l’utilisateur sont conservées.
+Les suggestions de comparaison sélectionnent deux annonces du même quartier. Si l’utilisateur désigne explicitement des annonces de quartiers différents, son choix est conservé et la comparaison ne sert pas de repère de prix local.
 
-## Comportement et confidentialité
+## Exécution et vérification
 
-Le modèle est invité à rechercher dès qu’il comprend l’intention immobilière, puis à recommander sans questionnaire obligatoire. Chaque tour autorise au maximum une exécution MCP, y compris si le modèle propose plusieurs appels dans la même réponse. Le résultat contient déjà le tableau ou l’analyse et les alternatives. Le délai MCP reste illimité, conformément au réglage demandé.
+Un seul appel MCP est autorisé par message, sans questionnaire préalable. Le délai MCP reste illimité. L’authentification des contacts et liens source est conservée.
 
-Les publications sont des données non fiables ; les instructions qu’elles contiennent doivent être ignorées. Les contacts, e-mails et liens externes sont retirés avant l’envoi au modèle. Les montants explicitement identifiés comme prix ou budget sont conservés afin de ne pas confondre 12 000 000 FCFA avec un téléphone.
+Les tests couvrent notamment les prix originaux, budgets, classement des annonces complètes, équipements futurs, comparaisons locales, liens Facebook, contacts groupés et contrat du tableau.
 
-## Vérification
-
-Les tests couvrent les contraintes de budget, les documents déposés, les équipements absents ou prévus, le classement à qualité égale et différente, les grands terrains, les décimales, l’analyse des comparables, les republications, l’appel MCP unique, le contrat de l’interface et la protection des contacts.
-
-Après récupération de cette branche, redémarrer les deux processus : le serveur MCP sur 8001 pour charger ses nouveaux outils et l’application sur 8000 pour charger la conversation. Les dépendances et les variables d’environnement ne changent pas.
+Dans Git Bash, activer l’environnement avec `source .venv/Scripts/activate` dans chacun des deux terminaux. Lancer `python -m uvicorn app.mcp_server:http_app --host 127.0.0.1 --port 8001` puis, dans l’autre terminal, `python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000`. Le site s’ouvre sur le port 8000.

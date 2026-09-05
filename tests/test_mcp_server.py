@@ -171,3 +171,12 @@ def test_compare_reloads_exact_public_references_in_requested_order(monkeypatch)
     assert [r['id'] for r in result['results']]==references
     assert result['mode']=='comparaison'
     assert result['results'][0]['prix_fcfa']==3_000_000
+
+
+def test_comparison_of_different_neighborhoods_does_not_claim_local_benchmark(monkeypatch):
+    candidates=[SearchCandidate(identifier='a',text='Parcelle à Saaba',property_type='parcelle',neighborhood='Saaba',price_fcfa=3_000_000,area_m2=300),SearchCandidate(identifier='b',text='Parcelle à Karpala',property_type='parcelle',neighborhood='Karpala',price_fcfa=4_000_000,area_m2=300)]
+    monkeypatch.setattr(mcp_server,'load_recent_candidates',lambda _:candidates)
+    refs=[public_announcement_id('a'),public_announcement_id('b')]
+    payload=mcp_server.comparer_annonces(refs)
+    assert [r['id'] for r in payload['results']]==refs
+    assert payload['comparaison_locale_possible'] is False

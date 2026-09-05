@@ -74,7 +74,7 @@ function renderSidebar() {
   const history = conversations.concat(read('history').filter(h => !conversations.some(c => c.query === h.query)).map(h => ({...h,legacy:true})));
   for (const kind of ['history','saved','alerts']) {
     const list = $('#' + kind + '-list'), items = kind === 'history' ? history : read(kind);
-    list.replaceChildren(); $('#' + kind + '-count').textContent = items.length;
+    list.replaceChildren(); const count = $('#' + kind + '-count'); if (count) count.textContent = items.length;
     if (!items.length) { list.append(el('p','empty-dashboard', {history:'Vos conversations apparaîtront ici.',saved:'Enregistrez une annonce pour la retrouver ici.',alerts:'Suivez une recherche depuis ses résultats.'}[kind])); continue; }
     for (const item of items) {
       const row = el('article','dashboard-item'), actions = el('div','side-actions');
@@ -88,11 +88,11 @@ function renderSidebar() {
         }); open.disabled = busy; actions.append(open);
       } else if (kind === 'saved') {
         row.append(el('h3','',title(item)),el('p','',number(item.prix_fcfa,' FCFA') + ' · ' + area(item.superficie_m2)));
-        actions.append(button('Voir','side-action', () => showDetail(item)));
+        actions.append(sourceLink(item, 'side-action'));
       } else {
-        row.append(el('h3','',item.name || item.query),el('p','',item.last_checked ? 'Vérifiée le ' + dateText(item.last_checked) + ' · ' + (item.new_count || 0) + ' nouvelle(s)' : 'À vérifier à votre demande'));
+        row.append(el('h3','',item.name || item.query),el('p','',item.last_checked ? 'Vérifiée le ' + dateText(item.last_checked) : 'À vérifier à votre demande'));
         const check = button('Vérifier','side-action', () => {
-          if (busy) return; checkingAlert = item.id || item.query; startConversation(); period.value = String(item.max_age_days || 30); sendMessage(item.query);
+          if (busy) return; $('#alerts-dialog').close(); checkingAlert = item.id || item.query; startConversation(); period.value = String(item.max_age_days || 30); sendMessage(item.query);
         }); check.disabled = busy; actions.append(check);
       }
       const remove = button('Retirer','side-action remove', () => {
@@ -105,24 +105,69 @@ function renderSidebar() {
     }
   }
 }
-function criteriaView(criteria) {
-  const box = el('section','chat-summary'); box.append(el('p','summary-title','Votre recherche, en résumé'));
-  const chips = el('div','criteria-chips');
-  const values = [criteria.type_bien, criteria.quartier, criteria.prix_fcfa ? (criteria.prix_est_un_maximum ? 'Budget max. ' : 'Prix cible ') + number(criteria.prix_fcfa,' FCFA') : null, criteria.superficie_m2 ? 'Environ ' + area(criteria.superficie_m2) : null, criteria.document ? label(criteria.document) : null, criteria.viabilite ? label(criteria.viabilite) : null, criteria.proximite ? label(criteria.proximite) : null, criteria.anciennete_maximale_jours ? criteria.anciennete_maximale_jours + ' derniers jours' : null];
-  values.filter(Boolean).forEach(v => chips.append(el('span','criterion',v)));
-  box.append(chips); return box;
-}
 function evidence(result, container) {
-  const data = result.qualite || {}, chips = el('div','evidence-chips');
-  (data.atouts || []).slice(0,4).forEach(t => chips.append(el('span','evidence-chip',t)));
-  (data.vigilances || []).slice(0,2).forEach(t => chips.append(el('span','evidence-chip uncertain',t)));
+  const chips = el('div','evidence-chips');
+  [...new Set(result.qualite?.atouts || [])].forEach(t => chips.append(el('span','evidence-chip',t)));
   if (chips.childNodes.length) container.append(chips);
 }
+function sourceLink(result, cls='table-action') {
+  const link=el('a',cls,'Voir');
+  link.href='/annonces/'+encodeURIComponent(result.id)+'/source';
+  link.target='_blank'; link.rel='noopener noreferrer';
+  link.setAttribute('aria-label','Voir la publication Facebook : '+title(result));
+  link.addEventListener('click',e=>{
+    if (!currentUser) { e.preventDefault(); requireLogin(()=>location.assign(link.href),'Connectez-vous pour ouvrir la publication et accéder au contact.'); }
+  });
+  return link;
+}
 function contactCell(r) {
-  const td = el('td','contact-cell'), cached = detailsCache.get(r.id);
-  if (cached?.contact) { const link = el('a','contact-link',cached.contact); const url = safeUrl(cached.lien_whatsapp); if (url) { link.href=url; link.target='_blank'; link.rel='noopener noreferrer'; } td.append(link); }
-  else td.append(button(currentUser ? 'Voir contact' : 'Se connecter','contact-button', () => showDetail(r)));
+  const td=el('td','contact-cell'), cached=detailsCache.get(r.id);
+  if (!currentUser) td.append(button('Se connecter','contact-button',()=>requireLogin(refreshContacts)));
+  else if (cached?.contact) {
+    const link=el('a','contact-link',cached.contact), url=safeUrl(cached.lien_whatsapp);
+    if (url) { link.href=url; link.target='_blank'; link.rel='noopener noreferrer'; }
+    td.append(link);
+  } else td.append(el('span','subtle',cached ? (cached.error ? 'Indisponible' : 'Non précisé') : 'Chargement…'));
   return td;
+}
+let contactsRequest = null;
+function redrawContacts() {
+  messages.querySelectorAll('tr[data-result-id]').forEach(row=>row.children[6].replaceWith(contactCell({id:row.dataset.resultId})));
+}
+async function refreshContacts() {
+  redrawContacts();
+  if (!currentUser || contactsRequest) return;
+  const userId=currentUser.id;
+  const references=[...new Set($$('tr[data-result-id]').map(row=>row.dataset.resultId))].filter(id=>!detailsCache.has(id)).slice(0,500);
+  if (!references.length) return;
+  contactsRequest=userId;
+  try {
+    const payload=await api('/annonces/selection',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({references})});
+    if (currentUser?.id!==userId) return;
+    references.forEach(id=>detailsCache.set(id,{contact:null}));
+    payload.forEach(item=>detailsCache.set(item.id,item));
+  } catch(error) {
+    if (currentUser?.id!==userId) return;
+    if (error.status===401) { currentUser=null; detailsCache.clear(); updateAccount(); }
+    else references.forEach(id=>detailsCache.set(id,{error:true}));
+  } finally {
+    contactsRequest=null; redrawContacts();
+    if (currentUser) refreshContacts();
+  }
+}
+// Render a small Markdown subset as DOM text, never as untrusted HTML.
+function formattedReply(text) {
+  const box=el('div','chat-bubble formatted-reply'); let list=null;
+  function inline(node,value) {
+    value.split(/(\*\*[^*]+\*\*)/g).forEach(part=>node.append(part.startsWith('**') && part.endsWith('**') ? el('strong','',part.slice(2,-2)) : document.createTextNode(part)));
+  }
+  for (const raw of String(text || '').split('\n')) {
+    const line=raw.trim(); if (!line) { list=null; continue; }
+    const bullet=line.match(/^(?:[-*•]|\d+[.)])\s+(.+)/);
+    if (bullet) { if (!list) { list=el('ul'); box.append(list); } const item=el('li'); inline(item,bullet[1]); list.append(item); }
+    else { list=null; const heading=/^#{1,6}\s+/.test(line); const node=el(heading?'h3':'p'); inline(node,line.replace(/^#{1,6}\s+/,'')); box.append(node); }
+  }
+  return box;
 }
 function resultTable(results) {
   const fragment = $('#comparison-template').content.cloneNode(true), body = fragment.querySelector('tbody');
@@ -132,51 +177,46 @@ function resultTable(results) {
     values.forEach((value,j) => { const td = el('td',j===3 ? 'money' : j===4 ? 'unit-price' : ''); if (j===0) td.append(el('span','rank-badge',value)); else td.textContent=value;
       if (j===5 && r.qualite?.document_etat && r.qualite.document_etat !== 'non_precise') td.append(el('small','document-status',r.qualite.document_libelle)); row.append(td); });
     row.append(contactCell(r)); const cell=el('td'), actions=el('div','table-actions');
-    actions.append(button('Voir','table-action', () => showDetail(r)),saveButton(r)); cell.append(actions); row.append(cell); body.append(row);
+    actions.append(sourceLink(r),saveButton(r)); cell.append(actions); row.append(cell); body.append(row);
   });
   return fragment;
 }
-function assessmentView(a) {
-  const box=el('section','assessment'); box.append(el('p','eyebrow','ANNONCE À ANALYSER'),el('h3','',a.verdict || 'Analyse de l’annonce'));
-  if (a.bien) box.append(el('p','',title(a.bien) + ' · ' + area(a.bien.superficie_m2) + ' · ' + number(a.bien.prix_fcfa,' FCFA') + ' · ' + unitPrice(a.bien)));
-  if (a.comparaison) box.append(el('p','',a.comparaison));
-  if (a.raisons?.length) { const list=el('ul'); a.raisons.forEach(x => list.append(el('li','',x))); box.append(list); }
-  return box;
-}
 function appendMessage(entry) {
-  const row = el('article','chat-row is-' + entry.role + (entry.error ? ' is-error' : ''));
-  const content = el('div','chat-content');
-  content.append(el('p','chat-role',entry.role==='assistant' ? 'Foncier Ouaga' : 'Vous'),el('div','chat-bubble',entry.role==='assistant' ? String(entry.content).replace(/^#{1,6}\s+/gm,'').replace(/\*\*(.*?)\*\*/g,'$1') : entry.content));
-  if (entry.analysis) content.append(assessmentView(entry.analysis));
+  const row=el('article','chat-row is-'+entry.role+(entry.error?' is-error':'')), content=el('div','chat-content');
+  content.append(el('p','chat-role',entry.role==='assistant'?'HAKIMO':'Vous'));
+  const results=entry.results || [], analysis=Boolean(entry.analysis), comparison=entry.mode==='comparaison';
+  const simpleSearch=entry.mcp_used && !analysis && !comparison && !entry.error;
+  const quality=results[0]?.qualite || {};
+  const recommendable=quality.informations_completes ?? (['mentionne','annonce_disponible'].includes(quality.document_etat) && ['mentionne','annonce_disponible'].includes(quality.eau_etat) && ['mentionne','annonce_disponible'].includes(quality.electricite_etat) && quality.proximites?.length>0);
+  if (!simpleSearch) content.append(entry.role==='assistant' ? formattedReply(entry.content) : el('div','chat-bubble',entry.content));
   if (entry.mcp_used) {
-    if (entry.criteria) content.append(criteriaView(entry.criteria));
-    const results = entry.results || [], heading = el('div','results-heading'), copy=el('div');
-    copy.append(el('h2','',results.length ? (entry.mode==='comparaison' ? 'Comparaison' : 'Recommandation') : 'Aucune annonce correspondante'),el('p','',results.length + ' annonce(s) retenue(s)'));
-    heading.append(copy,button('Surveiller cette recherche','secondary-button', () => createAlert(entry.criteria, results))); content.append(heading);
-    if (results.length && entry.mode==='comparaison') content.append(resultTable(results));
-    if (results.length && entry.mode!=='comparaison') {
+    const heading=el('div','results-heading');
+    heading.append(el('h2','',results.length ? (comparison?'Comparaison':analysis?'Alternatives du même quartier':recommendable?'Recommandation':'Offres à compléter') : (analysis?'': 'Aucune annonce correspondante')));
+    if (entry.criteria?.description) heading.append(button('Surveiller','secondary-button',()=>createAlert(entry.criteria,results)));
+    content.append(heading);
+    if (simpleSearch && results.length && recommendable) {
       const first=results[0], card=el('section','recommendation');
-      card.append(el('h3','',title(first)),el('p','facts',number(first.prix_fcfa,' FCFA') + ' · ' + area(first.superficie_m2) + ' · ' + unitPrice(first)));
-      evidence(first, card);
-      const reason=(first.explications || []).filter(t => !/^Même type de bien$/i.test(t) && !/^Proximité de (prix|superficie)/i.test(t)).slice(-1)[0];
-      if (reason) card.append(el('p','reason',reason)); content.append(card,resultTable(results));
-      content.append(el('p','result-note','Documents et équipements mentionnés dans les annonces ; disponibilité à confirmer auprès du vendeur.'));
+      card.append(el('h3','',title(first)),el('p','facts',number(first.prix_fcfa,' FCFA')+' · '+area(first.superficie_m2)+' · '+unitPrice(first)));
+      evidence(first,card); content.append(card);
     }
+    if (simpleSearch && results.length && !recommendable) content.append(el('p','subtle','Aucune annonce suffisamment complète pour être recommandée pour le moment.'));
+    if (results.length) content.append(resultTable(results));
+    else if (simpleSearch) content.append(el('p','subtle','Vous pouvez élargir le quartier ou ajuster un critère.'));
   }
-  row.append(el('div','chat-avatar',entry.role==='assistant' ? 'OF' : 'Vous'),content); messages.append(row); return row;
+  row.append(el('div','chat-avatar',entry.role==='assistant'?'H':'Vous'),content); messages.append(row); return row;
 }
 function renderSuggestions(entry) {
   const node=$('#followup-suggestions'); node.replaceChildren();
   if (!entry?.suggestions) return;
-  entry.suggestions.slice(0,3).forEach(s => { const b=button(s.label || s,'',() => { if(s.action==='composer'){input.value=s.message;input.focus();}else sendMessage(s.message || s); }); b.disabled=busy; node.append(b); });
+  entry.suggestions.slice(0,2).forEach(s => { const b=button(s.label || s,'',() => { if(s.action==='composer'){input.value=s.message;input.focus();}else sendMessage(s.message || s); }); b.disabled=busy; node.append(b); });
 }
 function scrollEnd() { const node=$('#conversation-scroll'); node.scrollTop=node.scrollHeight; }
 function renderConversation() {
   messages.replaceChildren(); const items=thread?.messages || []; $('#welcome').hidden=items.length>0;
-  items.forEach(appendMessage); renderSuggestions(items.filter(m=>m.role==='assistant').at(-1)); requestAnimationFrame(scrollEnd);
+  items.forEach(appendMessage); renderSuggestions(items.filter(m=>m.role==='assistant').at(-1)); requestAnimationFrame(scrollEnd); refreshContacts();
 }
 function historyContent(entry) {
-  let text=entry.content;
+  let text=entry.mcp_used && !entry.analysis && entry.mode!=='comparaison' ? 'Résultats affichés dans le tableau.' : entry.content;
   if (entry.criteria) text+='\nRecherche retenue : '+JSON.stringify(entry.criteria);
   if (entry.results?.length) text+='\nAnnonces déjà proposées (ordre du tableau) : '+JSON.stringify(entry.results.map((r,i)=>({rang:i+1,id:r.id,type:r.type_bien,quartier:r.quartier,prix:r.prix_fcfa,superficie:r.superficie_m2,document:r.document,qualite:r.qualite}))).slice(0,3500);
   return text.slice(0,6000);
@@ -200,7 +240,7 @@ async function sendMessage(message) {
     const payload=await api('/assistant/message',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message,history:previous,max_age_days:Number(period.value)})});
     if (thread.id!==threadId) return;
     const entry={role:'assistant',content:payload.answer,results:(payload.results || []).map(cleanResult),criteria:payload.criteria,analysis:payload.analysis,suggestions:payload.suggestions,mcp_used:payload.mcp_used,mode:payload.mode};
-    thread.messages.push(entry); thread.messages=thread.messages.slice(-40); pending.remove(); appendMessage(entry); renderSuggestions(entry);
+    thread.messages.push(entry); thread.messages=thread.messages.slice(-40); pending.remove(); appendMessage(entry); renderSuggestions(entry); refreshContacts();
     if (checkingAlert && payload.mcp_used) {
       const alerts=read('alerts').map(a => {
         if ((a.id || a.query)!==checkingAlert) return a;
@@ -226,21 +266,6 @@ $('#alert-form').addEventListener('submit',e=>{
   const alerts=read('alerts'); const next={...alertDraft,id:uid(),name:$('#alert-name').value.trim(),date:new Date().toISOString()};
   if (write('alerts',[next,...alerts.filter(a=>a.query!==next.query || a.max_age_days!==next.max_age_days)].slice(0,50))) { $('#alert-dialog').close(); renderSidebar(); toast('Surveillance enregistrée. Utilisez « Vérifier » dans votre espace.'); }
 });
-async function showDetail(result) {
-  requireLogin(async()=>{
-    const dialog=$('#detail-dialog'), content=$('#detail-content'); $('#detail-title').textContent=title(result); content.replaceChildren(el('p','subtle','Chargement de l’annonce…')); if(!dialog.open)dialog.showModal();
-    try {
-      const data=detailsCache.get(result.id) || await api('/annonces/'+encodeURIComponent(result.id)); detailsCache.set(result.id,data);
-      content.replaceChildren(el('p','subtle',number(data.prix_fcfa,' FCFA')+' · '+area(data.superficie_m2)+' · '+label(data.statut_document)),el('div','detail-text',data.texte));
-      const actions=el('div','detail-actions');
-      if(data.contact) { const c=el('p','',data.contact); const url=safeUrl(data.lien_whatsapp); if(url){const a=el('a','secondary-button','WhatsApp');a.href=url;a.target='_blank';a.rel='noopener noreferrer';actions.append(a);} content.append(c); }
-      else content.append(el('p','subtle','Contact non précisé dans cette annonce.'));
-      const source=safeUrl(data.url); if(source){const a=el('a','secondary-button','Publication d’origine');a.href=source;a.target='_blank';a.rel='noopener noreferrer';actions.append(a);}
-      actions.append(saveButton(result)); content.append(actions);
-      messages.querySelectorAll('tr[data-result-id]').forEach(row=>{if(row.dataset.resultId===result.id)row.children[6].replaceWith(contactCell(result));});
-    } catch(error) { content.replaceChildren(el('p','subtle',error.message)); if(error.status===401){currentUser=null;detailsCache.clear();thread=read('conversations')[0] || newThread();renderConversation();updateAccount();} }
-  },'Connectez-vous pour consulter le contact et le texte complet de l’annonce.');
-}
 function setAuthMode(mode) { authMode=mode; const register=mode==='register'; $('#auth-title').textContent=register?'Créer un compte':'Se connecter'; $('#auth-description').textContent='Un nom et un mot de passe pour accéder aux contacts et à vos enregistrements.'; $('#auth-submit').textContent=register?'Créer mon compte':'Se connecter'; $('#auth-switch').textContent=register?'J’ai déjà un compte':'Créer un compte'; $('#auth-password').autocomplete=register?'new-password':'current-password'; $('#auth-feedback').textContent=''; }
 function updateAccount() { $('#account-button').textContent=currentUser ? (currentUser.name || 'Mon compte')+' · Se déconnecter' : 'Se connecter ↗'; renderSidebar(); updateSaveButtons(); }
 $('#account-button').addEventListener('click',async()=>{
@@ -252,7 +277,7 @@ $('#auth-form').addEventListener('submit',async e=>{
   e.preventDefault();$('#auth-submit').disabled=true;$('#auth-feedback').textContent='';
   try {
     currentUser=await api('/auth/'+authMode,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:$('#auth-name').value.trim(),password:$('#auth-password').value})});
-    $('#auth-dialog').close();$('#auth-form').reset();updateAccount();persistThread();
+    $('#auth-dialog').close();$('#auth-form').reset();detailsCache.clear();updateAccount();persistThread();refreshContacts();
     const next=pendingAuthAction;pendingAuthAction=null;if(next)next();
   } catch(error){$('#auth-feedback').textContent=error.message;} finally{$('#auth-submit').disabled=false;}
 });
@@ -262,6 +287,24 @@ async function init() {
   setSidebarState();setBusy(true);
   try{currentUser=await api('/auth/me');}catch{currentUser=null;}
   thread=read('conversations')[0] || newThread();period.value=String(thread.max_age_days || 30);renderConversation();updateAccount();setBusy(false);
-  const ref=new URLSearchParams(location.search).get('annonce');if(ref)showDetail({id:ref});
+  const ref=new URLSearchParams(location.search).get('annonce');if(ref)requireLogin(()=>location.assign('/annonces/'+encodeURIComponent(ref)+'/source'));
 }
+$('#open-saved').addEventListener('click',()=>{renderSidebar();$('#saved-dialog').showModal();});
+$('#open-alerts').addEventListener('click',()=>{renderSidebar();$('#alerts-dialog').showModal();});
+const darkPreference=matchMedia('(prefers-color-scheme: dark)');
+let appearance={mode:'system',accent:'blue'};
+try { const stored=JSON.parse(localStorage.getItem('hakimo:appearance') || '{}'); if (['light','dark','system'].includes(stored.mode)) appearance.mode=stored.mode; if (['blue','green','violet','copper'].includes(stored.accent)) appearance.accent=stored.accent; } catch { /* Default appearance. */ }
+function applyAppearance() {
+  document.documentElement.dataset.theme=appearance.mode==='system'?(darkPreference.matches?'dark':'light'):appearance.mode;
+  document.documentElement.dataset.accent=appearance.accent;
+  $('#theme-mode').value=appearance.mode;
+  $$('[data-accent]').filter(n=>n.tagName==='BUTTON').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.accent===appearance.accent)));
+  try { localStorage.setItem('hakimo:appearance',JSON.stringify(appearance)); } catch { /* Appearance still works without storage. */ }
+}
+$('#theme-mode').addEventListener('change',e=>{appearance.mode=e.target.value;applyAppearance();});
+$$('button[data-accent]').forEach(b=>b.addEventListener('click',()=>{appearance.accent=b.dataset.accent;applyAppearance();}));
+darkPreference.addEventListener('change',applyAppearance);
+document.addEventListener('click',e=>{if(!$('#appearance-menu').contains(e.target))$('#appearance-menu').open=false;});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')$('#appearance-menu').open=false;});
+applyAppearance();
 init();

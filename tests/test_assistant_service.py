@@ -205,3 +205,27 @@ async def test_mcp_error_is_not_returned_as_successful_empty_search():
         return {'erreur':'Base temporairement indisponible'}
     with pytest.raises(MCPAssistantError,match='Base temporairement indisponible'):
         await run_assistant('Parcelle à Saaba',[],max_age_days=30,client=client,tool_executor=execute,settings=Settings(openai_api_key='test'))
+
+
+@pytest.mark.anyio
+async def test_evaluation_uses_original_amount_instead_of_llm_rewritten_price():
+    response=tool_response({'publication':'Parcelle à Roumtenga 300 m² prix 3 500 FCFA','description':'Budget maximum 6 millions','criteres_obligatoires':[]})
+    response.output[0].name='evaluer_annonce'
+    client=FakeClient([response,text_response('Analyse de votre annonce.')])
+    received={}
+    async def execute(name,arguments):
+        received.update(arguments)
+        return {'analyse':{},'results':[]}
+    original='Parcelle à ROUMTENGA (Songdin), 300 m², prix 3 500 000 FCFA. Contact 70 12 34 56'
+    await run_assistant('Mon budget est de 6 millions. Voici l’annonce : '+original,[],max_age_days=30,client=client,tool_executor=execute,settings=Settings(openai_api_key='test'))
+    assert '3 500 000 FCFA' in received['publication']
+    assert '6 millions' not in received['publication']
+    assert '70 12 34 56' not in received['publication']
+
+
+def test_comparison_suggestion_chooses_same_neighborhood_ranks():
+    from app.assistant_service import _suggestions
+    results=[{'id':'a','quartier':'Saaba','type_bien':'parcelle'}, {'id':'b','quartier':'Karpala','type_bien':'parcelle'}, {'id':'c','quartier':'Saaba','type_bien':'parcelle'}]
+    suggestions=_suggestions(results,{})
+    comparison=next(s for s in suggestions if s['label'].startswith('Comparer'))
+    assert 'rang 1 et 3' in comparison['message']

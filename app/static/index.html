@@ -5,19 +5,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Échangez avec votre conseiller foncier, comparez les annonces et repérez les bonnes affaires à Ouagadougou.">
   <meta name="theme-color" content="#101e39">
-  <title>Foncier Ouaga | Votre conseiller foncier</title>
+  <title>HAKIMO | HAKILAB IMMOBILIER</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/styles.css?v=20260905-conversation-2">
-  <script src="/static/app.js?v=20260905-conversation-2" defer></script>
+  <link rel="stylesheet" href="/static/styles.css?v=20260905-hakimo-3">
+  <script src="/static/app.js?v=20260905-hakimo-3" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#assistant-input">Aller à la conversation</a>
   <div id="workspace" class="workspace">
     <aside id="sidebar" class="sidebar" aria-label="Votre espace personnel">
       <div class="sidebar-top">
-        <a class="brand" href="/" aria-label="Foncier Ouaga, accueil"><span class="brand-symbol">OF</span><span><strong>Foncier Ouaga</strong><small>Votre projet commence ici.</small></span></a>
+        <a class="brand" href="/" aria-label="HAKIMO, accueil"><img class="brand-logo" src="/static/hakilab-logo.png" alt="Logo HAKILAB" width="52" height="44"><span><strong>HAKIMO</strong><small>HAKILAB IMMOBILIER</small></span></a>
         <button id="sidebar-expand" class="icon-button" type="button" title="Étendre sur toute la page" aria-label="Étendre votre espace sur toute la page" aria-expanded="false">⤢</button>
         <button id="sidebar-close" class="icon-button mobile-only" type="button" aria-label="Fermer votre espace">×</button>
       </div>
@@ -27,35 +27,36 @@
           <summary><span>Historique</span><span id="history-count" class="count">0</span></summary>
           <div id="history-list" class="dashboard-list"></div>
         </details>
-        <details class="side-section" open>
-          <summary><span>Enregistrements</span><span id="saved-count" class="count">0</span></summary>
-          <div id="saved-list" class="dashboard-list"></div>
-        </details>
-        <details class="side-section" open>
-          <summary><span>Surveillances</span><span id="alerts-count" class="count">0</span></summary>
-          <div id="alerts-list" class="dashboard-list"></div>
-        </details>
       </div>
-      <div class="sidebar-bottom"><p>Votre espace est conservé dans ce navigateur.</p><button id="account-button" class="account-button" type="button">Se connecter <span aria-hidden="true">↗</span></button></div>
+      <div class="sidebar-bottom"><button id="account-button" class="account-button" type="button">Se connecter <span aria-hidden="true">↗</span></button></div>
     </aside>
     <main id="conversation-main" class="conversation-main">
       <header class="conversation-header">
         <button id="sidebar-open" class="icon-button mobile-only" type="button" aria-label="Ouvrir votre espace" aria-expanded="false" aria-controls="sidebar">☰</button>
-        <div><span class="eyebrow">L’ASSISTANT FONCIER</span><p>Un projet. Une conversation.</p></div>
+        <div class="header-tools">
+          <button id="open-saved" class="header-button" type="button" aria-haspopup="dialog">Enregistrements</button>
+          <button id="open-alerts" class="header-button" type="button" aria-haspopup="dialog">Surveillances</button>
+          <details id="appearance-menu" class="appearance-menu"><summary>Apparence <span aria-hidden="true">◐</span></summary>
+            <div class="appearance-panel"><label for="theme-mode">Thème</label><select id="theme-mode"><option value="system">Système</option><option value="light">Clair</option><option value="dark">Sombre</option></select>
+              <p>Couleur</p><div class="color-choices" aria-label="Couleur de l’interface">
+                <button type="button" data-accent="blue" aria-label="Bleu" aria-pressed="true" style="--swatch:#1267a3"></button><button type="button" data-accent="green" aria-label="Vert" aria-pressed="false" style="--swatch:#317950"></button><button type="button" data-accent="violet" aria-label="Violet" aria-pressed="false" style="--swatch:#7954bf"></button><button type="button" data-accent="copper" aria-label="Cuivre" aria-pressed="false" style="--swatch:#ac592e"></button>
+              </div>
+            </div>
+          </details>
+        </div>
         <label class="period-control" for="assistant-max-age-days"><span>Annonces récentes</span><select id="assistant-max-age-days"><option value="7">7 jours</option><option value="30" selected>1 mois</option><option value="90">3 mois</option></select></label>
       </header>
       <div id="conversation-scroll" class="conversation-scroll">
         <section id="welcome" class="welcome">
-          <span class="welcome-mark" aria-hidden="true">OF<span>✦</span></span>
+
           <p class="eyebrow">OUAGADOUGOU & SES ENVIRONS</p>
           <h1>Parlons de votre<br><span>prochaine parcelle.</span></h1>
-          <p class="welcome-description">Décrivez votre projet ou collez une annonce.<br>Je compare les offres et vous explique lesquelles retenir.</p>
+          <p class="welcome-description">Décrivez votre projet ou collez une annonce.</p>
           <div class="prompt-grid" aria-label="Commencer une conversation">
             <button type="button" data-prompt="Trouve-moi une bonne affaire : une parcelle à Ouagadougou ou dans ses environs, budget maximum 10 millions FCFA."><span class="prompt-icon" aria-hidden="true">✦</span><strong>Dénicher une bonne affaire</strong><span>Un bon prix, des documents et des atouts concrets.</span><i aria-hidden="true">↗</i></button>
             <button type="button" id="paste-prompt"><span class="prompt-icon" aria-hidden="true">▤</span><strong>Analyser une annonce</strong><span>Collez une publication pour la comparer aux offres.</span><i aria-hidden="true">↗</i></button>
             <button type="button" data-prompt="Je cherche une parcelle d’environ 300 m² à Saaba, budget maximum 6 millions FCFA, avec une attestation."><span class="prompt-icon" aria-hidden="true">⌖</span><strong>Préciser mon projet</strong><span>Une parcelle à Saaba, 300 m², jusqu’à 6 millions.</span><i aria-hidden="true">↗</i></button>
           </div>
-          <p class="welcome-note">Prix au m² · Documents annoncés · Eau et électricité · Proximités</p>
         </section>
         <div id="assistant-messages" class="assistant-messages" role="log" aria-label="Conversation" aria-live="polite" aria-relevant="additions"></div>
       </div>
@@ -64,9 +65,9 @@
         <form id="assistant-form" class="assistant-composer">
           <label class="sr-only" for="assistant-input">Votre message ou une annonce à analyser</label>
           <textarea id="assistant-input" rows="2" minlength="2" maxlength="6000" required placeholder="Décrivez votre projet, ou collez une annonce à analyser…"></textarea>
-          <div class="composer-bottom"><span id="composer-hint">Entrée pour envoyer · Maj + Entrée pour une nouvelle ligne</span><button id="assistant-submit" type="submit">Envoyer <span aria-hidden="true">↑</span></button></div>
+          <div class="composer-bottom"><button id="assistant-submit" type="submit">Envoyer <span aria-hidden="true">↑</span></button></div>
         </form>
-        <p class="assistant-disclaimer">Les informations sont celles des annonces. Vérifiez la parcelle, le vendeur et les documents avant tout paiement.</p>
+        <p class="assistant-disclaimer">Informations des annonces, à vérifier auprès du vendeur.</p>
       </div>
     </main>
   </div>
@@ -74,7 +75,7 @@
   <dialog id="auth-dialog" class="modal" aria-labelledby="auth-title">
     <form id="auth-form">
       <button class="modal-close" type="button" data-close="auth-dialog" aria-label="Fermer">×</button>
-      <span class="modal-symbol" aria-hidden="true">OF</span><h2 id="auth-title">Se connecter</h2>
+      <img class="auth-logo" src="/static/hakilab-logo.png" alt="HAKILAB" width="64" height="54"><h2 id="auth-title">Se connecter</h2>
       <p id="auth-description" class="subtle">Retrouvez vos enregistrements et accédez aux contacts.</p>
       <label for="auth-name">Nom</label><input id="auth-name" name="name" type="text" minlength="2" maxlength="80" autocomplete="username" required>
       <label for="auth-password">Mot de passe</label><input id="auth-password" name="password" type="password" minlength="4" maxlength="128" autocomplete="current-password" required>
@@ -87,12 +88,15 @@
       <button class="modal-close" type="button" data-close="alert-dialog" aria-label="Fermer">×</button>
       <h2 id="alert-title">Surveiller cette recherche</h2><p id="alert-query" class="subtle"></p>
       <label for="alert-name">Nom de la surveillance</label><input id="alert-name" maxlength="80" required>
-      <p class="subtle">Retrouvez-la sur le côté et cliquez sur « Vérifier » pour rechercher de nouvelles annonces. Les notifications automatiques ne sont pas encore disponibles.</p>
+      <p class="subtle">Relancez cette recherche avec « Vérifier ». Les notifications automatiques ne sont pas encore disponibles.</p>
       <button class="primary-wide" type="submit">Enregistrer la surveillance</button>
     </form>
   </dialog>
-  <dialog id="detail-dialog" class="modal detail-modal" aria-labelledby="detail-title">
-    <button class="modal-close" type="button" data-close="detail-dialog" aria-label="Fermer">×</button><p class="eyebrow">L’ANNONCE EN DÉTAIL</p><h2 id="detail-title"></h2><div id="detail-content"></div>
+  <dialog id="saved-dialog" class="modal collection-modal" aria-labelledby="saved-title">
+    <button class="modal-close" type="button" data-close="saved-dialog" aria-label="Fermer">×</button><h2 id="saved-title">Enregistrements</h2><div id="saved-list" class="dashboard-list"></div>
+  </dialog>
+  <dialog id="alerts-dialog" class="modal collection-modal" aria-labelledby="alerts-title">
+    <button class="modal-close" type="button" data-close="alerts-dialog" aria-label="Fermer">×</button><h2 id="alerts-title">Surveillances</h2><div id="alerts-list" class="dashboard-list"></div>
   </dialog>
   <template id="comparison-template">
     <div class="comparison-shell"><div class="table-scroll" tabindex="0" role="region" aria-label="Tableau comparatif des annonces"><table class="comparison-table"><caption class="sr-only">Comparaison des annonces sélectionnées</caption><thead><tr><th scope="col">Rang</th><th scope="col">Localisation</th><th scope="col">Superficie</th><th scope="col">Prix</th><th scope="col">Prix / m²</th><th scope="col">Document</th><th scope="col">Contact</th><th scope="col">Actions</th></tr></thead><tbody></tbody></table></div></div>
