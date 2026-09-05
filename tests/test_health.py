@@ -21,6 +21,11 @@ def test_root_serves_search_interface() -> None:
     assert "Trouvez les annonces qui vous correspondent." in response.text
     assert "<th>Contact</th>" in response.text
     assert "<th>Prix / m²</th>" in response.text
+    assert '<label for="auth-name">Nom</label>' in response.text
+    assert 'minlength="4"' in response.text
+    assert "Recommandation personnalisée" not in response.text
+    assert "Notre recommandation" not in response.text
+    assert "Adresse e-mail" not in response.text
     assert "Critères compris" not in response.text
     assert "Comparer les annonces" not in response.text
     assert "Annonces publiées par des tiers." not in response.text
@@ -48,6 +53,8 @@ def test_static_assets_are_available() -> None:
     assert "emptyState" not in javascript.text
     assert "function appendContact" in javascript.text
     assert "function formatUnitPrice" in javascript.text
+    assert "currentUser.name" in javascript.text
+    assert "prix au m² le plus avantageux" not in javascript.text
     assert "resultCount" not in javascript.text
     assert "criteriaSummary" not in javascript.text
 

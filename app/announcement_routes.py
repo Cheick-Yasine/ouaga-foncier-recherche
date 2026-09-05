@@ -5,7 +5,7 @@ from fastapi import APIRouter, Cookie, HTTPException
 from pydantic import BaseModel
 
 from app.auth import SESSION_COOKIE, get_session_user
-from app.contacts import whatsapp_url
+from app.contacts import first_contact, whatsapp_url
 from app.database import DatabaseNotConfiguredError
 from app.public_references import public_announcement_id
 from app.search_repository import load_recent_candidates
@@ -58,6 +58,7 @@ def announcement_detail(
     if candidate is None:
         raise HTTPException(status_code=404, detail="Annonce introuvable.")
 
+    contact = first_contact(candidate.contact)
     return AnnouncementDetail(
         id=reference,
         texte=candidate.text,
@@ -68,6 +69,6 @@ def announcement_detail(
         prix_fcfa=candidate.price_fcfa,
         superficie_m2=candidate.area_m2,
         statut_document=candidate.document_status,
-        contact=candidate.contact,
-        lien_whatsapp=whatsapp_url(candidate.contact),
+        contact=contact,
+        lien_whatsapp=whatsapp_url(contact),
     )

@@ -584,15 +584,16 @@ def rank_candidates(
                 deal_explanation = "Bon deal : grande superficie et prix faible"
             else:
                 deal_score = unit_price_value
-                deal_explanation = "Bon prix : prix au m² le plus avantageux"
-            if unit_price is not None:
-                deal_explanation += f"; {unit_price:,.0f} FCFA/m²".replace(",", " ")
+                deal_explanation = None
             adjusted.append(
                 replace(
                     result,
                     score=round(0.40 * result.score + 60 * deal_score, 2),
-                    explanations=result.explanations
-                    + (deal_explanation,),
+                    explanations=(
+                        result.explanations + (deal_explanation,)
+                        if deal_explanation
+                        else result.explanations
+                    ),
                 )
             )
         results = adjusted

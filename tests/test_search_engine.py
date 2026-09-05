@@ -426,7 +426,10 @@ def test_good_price_prefers_lowest_unit_price_in_requested_neighborhood() -> Non
     assert results[0].candidate.identifier == "saaba-low-unit-price"
     assert results[1].candidate.identifier == "saaba-high-unit-price"
     assert results[2].candidate.identifier == "outside-cheapest"
-    assert "15 000 FCFA/m²" in results[0].explanations[-1]
+    assert all(
+        "prix au m² le plus avantageux" not in explanation
+        for explanation in results[0].explanations
+    )
 
 
 def test_missing_price_is_excluded_when_budget_is_requested() -> None:

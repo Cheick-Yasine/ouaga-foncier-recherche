@@ -32,11 +32,11 @@ def test_authenticated_user_can_view_contact_and_source(monkeypatch) -> None:
         area_m2=300,
         document_status="attestation",
         url="https://facebook.com/posts/secret",
-        contact="70 12 34 56",
+        contact="70 12 34 56; 76 54 32 10",
     )
     monkeypatch.setattr(
         "app.announcement_routes.get_session_user",
-        lambda _token: AuthenticatedUser(id="user-1", email="client@example.com"),
+        lambda _token: AuthenticatedUser(id="user-1", name="cheick yasine"),
     )
     monkeypatch.setattr(
         "app.announcement_routes.load_recent_candidates",

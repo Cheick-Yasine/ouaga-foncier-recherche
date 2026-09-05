@@ -179,7 +179,7 @@ def test_contact_is_masked_for_visitor(monkeypatch) -> None:
             SearchCandidate(
                 identifier="post-contact",
                 text="Parcelle à Saaba",
-                contact="70 12 34 56",
+                contact="70 12 34 56; 76 54 32 10",
             )
         ],
     )
@@ -210,7 +210,7 @@ def test_contact_is_visible_for_authenticated_user(monkeypatch) -> None:
             SearchCandidate(
                 identifier="post-contact",
                 text="Parcelle à Saaba",
-                contact="70 12 34 56",
+                contact="70 12 34 56; 76 54 32 10",
             )
         ],
     )
@@ -218,7 +218,7 @@ def test_contact_is_visible_for_authenticated_user(monkeypatch) -> None:
         "app.search_routes.get_session_user",
         lambda _token: AuthenticatedUser(
             id="user-1",
-            email="client@example.com",
+            name="cheick yasine",
         ),
     )
 

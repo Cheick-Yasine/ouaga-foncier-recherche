@@ -175,6 +175,18 @@ def _candidate_from_row(
 
 
 _ALLOWED_PROPERTY_TYPES = frozenset({"terrain", "parcelle", "maison"})
+_RENTAL_MARKER_RE = re.compile(
+    r"(?i)\b(?:a|à)\s+louer\b|\blocation\b|\bloyer\b|\bcaution\b"
+)
+_SALE_MARKER_RE = re.compile(r"(?i)\b(?:a|à)\s+vendre\b|\ben\s+vente\b")
+
+
+def _is_rental_house(candidate: SearchCandidate) -> bool:
+    if candidate.property_type != "maison":
+        return False
+    return bool(_RENTAL_MARKER_RE.search(candidate.text)) and not bool(
+        _SALE_MARKER_RE.search(candidate.text)
+    )
 
 
 def _is_prepared_candidate(candidate: SearchCandidate) -> bool:
@@ -183,6 +195,7 @@ def _is_prepared_candidate(candidate: SearchCandidate) -> bool:
     return (
         candidate.neighborhood is not None
         and candidate.property_type in _ALLOWED_PROPERTY_TYPES
+        and not _is_rental_house(candidate)
         and not (
             candidate.price_fcfa is None
             and candidate.area_m2 is None

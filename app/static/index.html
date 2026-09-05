@@ -8,8 +8,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/styles.css?v=20260904-10">
-  <script src="/static/app.js?v=20260904-10" defer></script>
+  <link rel="stylesheet" href="/static/styles.css?v=20260905-11">
+  <script src="/static/app.js?v=20260905-11" defer></script>
 </head>
 <body>
   <header class="site-header">
@@ -68,7 +68,7 @@
           <div class="results-main">
             <div class="results-intro">
               <div>
-                <h2 id="selection-title">Recommandation personnalisée</h2>
+                <h2 id="selection-title">Recommandation</h2>
               </div>
               <button id="create-alert" class="secondary-button" type="button">Créer une surveillance</button>
             </div>
@@ -132,10 +132,10 @@
       <button id="close-auth" class="modal-close" type="button" aria-label="Fermer">×</button>
       <h2 id="auth-title">Se connecter</h2>
       <p id="auth-description" class="subtle">Connectez-vous pour enregistrer vos annonces et vos recherches.</p>
-      <label for="auth-email">Adresse e-mail</label>
-      <input id="auth-email" name="email" type="email" autocomplete="email" required>
+      <label for="auth-name">Nom</label>
+      <input id="auth-name" name="name" type="text" minlength="2" maxlength="80" autocomplete="username" required>
       <label for="auth-password">Mot de passe</label>
-      <input id="auth-password" name="password" type="password" minlength="10" maxlength="128" autocomplete="current-password" required>
+      <input id="auth-password" name="password" type="password" minlength="4" maxlength="128" autocomplete="current-password" required>
       <p id="auth-feedback" class="auth-feedback" aria-live="polite"></p>
       <button id="auth-submit" class="primary-wide" type="submit">Se connecter</button>
       <button id="auth-switch" class="text-button" type="button">Créer un compte</button>
