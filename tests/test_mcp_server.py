@@ -62,6 +62,7 @@ def test_search_never_returns_contact(monkeypatch) -> None:
     assert "contact" not in response["results"][0]
     assert "70 12 34 56" not in response["results"][0]["description"]
     assert "[contact retire]" in response["results"][0]["description"]
+    assert "Même type de bien" not in response["results"][0]["explications"]
 
 
 def test_fetch_excludes_source_identity_link_and_contact(monkeypatch) -> None:

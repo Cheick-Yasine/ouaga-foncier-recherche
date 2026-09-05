@@ -83,7 +83,11 @@ def _public_result(result) -> dict[str, Any]:
         "document": candidate.document_status,
         "score": result.score,
         "couverture": result.coverage,
-        "explications": list(result.explanations),
+        "explications": [
+            explanation
+            for explanation in result.explanations
+            if explanation.casefold() != "même type de bien".casefold()
+        ],
     }
 
 

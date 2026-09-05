@@ -14,7 +14,7 @@ function key(kind){return"foncier-ouaga:"+(currentUser?.id||"visitor")+":"+kind}
 function read(kind){try{return JSON.parse(localStorage.getItem(key(kind))||"[]")}catch{return[]}}
 function write(kind,data){localStorage.setItem(key(kind),JSON.stringify(data))}
 function title(r){const t=r.type_bien?r.type_bien[0].toUpperCase()+r.type_bien.slice(1):"Bien";return[t,r.superficie_m2?"de "+formatArea(r.superficie_m2):null,r.quartier?"à "+r.quartier:null].filter(Boolean).join(" ")}
-function opinion(r,index){const useful=(r.explications||[]).map(text=>String(text).replace(/^Filtre sémantique\s*:\s*/i,"").trim()).filter(text=>text&&!/^Proximité de (?:superficie|prix)\s*:/i.test(text)&&!/^Bon prix\s*:\s*prix au m²/i.test(text));const base=useful[useful.length-1]||(index===0?"Meilleur équilibre avec votre demande.":"Option intéressante à vérifier selon vos priorités.");return r.note_prix?r.note_prix+". "+base:base}
+function opinion(r,index){const useful=(r.explications||[]).map(text=>String(text).replace(/^Filtre sémantique\s*:\s*/i,"").trim()).filter(text=>text&&!/^Proximité de (?:superficie|prix)\s*:/i.test(text)&&!/^Bon prix\s*:\s*prix au m²/i.test(text)&&!/^Même type de bien$/i.test(text));const base=useful[useful.length-1]||(index===0?"Meilleur équilibre avec votre demande.":"Option intéressante à vérifier selon vos priorités.");return r.note_prix?r.note_prix+". "+base:base}
 function relativeDate(r){
  if(typeof r.anciennete_jours==="number"){
   const days=Math.max(0,Math.floor(r.anciennete_jours));
