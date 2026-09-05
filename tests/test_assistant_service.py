@@ -47,8 +47,8 @@ def tool_response(arguments):
 
 
 @pytest.mark.anyio
-async def test_assistant_asks_question_without_calling_mcp() -> None:
-    client = FakeClient([text_response("Quel est votre budget maximum ?")])
+async def test_assistant_can_greet_without_calling_mcp() -> None:
+    client = FakeClient([text_response("Bonjour ! Comment puis-je vous aider ?")])
     called = False
 
     async def execute(_name, _arguments):
@@ -57,7 +57,7 @@ async def test_assistant_asks_question_without_calling_mcp() -> None:
         return {}
 
     outcome = await run_assistant(
-        "Je cherche une parcelle",
+        "Bonjour",
         [],
         max_age_days=30,
         settings=Settings(openai_api_key="test", assistant_model="gpt-4o-mini"),
@@ -65,10 +65,11 @@ async def test_assistant_asks_question_without_calling_mcp() -> None:
         tool_executor=execute,
     )
 
-    assert outcome.answer == "Quel est votre budget maximum ?"
+    assert outcome.answer == "Bonjour ! Comment puis-je vous aider ?"
     assert outcome.mcp_used is False
     assert outcome.results == []
     assert called is False
+    assert client.responses.calls[0]["tool_choice"] == "auto"
 
 
 @pytest.mark.anyio
@@ -114,6 +115,8 @@ async def test_assistant_executes_search_through_mcp_and_returns_results() -> No
     assert received["arguments"]["anciennete_jours"] == 7
     assert received["arguments"]["utiliser_filtre_llm"] is False
     assert received["arguments"]["limit"] == 10
+    assert client.responses.calls[0]["tool_choice"] == "required"
+    assert client.responses.calls[1]["tool_choice"] == "auto"
     second_input = client.responses.calls[1]["input"]
     outputs = [item for item in second_input if isinstance(item, dict)]
     assert any(item.get("type") == "function_call_output" for item in outputs)

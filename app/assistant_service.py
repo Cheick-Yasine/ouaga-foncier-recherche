@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass
 from typing import Any
@@ -90,8 +91,16 @@ et dans sa périphérie couverte.
 Règles :
 - Réponds en français simple, de manière courte, claire et chaleureuse.
 - Tiens compte de toute la conversation et ne redemande pas une information déjà donnée.
-- Si la demande est trop vague, pose une seule question utile à la fois.
-- Dès que la demande permet une recherche utile, appelle rechercher_annonces.
+- Ton rôle principal est de recommander et guider, pas d'interroger l'utilisateur.
+- Dès qu'une demande concerne la recherche, l'achat ou le choix d'un bien immobilier,
+  appelle rechercher_annonces avec les informations déjà disponibles, même si certains
+  critères comme le budget, la superficie ou le quartier manquent.
+- Ne pose jamais plusieurs questions avant une première recherche. Une recherche large
+  avec peu de critères est préférable à une succession de questions.
+- Après avoir montré les résultats, explique les meilleures options et les compromis.
+  Tu peux ensuite proposer une seule précision facultative pour améliorer la recherche.
+- Pose une question avant toute recherche uniquement si le message ne permet vraiment
+  pas de comprendre que l'utilisateur parle d'un besoin immobilier.
 - Pour une correction comme « finalement 7 millions », reconstruis la demande complète
   avec les critères précédents avant d'appeler l'outil.
 - N'invente jamais une annonce, un prix, une superficie, un document ou un contact.
@@ -102,6 +111,18 @@ Règles :
 - Lorsque tu présentes des annonces, indique leur référence publique pour permettre
   à l'utilisateur de poursuivre la conversation à leur sujet.
 """.strip()
+
+
+_SEARCH_INTENT_RE = re.compile(
+    r"(?i)\b(?:cherche|chercher|recherche|rechercher|trouve|trouver|"
+    r"recommande|recommandation|acheter|achat|investir|terrain|parcelle|"
+    r"maison|foncier|immobilier|budget|million|prix|superficie|m2|m²|"
+    r"attestation|apfr|puh|titre foncier)\b"
+)
+
+
+def _has_search_intent(message: str) -> bool:
+    return bool(_SEARCH_INTENT_RE.search(message))
 
 
 def _tool_payload(result: Any) -> dict[str, Any]:
@@ -233,6 +254,11 @@ async def run_assistant(
             instructions=ASSISTANT_INSTRUCTIONS,
             input=input_items,
             tools=[SEARCH_TOOL],
+            tool_choice=(
+                "required"
+                if not mcp_used and _has_search_intent(message)
+                else "auto"
+            ),
             store=False,
         )
         calls = [
