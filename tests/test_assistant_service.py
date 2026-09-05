@@ -116,7 +116,7 @@ async def test_assistant_executes_search_through_mcp_and_returns_results() -> No
     assert received["arguments"]["utiliser_filtre_llm"] is False
     assert received["arguments"]["limit"] == 10
     assert client.responses.calls[0]["tool_choice"] == "required"
-    assert client.responses.calls[1]["tool_choice"] == "auto"
+    assert client.responses.calls[1]["tool_choice"] == "none"
     second_input = client.responses.calls[1]["input"]
     outputs = [item for item in second_input if isinstance(item, dict)]
     assert any(item.get("type") == "function_call_output" for item in outputs)

@@ -80,7 +80,7 @@ function assistantResultCard(result){
  heading.append(el("h3","",result.title||"Annonce immobilière"),el("strong","",Math.round(Number(result.score)||0)+"%"));
  const meta=[showValue(result.prix_fcfa," FCFA"),formatArea(result.superficie_m2),documentLabel(result.document)].join(" · ");
  const explanation=Array.isArray(result.explications)&&result.explications.length?result.explications[result.explications.length-1]:"Correspondance proposée par le moteur Ouaga Foncier.";
- card.append(heading,el("p","assistant-result-meta",meta),el("p","assistant-result-reason",explanation),el("span","assistant-result-id","Référence : "+showValue(result.id)));
+ card.append(heading,el("p","assistant-result-meta",meta),el("p","assistant-result-reason",explanation),el("span","assistant-result-id","Code annonce : "+showValue(result.id)));
  return card
 }
 

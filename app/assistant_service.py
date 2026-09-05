@@ -94,6 +94,8 @@ et dans sa périphérie couverte.
 
 Règles :
 - Réponds en français simple, de manière courte, claire et chaleureuse.
+- N'utilise pas de syntaxe Markdown comme **, # ou ###. Écris du texte simple
+  avec de courtes phrases et, si nécessaire, des puces commençant par « • ».
 - Tiens compte de toute la conversation et ne redemande pas une information déjà donnée.
 - Ton rôle principal est de recommander et guider, pas d'interroger l'utilisateur.
 - Dès qu'une demande concerne la recherche, l'achat ou le choix d'un bien immobilier,
@@ -112,8 +114,8 @@ Règles :
 - Le mot budget indique toujours un plafond à ne pas dépasser.
 - Ne demande et ne reproduis aucun numéro de téléphone, e-mail ou lien Facebook.
 - Si l'outil ne trouve rien, propose d'assouplir un seul critère précis.
-- Lorsque tu présentes des annonces, indique leur référence publique pour permettre
-  à l'utilisateur de poursuivre la conversation à leur sujet.
+- Ne recopie pas les codes des annonces dans ton texte : l'interface les affiche
+  déjà sous chaque résultat.
 """.strip()
 
 
@@ -158,7 +160,7 @@ async def call_mcp_tool(
     try:
         async with httpx.AsyncClient(
             trust_env=False,
-            timeout=httpx.Timeout(30.0),
+            timeout=None,
         ) as http_client:
             async with streamable_http_client(
                 current.mcp_server_url,
@@ -170,17 +172,8 @@ async def call_mcp_tool(
                     result = await session.call_tool(tool_name, arguments)
     except Exception as error:
         LOGGER.exception("assistant_mcp_connection_error")
-        detail = ""
-        if current.app_env.casefold() == "development":
-            cause: BaseException = error
-            while isinstance(cause, BaseExceptionGroup) and cause.exceptions:
-                cause = cause.exceptions[0]
-            while cause.__cause__ is not None:
-                cause = cause.__cause__
-            detail = f" Détail local : {type(cause).__name__}: {cause}"
         raise MCPAssistantError(
             "La communication avec le serveur MCP local a échoué."
-            + detail
         ) from error
 
     if getattr(result, "isError", False):
@@ -272,8 +265,10 @@ async def run_assistant(
             input=input_items,
             tools=[SEARCH_TOOL],
             tool_choice=(
-                "required"
-                if not mcp_used and _has_search_intent(message)
+                "none"
+                if mcp_used
+                else "required"
+                if _has_search_intent(message)
                 else "auto"
             ),
             store=False,
