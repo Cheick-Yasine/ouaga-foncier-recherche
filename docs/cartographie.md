@@ -93,3 +93,27 @@ Conserver les licences et identifiants, mettre à jour la date de consultation,
 et lancer les tests de géographie et d’analyse. Ne pas remplacer un point disparu
 par un autre lieu de même nom sans vérifier sa zone. Pour un quartier non résolu,
 il faut ajouter un point sourcé plutôt que deviner une distance.
+
+## Filtre « Ouagadougou uniquement »
+
+Le fichier `app/data/ouagadougou_scope.json` classe les repères déjà documentés
+selon leur présence dans la limite OpenStreetMap de la commune de Ouagadougou,
+relation [5675756](https://www.openstreetmap.org/relation/5675756).
+Extraction Overpass du 6 septembre 2026 (base au `2026-09-06T20:34:51Z`) :
+`[out:json][timeout:25];relation(5675756);out geom;`.
+Les sept chemins extérieurs ont été assemblés en un anneau fermé ; le test
+point-dans-polygone utilise le croisement de rayons, sur les coordonnées WGS84.
+Le fichier conserve les résultats, les alias et la provenance. Les licences
+GeoNames et OpenStreetMap citées plus haut continuent de s'appliquer.
+
+Ce périmètre est un filtre de recherche fondé sur les repères des quartiers,
+non une certification de l'adresse d'un bien. Les quartiers non cartographiés,
+les lieux inconnus et les homonymes qualifiés par une commune extérieure sont
+écartés du filtre strict. Les mentions de Ouagadougou sans quartier sont admises
+uniquement si le texte ne fournit pas un autre lieu principal. Les repères de
+Saaba, Gampela, Bassinko, Pabré et des autres zones extérieures ne sont pas traités
+comme des quartiers de la ville dans ce mode. « Ouagadougou et ses environs »
+conserve le périmètre périphérique de la recherche.
+
+Le filtre est appliqué avant classement, puis conservé à travers les précisions
+de l'utilisateur : la reformulation par le modèle ne peut pas l'élargir seule.

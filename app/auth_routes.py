@@ -16,6 +16,7 @@ from app.auth import (
     create_user,
     delete_session,
     get_session_user,
+    update_user,
 )
 from app.config import get_settings
 from app.database import DatabaseNotConfiguredError
@@ -32,6 +33,12 @@ class Credentials(BaseModel):
 class UserResponse(BaseModel):
     id: str
     name: str
+
+
+class ProfileUpdate(BaseModel):
+    name: str = Field(min_length=2, max_length=80)
+    current_password: str = Field(min_length=4, max_length=128)
+    new_password: str | None = Field(default=None, min_length=4, max_length=128)
 
 
 router = APIRouter(prefix="/auth", tags=["Authentification"])
@@ -138,3 +145,20 @@ def logout(
     except (DatabaseNotConfiguredError, psycopg.Error):
         pass
     response.delete_cookie(SESSION_COOKIE, path="/")
+
+
+@router.patch('/me', response_model=UserResponse)
+def update_profile(payload: ProfileUpdate,
+                   session_token: str | None = Cookie(default=None, alias=SESSION_COOKIE)) -> UserResponse:
+    try:
+        user = get_session_user(session_token)
+        if user is None or session_token is None:
+            raise HTTPException(status_code=401, detail='Connexion requise.')
+        updated = update_user(user.id, payload.name, payload.current_password,
+                              payload.new_password, session_token)
+    except AuthenticationError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from None
+    except (DatabaseNotConfiguredError, psycopg.Error) as error:
+        _log_database_error('profile_update', error)
+        raise HTTPException(status_code=503, detail='Votre compte ne peut pas être modifié pour le moment.') from None
+    return _user_response(updated)

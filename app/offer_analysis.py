@@ -1,5 +1,6 @@
 """Analyse chiffrée d'une publication et sélection d'alternatives comparables."""
 from __future__ import annotations
+from app.neighborhoods import local_neighborhood
 
 from dataclasses import dataclass, field, replace
 from statistics import median
@@ -111,33 +112,6 @@ def _summary(subject: SearchCandidate, quality: dict, comparison: str,
     parts.append('Les documents et les équipements restent à vérifier auprès du vendeur.')
     return ' '.join(parts)
 
-
-def local_neighborhood(text: str, fallback: str | None = None) -> str | None:
-    """Conserve un lieu explicite, sans assimiler toute une ville à un quartier.
-
-    Un nom hors référentiel reste une mention littérale, sans créer d'alias ni
-    étendre le périmètre des annonces déjà chargées par le dépôt.
-    """
-    commune = re.search(r"\bcommune(?:\s+rurale)?\s+(?:de|du)\s+([A-Za-zÀ-ÿ-]+)", text, re.IGNORECASE)
-    def qualified(name: str | None) -> str | None:
-        # « Tanghin, commune de Saaba » ne désigne pas automatiquement le
-        # quartier urbain homonyme. Conserver cette précision sans inventer un point.
-        if name and commune and normalize_text(commune[1]) not in {'ouagadougou', normalize_text(name)}:
-            return f"{name} ({commune[1].title()})"
-        return name
-    pattern = r"\b(?:à|a|localisation\s*:|quartier\s*:?|village\s+de)\s+([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'’ -]{1,55})"
-    for match in re.finditer(pattern, text, re.IGNORECASE):
-        name = re.split(r"\b(?:de|du|d'une|d’un|pour|avec|proche|près|pres|non|au|prix|superficie|surface|sur|en|commune|village)\b", match[1], flags=re.IGNORECASE)[0].strip(" -")
-        if not name or normalize_text(name).split()[0] in {"la", "le", "les", "une", "un", "des", "vendre", "saisir", "proximite", "cote", "partir", "confirmer", "debattre"}:
-            continue
-        resolution = resolve_neighborhood(name, None)
-        if resolution.canonical:
-            if resolution.canonical in CITY_LEVEL_AREAS | BROAD_AREAS:
-                continue
-            return qualified(resolution.canonical)
-        if len(name.split()) <= 3 and not re.search(r"(?i)\b(?:eau|electricite|électricité|voie|route|disponible|disponibilité|ecole|école)\b", name):
-            return qualified(name.title())
-    return qualified(fallback) if fallback not in CITY_LEVEL_AREAS | BROAD_AREAS else None
 
 
 def analyze_offer(publication: str, candidates: list[SearchCandidate], *, preferences: str = '', max_age_days: int = 30, required_fields: frozenset[str] = frozenset()) -> tuple[dict[str, Any], SearchCriteria, list]:

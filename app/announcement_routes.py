@@ -11,6 +11,7 @@ from app.contacts import first_contact, whatsapp_url
 from app.database import DatabaseNotConfiguredError
 from app.public_references import public_announcement_id
 from app.search_repository import load_recent_candidates
+from app.listing_scope import facebook_publication_url
 
 
 class AnnouncementDetail(BaseModel):
@@ -38,6 +39,24 @@ class AnnouncementContact(BaseModel):
     id: str
     contact: str | None
     lien_whatsapp: str | None
+
+
+class AnnouncementSource(BaseModel):
+    id: str
+    facebook_url: str | None
+
+
+@router.post('/liens', response_model=list[AnnouncementSource])
+def announcement_links(selection: AnnouncementSelection) -> list[AnnouncementSource]:
+    """Retrouve le lien public des anciens favoris, sans divulguer les contacts."""
+    try:
+        candidates = load_recent_candidates(None, pool_limit=None)
+    except (DatabaseNotConfiguredError, psycopg.Error):
+        raise HTTPException(status_code=503, detail='Liens temporairement indisponibles.') from None
+    wanted = set(selection.references)
+    return [AnnouncementSource(id=ref, facebook_url=facebook_publication_url(c.url))
+            for c in candidates
+            for ref in {public_announcement_id(c.identifier), c.identifier} & wanted]
 
 
 @router.post("/selection", response_model=list[AnnouncementContact])

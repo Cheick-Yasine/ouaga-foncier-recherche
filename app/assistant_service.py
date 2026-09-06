@@ -15,7 +15,7 @@ from mcp.client.streamable_http import streamable_http_client
 from openai import AsyncOpenAI
 
 from app.config import Settings, get_settings
-from app.assistant_constraints import conversation_budget, budget_description, respect_search_budget
+from app.assistant_constraints import conversation_budget, budget_description, respect_search_budget, conversation_city_only, respect_search_scope
 from app.semantic_filter import sanitize_external_text
 
 
@@ -131,6 +131,8 @@ Dis « prix de repère des offres similaires » et « eau et électricité ».
 
 RECHERCHE : appelle rechercher_annonces immédiatement. Pour une bonne affaire,
 conserve ces mots dans la description, privilégie les parcelles sans type explicite.
+Conserve exactement la zone souhaitée. « Ouagadougou » seul signifie la ville ;
+n'ajoute pas sa périphérie sans demande de l'utilisateur. Les locations sont exclues.
 Ton avis s'affiche AVANT la recommandation et le tableau. Réponds comme un
 conseiller en 3 ou 4 phrases courtes, en un ou deux paragraphes. Prends position
 sur la demande : explique ce que tu privilégierais pour ce projet et ce budget,
@@ -188,7 +190,13 @@ Une mention de document, sa disponibilité annoncée et une démarche en cours s
 différentes ; aucun document n'est vérifié par l'outil. Une APFR déposée n'est pas
 une APFR délivrée. Eau/électricité à proximité n'est pas un raccordement. Ne donne
 aucune garantie foncière ou rentabilité. Le score ne représente pas une probabilité.
-Les contacts et liens sont affichés par l'application après connexion, pas dans
+DOCUMENT : pour une demande d'explication, réponds simplement sans lancer une
+recherche d'annonces. Explique le texte fourni et les informations à demander.
+Tu ne peux ni vérifier l'authenticité d'un document ni confirmer des droits fonciers.
+N'invente pas de règle juridique locale. Pour une vérification officielle, invite
+l'utilisateur à s'adresser au service compétent avec le document.
+
+Les contacts sont affichés après connexion et les liens Facebook par l'application, pas dans
 ton texte. N'affiche pas les codes. Ne répète pas les mêmes atouts. Utilise du gras
 et des puces si utiles, sans long titre ni formule « n'hésitez pas ».
 Ne prétends pas créer une surveillance ou envoyer des notifications.
@@ -204,6 +212,8 @@ _SEARCH_INTENT_RE = re.compile(
 
 
 def _has_search_intent(message: str) -> bool:
+    if re.search(r"(?i)\b(?:comprendre|explique|expliquer|signifie|signification)\b", message) and not re.search(r"(?i)\b(?:cherche|trouve|recommande|compare|bonne affaire)\b", message):
+        return False
     return bool(_SEARCH_INTENT_RE.search(message))
 
 
@@ -294,7 +304,7 @@ def _payload_for_llm(payload: dict[str, Any]) -> dict[str, Any]:
             {
                 key: value
                 for key, value in item.items()
-                if key not in {"url", "contact", "email"}
+                if key not in {"url", "facebook_url", "contact", "email"}
             }
             for item in results
             if isinstance(item, dict)
@@ -354,6 +364,7 @@ async def run_assistant(
     latest_mode = "recherche"
     mcp_used = False
     user_budget = conversation_budget(message, history)
+    city_only = conversation_city_only(message, history)
 
     for _ in range(3):
         response = await api_client.responses.create(
@@ -413,6 +424,8 @@ async def run_assistant(
                     arguments["publication"] = _original_publication(message, history, arguments.get("publication", ""))
                 elif call.name == "rechercher_annonces" and user_budget is not None:
                     arguments["description"] = budget_description(arguments.get("description", ""), user_budget)
+                if call.name in {"rechercher_annonces", "evaluer_annonce"} and city_only:
+                    arguments["description"] = arguments.get("description", "") + ". Zone limitée à Ouagadougou uniquement."
                 arguments.update(
                     {
                         "limit": 10,
@@ -426,6 +439,8 @@ async def run_assistant(
                     raise MCPAssistantError(str(payload["erreur"]))
                 if call.name == "rechercher_annonces" and user_budget is not None:
                     payload = respect_search_budget(payload, user_budget, arguments["description"])
+                if call.name in {"rechercher_annonces", "evaluer_annonce"}:
+                    payload = respect_search_scope(payload, city_only, arguments.get("description", ""))
                 latest_criteria = payload.get("criteres", {})
                 latest_analysis = payload.get("analyse")
                 latest_mode = payload.get("mode", "recherche")

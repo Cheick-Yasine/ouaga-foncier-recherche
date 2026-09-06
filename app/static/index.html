@@ -9,32 +9,48 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/styles.css?v=20260906-nearby-1">
+  <link rel="stylesheet" href="/static/styles.css?v=20260906-home-1">
   <script src="/static/waiting.js?v=20260906-waiting-1" defer></script>
-  <script src="/static/app.js?v=20260906-advice-1" defer></script>
+  <script src="/static/app.js?v=20260906-home-1" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#assistant-input">Aller à la conversation</a>
   <div id="workspace" class="workspace">
-    <aside id="sidebar" class="sidebar" aria-label="Historique des conversations">
+    <aside id="sidebar" class="sidebar" aria-label="Navigation principale et historique">
       <div class="sidebar-top">
         <a class="brand" href="/" aria-label="HAKIMO, accueil"><img class="brand-logo" src="/static/hakilab-logo.png" alt="Logo HAKILAB" width="52" height="44"><span><strong>HAKIMO</strong><small>HAKILAB IMMOBILIER</small></span></a>
         <button id="history-toggle" class="icon-button" type="button" title="Afficher l’historique en plein écran" aria-label="Afficher l’historique en plein écran" aria-expanded="true" aria-controls="sidebar"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18m-3-7v2"/></svg></button>
       </div>
-      <button id="new-conversation" class="new-conversation" type="button"><span aria-hidden="true">＋</span> Nouvelle conversation</button>
       <div class="side-content">
-        <details class="side-section" open>
-          <summary><span>Historique</span><span id="history-count" class="count">0</span></summary>
-          <div id="history-list" class="dashboard-list"></div>
-        </details>
+        <nav class="side-nav" aria-label="Votre espace">
+          <button id="nav-home" class="nav-link" type="button" data-page="home" aria-current="page"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m3 10 9-7 9 7M5 9v12h5v-7h4v7h5V9"/></svg><span>Accueil</span></button>
+          <button id="nav-chat" class="nav-link" type="button" data-page="chat"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M21 11a9 9 0 0 1-9 9H4l-3 2 2-6A9 9 0 1 1 21 11Z"/><path d="M7 10h10M7 14h6"/></svg><span>Parlez-nous de votre projet immobilier</span></button>
+          <button id="open-alerts" class="nav-link" type="button" aria-haspopup="dialog"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M9 21h6"/></svg><span>Mes alertes</span></button>
+          <button id="open-saved" class="nav-link" type="button" aria-haspopup="dialog"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8Z"/></svg><span>Favoris</span><span id="saved-count" class="nav-badge">0</span></button>
+          <details id="history-section" class="side-section history-section">
+            <summary><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 4v5h5M3.5 9a9 9 0 1 1 0 6M12 7v5l3 2"/></svg><span>Historique</span><span id="history-count" class="count">0</span></summary>
+            <button id="new-conversation" class="new-conversation" type="button"><span aria-hidden="true">＋</span> Nouvelle conversation</button>
+            <div id="history-list" class="dashboard-list"></div>
+          </details>
+        </nav>
+        <nav class="nav-section" aria-label="Outils IA"><p class="nav-caption">Outils IA</p>
+          <button id="nav-deal" class="nav-link" type="button" data-prompt="Trouve-moi une bonne affaire : une parcelle uniquement à Ouagadougou, budget maximum 10 millions FCFA."><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9Z"/></svg><span>Dénicher une bonne affaire</span></button>
+          <button id="nav-analysis" class="nav-link" type="button" data-action="analyze"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M14 2H5v20h14V7ZM14 2v6h5M8 12h8M8 16h5"/></svg><span>Analyser une annonce</span></button>
+          <button id="nav-document" class="nav-link" type="button" data-action="document"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m12 3 9 4v5c0 6-9 10-9 10S3 18 3 12V7ZM8 12l3 3 5-6"/></svg><span>Comprendre un document</span></button>
+        </nav>
+        <nav class="nav-section" aria-label="Ressources"><p class="nav-caption">Ressources</p>
+          <button id="open-guides" class="nav-link" type="button" aria-haspopup="dialog"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 5C8 2 4 3 2 4v16c3-2 6-2 10 0 4-2 7-2 10 0V4c-2-1-6-2-10 1Zm0 0v15"/></svg><span>Conseils &amp; guides</span></button>
+          <button id="open-faq" class="nav-link" type="button" aria-haspopup="dialog"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M9 9a3 3 0 1 1 5 2.2c-1 .7-2 1-2 2.8M12 17h.01"/></svg><span>FAQ</span></button>
+          <button id="open-settings" class="nav-link" type="button" aria-haspopup="dialog"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m9 3-1 3-3 1 1 3-2 2 2 2-1 3 3 1 1 3h6l1-3 3-1-1-3 2-2-2-2 1-3-3-1-1-3Z"/><circle cx="12" cy="12" r="3"/></svg><span>Paramètres</span></button>
+        </nav>
+        <section class="sidebar-help"><div class="help-symbol" aria-hidden="true">H<span>✦</span></div><div><strong>Besoin d’aide ?</strong><p>HAKIMO vous accompagne dans votre projet.</p></div><button id="discover-hakimo" type="button">Découvrir HAKIMO</button></section>
       </div>
-      <div class="sidebar-bottom"><button id="account-button" class="account-button" type="button">Se connecter</button></div>
+      <div class="sidebar-bottom"><button id="account-button" class="account-button" type="button"><span id="account-avatar" class="account-avatar" aria-hidden="true">H</span><span><strong id="account-name">Se connecter</strong><small id="account-caption">Votre espace personnel</small></span><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m9 3-1 3-3 1 1 3-2 2 2 2-1 3 3 1 1 3h6l1-3 3-1-1-3 2-2-2-2 1-3-3-1-1-3Z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
     </aside>
-    <main id="conversation-main" class="conversation-main">
+    <main id="conversation-main" class="conversation-main" data-page="home">
       <header class="conversation-header">
+        <p id="page-label" class="page-label">Accueil</p>
         <div class="header-tools">
-          <button id="open-saved" class="header-button" type="button" aria-haspopup="dialog">Enregistrements</button>
-          <button id="open-alerts" class="header-button" type="button" aria-haspopup="dialog">Surveillances</button>
           <details id="appearance-menu" class="appearance-menu"><summary>Apparence <span aria-hidden="true">◐</span></summary>
             <div class="appearance-panel"><label for="theme-mode">Thème</label><select id="theme-mode"><option value="system">Système</option><option value="light">Clair</option><option value="dark">Sombre</option></select>
               <p>Couleur</p><div class="color-choices" aria-label="Couleur de l’interface">
@@ -43,20 +59,30 @@
             </div>
           </details>
         </div>
-        <label class="period-control" for="assistant-max-age-days"><span>Annonces récentes</span><select id="assistant-max-age-days"><option value="7">7 jours</option><option value="30" selected>1 mois</option><option value="90">3 mois</option></select></label>
+        <label hidden class="period-control" for="assistant-max-age-days"><span>Annonces récentes</span><select id="assistant-max-age-days"><option value="7">7 jours</option><option value="30" selected>1 mois</option><option value="90">3 mois</option></select></label>
       </header>
       <div id="conversation-scroll" class="conversation-scroll">
-        <section id="welcome" class="welcome">
-
+        <section id="welcome" class="welcome" aria-labelledby="welcome-title">
+          <div class="welcome-heading"><p id="welcome-greeting" class="welcome-greeting">Bonjour et bienvenue</p><h1 id="welcome-title">Trouver la meilleure annonce immobilière <span>en toute confiance.</span></h1><p class="welcome-description">Un projet à Ouagadougou ? HAKIMO vous aide à comparer les prix, comprendre les annonces et choisir les offres qui répondent à vos besoins.</p></div>
           <div class="prompt-grid" aria-label="Commencer une conversation">
-            <button type="button" data-prompt="Trouve-moi une bonne affaire : une parcelle à Ouagadougou ou dans ses environs, budget maximum 10 millions FCFA."><span class="prompt-icon" aria-hidden="true">✦</span><strong>Dénicher une bonne affaire</strong><span>Un bon prix, des documents et des atouts concrets.</span></button>
-            <button type="button" id="paste-prompt"><span class="prompt-icon" aria-hidden="true">▤</span><strong>Analyser une annonce</strong><span>Collez une publication pour la comparer aux offres.</span></button>
-            <button type="button" data-prompt="Je cherche une parcelle d’environ 300 m² à Saaba, budget maximum 6 millions FCFA, avec une attestation."><span class="prompt-icon" aria-hidden="true">⌖</span><strong>Préciser mon projet</strong><span>Une parcelle à Saaba, 300 m², jusqu’à 6 millions.</span></button>
+            <button type="button" data-prompt="Trouve-moi une bonne affaire : une parcelle uniquement à Ouagadougou, budget maximum 10 millions FCFA."><span class="prompt-icon" aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9Z"/></svg></span><strong>Dénicher une bonne affaire</strong><span>Un bon prix, des documents et des atouts concrets.</span></button>
+            <button type="button" id="paste-prompt" data-action="analyze"><span class="prompt-icon" aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M14 2H5v20h14V7ZM14 2v6h5M8 12h8M8 16h5"/></svg></span><strong>Analyser une annonce</strong><span>Collez une publication. Parlons de ses points forts et de ce qui manque.</span></button>
+            <button type="button" id="project-prompt" data-action="project"><span class="prompt-icon" aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M21 11a9 9 0 0 1-9 9H4l-3 2 2-6A9 9 0 1 1 21 11Z"/><path d="M7 10h10M7 14h6"/></svg></span><strong>Décrire mon projet</strong><span>Votre quartier, votre budget, vos envies. Construisons votre sélection.</span></button>
           </div>
+          <section class="market-overview" aria-labelledby="market-title" aria-busy="true" id="market-overview">
+            <div class="section-heading"><h2 id="market-title">Les annonces du dernier mois</h2><span class="scope-pill">Ouagadougou · Vente</span></div>
+            <div class="stats-grid">
+              <article class="stat-card"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg><span class="stat-label">Annonces sur 30 jours</span><strong id="stat-count" class="stat-value">…</strong><small>Publications avec une date connue</small></article>
+              <article class="stat-card"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 3v18h17M8 16v-4M13 16V7M18 16v-7"/></svg><span class="stat-label">Prix moyen annoncé / m²</span><strong id="stat-price" class="stat-value">…</strong><small id="stat-price-note">Calculé sur les prix et surfaces renseignés</small></article>
+              <article class="stat-card"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/></svg><span class="stat-label">Quartier le plus représenté</span><strong id="stat-neighborhood" class="stat-value stat-place">…</strong><small id="stat-neighborhood-note">Parmi les quartiers renseignés</small></article>
+            </div>
+            <div class="stats-caption"><p id="stats-status" role="status">Chargement des chiffres de la plateforme…</p><button id="retry-stats" class="text-button" type="button" hidden>Réessayer</button></div>
+          </section>
         </section>
+        <section id="platform-intro" class="platform-intro" aria-labelledby="platform-title"><div class="intro-copy"><span class="intro-kicker">Votre assistant immobilier</span><h2 id="platform-title">De la première question<br>à une sélection qui vous ressemble.</h2><p>Échangez simplement avec HAKIMO. Il explique ses choix, souligne les informations à vérifier et vous donne accès à la publication d’origine.</p><button id="start-project" class="secondary-button" type="button" data-action="project">Parlons de votre projet</button></div><ol class="platform-steps"><li><span>01</span><div><strong>Exprimez votre besoin</strong><p>Une phrase suffit pour commencer.</p></div></li><li><span>02</span><div><strong>Comparez avec des repères concrets</strong><p>Prix au m², documents, accès, eau et électricité.</p></div></li><li><span>03</span><div><strong>Gardez les offres qui vous intéressent</strong><p>Retrouvez vos favoris et relancez vos alertes.</p></div></li></ol></section>
         <div id="assistant-messages" class="assistant-messages" role="log" aria-label="Conversation" aria-live="polite" aria-relevant="additions"></div>
       </div>
-      <div class="composer-dock">
+      <div class="composer-dock" hidden>
         <div id="followup-suggestions" class="followup-suggestions" aria-label="Poursuivre la recherche"></div>
         <form id="assistant-form" class="assistant-composer">
           <label class="sr-only" for="assistant-input">Votre message ou une annonce à analyser</label>
@@ -72,7 +98,7 @@
     <form id="auth-form">
       <button class="modal-close" type="button" data-close="auth-dialog" aria-label="Fermer">×</button>
       <img class="auth-logo" src="/static/hakilab-logo.png" alt="HAKILAB" width="64" height="54"><h2 id="auth-title">Se connecter</h2>
-      <p id="auth-description" class="subtle">Retrouvez vos enregistrements et accédez aux contacts.</p>
+      <p id="auth-description" class="subtle">Retrouvez vos favoris et accédez aux contacts.</p>
       <label for="auth-name">Nom</label><input id="auth-name" name="name" type="text" minlength="2" maxlength="80" autocomplete="username" required>
       <label for="auth-password">Mot de passe</label><input id="auth-password" name="password" type="password" minlength="4" maxlength="128" autocomplete="current-password" required>
       <p id="auth-feedback" class="auth-feedback" role="status"></p>
@@ -82,17 +108,43 @@
   <dialog id="alert-dialog" class="modal" aria-labelledby="alert-title">
     <form id="alert-form">
       <button class="modal-close" type="button" data-close="alert-dialog" aria-label="Fermer">×</button>
-      <h2 id="alert-title">Surveiller cette recherche</h2><p id="alert-query" class="subtle"></p>
-      <label for="alert-name">Nom de la surveillance</label><input id="alert-name" maxlength="80" required>
+      <h2 id="alert-title">Créer une alerte</h2><p id="alert-query" class="subtle"></p>
+      <label for="alert-name">Nom de l’alerte</label><input id="alert-name" maxlength="80" required>
       <p class="subtle">Relancez cette recherche avec « Vérifier ». Les notifications automatiques ne sont pas encore disponibles.</p>
-      <button class="primary-wide" type="submit">Enregistrer la surveillance</button>
+      <button class="primary-wide" type="submit">Créer l’alerte</button>
     </form>
   </dialog>
   <dialog id="saved-dialog" class="modal collection-modal" aria-labelledby="saved-title">
-    <button class="modal-close" type="button" data-close="saved-dialog" aria-label="Fermer">×</button><h2 id="saved-title">Enregistrements</h2><div id="saved-list" class="dashboard-list"></div>
+    <button class="modal-close" type="button" data-close="saved-dialog" aria-label="Fermer">×</button><h2 id="saved-title">Favoris</h2><div id="saved-list" class="dashboard-list"></div>
   </dialog>
   <dialog id="alerts-dialog" class="modal collection-modal" aria-labelledby="alerts-title">
-    <button class="modal-close" type="button" data-close="alerts-dialog" aria-label="Fermer">×</button><h2 id="alerts-title">Surveillances</h2><div id="alerts-list" class="dashboard-list"></div>
+    <button class="modal-close" type="button" data-close="alerts-dialog" aria-label="Fermer">×</button><h2 id="alerts-title">Mes alertes</h2><div id="alerts-list" class="dashboard-list"></div>
+  </dialog>
+  <dialog id="settings-dialog" class="modal" aria-labelledby="settings-title">
+    <button class="modal-close" type="button" data-close="settings-dialog" aria-label="Fermer">×</button>
+    <h2 id="settings-title">Paramètres</h2><p class="subtle">Modifiez vos informations personnelles.</p>
+    <form id="settings-form">
+      <label for="profile-name">Nom du compte</label><input id="profile-name" name="name" minlength="2" maxlength="80" autocomplete="username" required>
+      <p class="field-hint">Ce nom vous sert aussi à vous connecter.</p>
+      <label for="profile-current-password">Mot de passe actuel</label><input id="profile-current-password" name="current_password" type="password" minlength="4" maxlength="128" autocomplete="current-password" required>
+      <label for="profile-new-password">Nouveau mot de passe <span class="subtle">(facultatif)</span></label><input id="profile-new-password" name="new_password" type="password" minlength="4" maxlength="128" autocomplete="new-password">
+      <p class="field-hint">Laissez ce champ vide pour garder votre mot de passe.</p>
+      <p id="settings-feedback" class="auth-feedback" role="status"></p><button id="settings-submit" class="primary-wide" type="submit">Enregistrer les modifications</button>
+    </form>
+    <button id="logout-button" class="text-button logout-button" type="button">Se déconnecter</button>
+  </dialog>
+  <dialog id="guides-dialog" class="modal collection-modal resource-modal" aria-labelledby="guides-title"><button class="modal-close" type="button" data-close="guides-dialog" aria-label="Fermer">×</button><h2 id="guides-title">Conseils &amp; guides</h2><p class="subtle">Quelques repères pour utiliser HAKIMO.</p>
+    <article><h3>Une demande simple pour commencer</h3><p>Indiquez votre quartier et votre budget si vous les connaissez. Ajoutez ensuite vos priorités : une école, une route, l’eau, l’électricité ou des documents.</p></article>
+    <article><h3>Comparer des biens proches</h3><p>Le prix au m² aide à comparer des surfaces différentes. Regardez aussi le quartier et les équipements : un grand terrain rural ne répond pas au même besoin qu’une petite parcelle en ville.</p></article>
+    <article><h3>Comprendre les informations de l’annonce</h3><p>HAKIMO distingue ce qui est mentionné de ce qui manque. Une mention dans une publication ne prouve ni la présence sur place ni l’authenticité d’un document. Demandez les précisions au vendeur.</p></article>
+    <button class="primary-wide" type="button" data-resource-chat>Discuter avec HAKIMO</button>
+  </dialog>
+  <dialog id="faq-dialog" class="modal collection-modal resource-modal" aria-labelledby="faq-title"><button class="modal-close" type="button" data-close="faq-dialog" aria-label="Fermer">×</button><h2 id="faq-title">Questions fréquentes</h2>
+    <details open><summary>Comment analyser une publication ?</summary><p>Choisissez « Analyser une annonce » et collez son texte. HAKIMO donne son avis puis cherche des alternatives dans la même zone ou dans des quartiers proches lorsqu’il dispose des repères nécessaires.</p></details>
+    <details><summary>Où mène le bouton « Voir » ?</summary><p>À la publication Facebook d’origine. Facebook peut vous demander de vous connecter ou de rejoindre le groupe qui l’a publiée.</p></details>
+    <details><summary>Comment fonctionnent les alertes ?</summary><p>Elles conservent vos critères. Ouvrez « Mes alertes », puis « Vérifier » pour relancer une recherche. Il n’y a pas encore de notification automatique.</p></details>
+    <details><summary>D’où viennent les chiffres de l’accueil ?</summary><p>Des annonces de la plateforme situées à Ouagadougou, avec une date de publication connue dans les 30 derniers jours. Les locations sont exclues. La moyenne utilise uniquement les prix et surfaces renseignés ; ce sont les prix annoncés, pas les prix de ventes conclues.</p></details>
+    <details><summary>Où retrouver mes favoris ?</summary><p>Connectez-vous à votre compte, puis ouvrez « Favoris ». Les favoris, alertes et conversations sont conservés dans le navigateur utilisé : ils ne se synchronisent pas encore entre appareils.</p></details>
   </dialog>
   <template id="waiting-template">
     <section class="waiting-panel" aria-label="Demande en cours">

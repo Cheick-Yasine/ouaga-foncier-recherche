@@ -1,0 +1,389 @@
+{
+  "source": "OpenStreetMap, relation 5675756; repères GeoNames et OpenStreetMap",
+  "source_url": "https://www.openstreetmap.org/relation/5675756",
+  "attribution": "© OpenStreetMap contributors; GeoNames",
+  "license_url": "https://www.openstreetmap.org/copyright",
+  "retrieved_at": "2026-09-06T20:34:51Z",
+  "method": "Point représentatif du quartier dans la limite de la commune de Ouagadougou (ray casting). Ne situe pas une parcelle exacte.",
+  "locations": [
+    {
+      "name": "1200 Logements",
+      "aliases": [],
+      "in_city": true
+    },
+    {
+      "name": "Balkuy",
+      "aliases": [],
+      "in_city": true
+    },
+    {
+      "name": "Bendogo",
+      "aliases": [],
+      "in_city": true
+    },
+    {
+      "name": "Bilbalogo",
+      "aliases": [
+        "Bilbalogho"
+      ],
+      "in_city": true
+    },
+    {
+      "name": "Bissighin",
+      "aliases": [],
+      "in_city": true
+    },
+    {
+      "name": "Boassa",
+      "aliases": [],
+      "in_city": true
+    },
+    {
+      "name": "Cissin",
+      "aliases": [],
+      "in_city": true
+    },
+    {
+      "name": "Cité An 3",
+      "aliases": [
+        "Cité An III"
+      ],
+      "in_city": true
+    },
+    {
+      "name": "Cité An II",
+      "aliases": [],
+      "in_city": true
+    },
+    {
+      "name": "Cité An IV B",
+      "aliases": [],
+      "in_city": true
+    },
+    {
+      "name": "Cité Azimo",
+      "aliases": [],
+      "in_city": true
+    },
+    {
+      "name": "Cité Socogib",
+      "aliases": [
+        "SOCOGIB"
+      ],
+      "in_city": true
+    },
+    {
+      "name": "Cité de la Caisse",
+      "aliases": [],
+      "in_city": true
+    },
+    {
+      "name": "Cité de l’Avenir",
+      "aliases": [],
+      "in_city": true
+    },
+    {
+      "name": "Dapoya",
+      "aliases": [],
+      "in_city": true
+    },
+    {
+      "name": "Dassasgho",
+      "aliases": [
+        "Dassasgo"
+      ],
+      "in_city": true
+    },
+    {
+      "name": "Gampela",
+      "aliases": [
+        "Gampéla"
+      ],
+      "in_city": false
+    },
+    {
+      "name": "Gounghin",
+      "aliases": [],
+      "in_city": true
+    },
+    {
+      "name": "Gounghin Nord",
+      "aliases": [],
+      "in_city": true
+    },
+    {
+      "name": "Gounghin Sud",
+      "aliases": [],
+      "in_city": true
+    },
+    {
+      "name": "Hamdalaye",
+      "aliases": [],
+      "in_city": true
+    },
+    {
+      "name": "Kalgondin",
+      "aliases": [],
+      "in_city": true
+    },
+    {
+      "name": "Kamboinsé",
+      "aliases": [],
+      "in_city": true
+    },
+    {
+      "name": "Kamsonghin",
+      "aliases": [],
+      "in_city": true
+    },
+    {
+      "name": "Kilwin",
+      "aliases": [],
+      "in_city": true
+    },
+    {
+      "name": "Kologh Naba",
+      "aliases": [
+        "Kologh-Naba"
+      ],
+      "in_city": true
+    },
+    {
+      "name": "Komsilga",
+      "aliases": [],
+      "in_city": false
+    },
+    {
+      "name": "Kossodo",
+      "aliases": [],
+      "in_city": true
+    },
+    {
+      "name": "Kouba",
+      "aliases": [],
+      "in_city": false
+    },
+    {
+      "name": "Koubri",
+      "aliases": [],
+      "in_city": false
+    },
+    {
+      "name": "Koulouba",
+      "aliases": [],
+      "in_city": true
+    },
+    {
+      "name": "Kouritenga",
+      "aliases": [],
+      "in_city": true
+    },
+    {
+      "name": "Larlé",
+      "aliases": [],
+      "in_city": true
+    },
+    {
+      "name": "Lougsi",
+      "aliases": [],
+      "in_city": false
+    },
+    {
+      "name": "Loumbila",
+      "aliases": [],
+      "in_city": false
+    },
+    {
+      "name": "Nampougou",
+      "aliases": [],
+      "in_city": true
+    },
+    {
+      "name": "Nemnin",
+      "aliases": [],
+      "in_city": true
+    },
+    {
+      "name": "Nioko 1",
+      "aliases": [
+        "Nioko I"
+      ],
+      "in_city": false
+    },
+    {
+      "name": "Nioko 2",
+      "aliases": [
+        "Nioko II"
+      ],
+      "in_city": true
+    },
+    {
+      "name": "Nonsin",
+      "aliases": [],
+      "in_city": true
+    },
+    {
+      "name": "Ouaga 2000",
+      "aliases": [],
+      "in_city": true
+    },
+    {
+      "name": "Ouidi",
+      "aliases": [],
+      "in_city": true
+    },
+    {
+      "name": "Pabré",
+      "aliases": [],
+      "in_city": false
+    },
+    {
+      "name": "Paspanga",
+      "aliases": [],
+      "in_city": true
+    },
+    {
+      "name": "Patte d'Oie",
+      "aliases": [
+        "Patte d’Oie"
+      ],
+      "in_city": true
+    },
+    {
+      "name": "Pissy",
+      "aliases": [],
+      "in_city": true
+    },
+    {
+      "name": "Polesgo",
+      "aliases": [],
+      "in_city": true
+    },
+    {
+      "name": "Quartiers Saints",
+      "aliases": [],
+      "in_city": true
+    },
+    {
+      "name": "Saaba",
+      "aliases": [],
+      "in_city": false
+    },
+    {
+      "name": "Sabtoana",
+      "aliases": [],
+      "in_city": false
+    },
+    {
+      "name": "Samandin",
+      "aliases": [],
+      "in_city": true
+    },
+    {
+      "name": "Sandogo",
+      "aliases": [],
+      "in_city": true
+    },
+    {
+      "name": "Sanyiri",
+      "aliases": [],
+      "in_city": true
+    },
+    {
+      "name": "Silmiougou",
+      "aliases": [],
+      "in_city": false
+    },
+    {
+      "name": "Somgandé",
+      "aliases": [],
+      "in_city": true
+    },
+    {
+      "name": "Tabtenga",
+      "aliases": [
+        "Taptenga"
+      ],
+      "in_city": true
+    },
+    {
+      "name": "Tampouy",
+      "aliases": [],
+      "in_city": true
+    },
+    {
+      "name": "Tanghin",
+      "aliases": [],
+      "in_city": true
+    },
+    {
+      "name": "Tengandogo",
+      "aliases": [
+        "Tingandogo"
+      ],
+      "in_city": true
+    },
+    {
+      "name": "Toukin",
+      "aliases": [],
+      "in_city": true
+    },
+    {
+      "name": "Wayalghin",
+      "aliases": [
+        "Wayalguin"
+      ],
+      "in_city": true
+    },
+    {
+      "name": "Wemtenga",
+      "aliases": [],
+      "in_city": true
+    },
+    {
+      "name": "Yamtenga",
+      "aliases": [],
+      "in_city": true
+    },
+    {
+      "name": "Zagtouli",
+      "aliases": [],
+      "in_city": true
+    },
+    {
+      "name": "Zogona",
+      "aliases": [],
+      "in_city": true
+    },
+    {
+      "name": "Zone pilote de Cissin",
+      "aliases": [],
+      "in_city": true
+    },
+    {
+      "name": "Zongo",
+      "aliases": [],
+      "in_city": true
+    },
+    {
+      "name": "Bassinko",
+      "aliases": [],
+      "in_city": false
+    },
+    {
+      "name": "Karpala",
+      "aliases": [],
+      "in_city": true
+    },
+    {
+      "name": "Paglayiri",
+      "aliases": [],
+      "in_city": true
+    },
+    {
+      "name": "Yagma",
+      "aliases": [],
+      "in_city": true
+    }
+  ]
+}

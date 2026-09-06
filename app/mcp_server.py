@@ -18,6 +18,7 @@ from app.search_engine import (
     rank_candidates,
 )
 from app.search_repository import load_recent_candidates
+from app.listing_scope import facebook_publication_url, within_ouagadougou
 from app.semantic_filter import apply_semantic_filter, sanitize_external_text
 
 mcp = FastMCP(
@@ -49,6 +50,7 @@ mcp = FastMCP(
 def _criteria_payload(criteria) -> dict[str, Any]:
     return {
         "description": criteria.description,
+        "ouagadougou_uniquement": criteria.city_only,
         "type_bien": criteria.property_type,
         "quartier": criteria.neighborhood,
         "prix_fcfa": criteria.price_fcfa,
@@ -75,6 +77,8 @@ def _public_result(result) -> dict[str, Any]:
         )
         or "Annonce immobilière",
         "url": f"{get_settings().public_app_url}/?annonce={public_announcement_id(candidate.identifier)}",
+        "facebook_url": facebook_publication_url(candidate.url),
+        "dans_ouagadougou": within_ouagadougou(candidate.text, candidate.neighborhood),
         "description": sanitize_external_text(candidate.text),
         "date_publication": candidate.publication_label,
         "type_bien": candidate.property_type,

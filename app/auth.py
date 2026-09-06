@@ -187,3 +187,33 @@ def delete_session(token: str | None) -> None:
             "DELETE FROM public.user_sessions WHERE token_hash = %s",
             (_token_hash(token),),
         )
+
+
+def update_user(user_id: str, name: str, current_password: str,
+                new_password: str | None, session_token: str) -> AuthenticatedUser:
+    """Modifie le compte connecté, en conservant son identifiant et ses favoris."""
+    normalized = normalize_name(name)
+    validate_password(current_password)
+    if new_password is not None:
+        validate_password(new_password)
+    try:
+        with psycopg.connect(_database_url(), row_factory=dict_row) as connection:
+            row = connection.execute(
+                'SELECT password_hash FROM public.app_users WHERE id = %s FOR UPDATE',
+                (user_id,),
+            ).fetchone()
+            if row is None or not verify_password(current_password, row['password_hash']):
+                raise AuthenticationError('Le mot de passe actuel est incorrect.')
+            password_hash = hash_password(new_password) if new_password is not None else row['password_hash']
+            connection.execute(
+                'UPDATE public.app_users SET email = %s, password_hash = %s WHERE id = %s',
+                (normalized, password_hash, user_id),
+            )
+            if new_password is not None:
+                connection.execute(
+                    'DELETE FROM public.user_sessions WHERE user_id = %s AND token_hash <> %s',
+                    (user_id, _token_hash(session_token)),
+                )
+    except psycopg.errors.UniqueViolation as error:
+        raise AuthenticationError('Un compte existe déjà avec ce nom.') from error
+    return AuthenticatedUser(id=user_id, name=normalized)

@@ -9,7 +9,8 @@ const money = new Intl.NumberFormat('fr-FR', {maximumFractionDigits: 0});
 const decimal = new Intl.NumberFormat('fr-FR', {maximumFractionDigits: 2});
 let currentUser = null, authMode = 'login', pendingAuthAction = null;
 let thread = null, busy = false, expanded = false, mobileOpen = false, sidebarCollapsed = false, alertDraft = null;
-let toastTimer, checkingAlert = null;
+let toastTimer, checkingAlert = null, activePage = 'home';
+const sourceCache = new Map();
 const detailsCache = new Map();
 const mobile = window.matchMedia('(max-width: 800px)');
 try { sidebarCollapsed = localStorage.getItem('hakimo:sidebar-collapsed') === 'true'; } catch {}
@@ -36,6 +37,7 @@ function setSidebarState() {
   sidebar.hidden = !visible; workspace.classList.toggle('is-expanded', expanded);
   workspace.classList.toggle('sidebar-collapsed', !visible);
   main.inert = expanded || (mobile.matches && mobileOpen);
+  if (expanded) $('#history-section').open = true;
   // Le même bouton reste accessible dans chacun des trois modes, sans copie.
   if (visible && historyToggle.parentElement !== sidebarTop) sidebarTop.append(historyToggle);
   else if (!visible && historyToggle.parentElement !== conversationHeader) conversationHeader.prepend(historyToggle);
@@ -45,7 +47,7 @@ function setSidebarState() {
   if (wasFocused) historyToggle.focus();
 }
 function rememberSidebar() { try { localStorage.setItem('hakimo:sidebar-collapsed', String(sidebarCollapsed)); } catch {} }
-function closeSidebar() { expanded = false; mobileOpen = false; setSidebarState(); input.focus(); }
+function closeSidebar() { expanded = false; mobileOpen = false; setSidebarState(); if (activePage === 'chat') input.focus(); }
 historyToggle.addEventListener('click', () => {
   if (sidebar.hidden) { sidebarCollapsed = false; mobileOpen = true; expanded = false; }
   else if (!expanded) { expanded = true; }
@@ -62,7 +64,7 @@ document.addEventListener('keydown', e => {
     else if (!e.shiftKey && document.activeElement === nodes.at(-1)) { e.preventDefault(); nodes[0]?.focus(); }
   }
 });
-function startConversation() { if (busy) return; persistThread(); thread = newThread(); renderConversation(); renderSidebar(); closeSidebar(); }
+function startConversation() { if (busy) return; persistThread(); thread = newThread(); showPage('chat'); renderConversation(); renderSidebar(); closeSidebar(); }
 $('#new-conversation').addEventListener('click', startConversation);
 function dateText(date) { const d = new Date(date); return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('fr-FR', {day:'numeric',month:'short'}); }
 function isSaved(id) { return read('saved').some(x => x.id === id); }
@@ -75,17 +77,17 @@ function requireLogin(action, message) {
 function saveResult(result) { requireLogin(() => {
   const list = read('saved'), exists = list.some(x => x.id === result.id);
   const next = exists ? list.filter(x => x.id !== result.id) : [{...cleanResult(result),saved_at:new Date().toISOString()}, ...list].slice(0,100);
-  if (write('saved', next)) { renderSidebar(); updateSaveButtons(); toast(exists ? 'Annonce retirée des enregistrements.' : 'Annonce enregistrée dans votre espace.'); }
+  if (write('saved', next)) { renderSidebar(); updateSaveButtons(); toast(exists ? 'Annonce retirée des favoris.' : 'Annonce ajoutée aux favoris.'); }
 }, 'Connectez-vous pour enregistrer cette annonce.'); }
-function saveButton(result) { const b = button(isSaved(result.id) ? 'Enregistrée' : 'Enregistrer','table-save', () => saveResult(result)); b.dataset.saveId = result.id; b.classList.toggle('is-saved',isSaved(result.id)); return b; }
-function updateSaveButtons() { $$('[data-save-id]').forEach(b => { const saved = isSaved(b.dataset.saveId); b.textContent = saved ? 'Enregistrée' : 'Enregistrer'; b.classList.toggle('is-saved', saved); }); }
+function saveButton(result) { const b = button(isSaved(result.id) ? 'Dans les favoris' : 'Favori','table-save', () => saveResult(result)); b.dataset.saveId = result.id; b.classList.toggle('is-saved',isSaved(result.id)); return b; }
+function updateSaveButtons() { $$('[data-save-id]').forEach(b => { const saved = isSaved(b.dataset.saveId); b.textContent = saved ? 'Dans les favoris' : 'Favori'; b.classList.toggle('is-saved', saved); }); }
 function renderSidebar() {
   const conversations = read('conversations');
   const history = conversations.concat(read('history').filter(h => !conversations.some(c => c.query === h.query)).map(h => ({...h,legacy:true})));
   for (const kind of ['history','saved','alerts']) {
     const list = $('#' + kind + '-list'), items = kind === 'history' ? history : read(kind);
     list.replaceChildren(); const count = $('#' + kind + '-count'); if (count) count.textContent = items.length;
-    if (!items.length) { list.append(el('p','empty-dashboard', {history:'Vos conversations apparaîtront ici.',saved:'Enregistrez une annonce pour la retrouver ici.',alerts:'Suivez une recherche depuis ses résultats.'}[kind])); continue; }
+    if (!items.length) { list.append(el('p','empty-dashboard', {history:'Vos conversations apparaîtront ici.',saved:'Ajoutez une annonce aux favoris pour la retrouver ici.',alerts:'Suivez une recherche depuis ses résultats.'}[kind])); continue; }
     for (const item of items) {
       const row = el('article','dashboard-item'), actions = el('div','side-actions');
       if (kind === 'history') {
@@ -94,7 +96,7 @@ function renderSidebar() {
         const open = button(item.legacy ? 'Relancer' : 'Reprendre','side-action', () => {
           if (busy) return; persistThread();
           if (item.legacy) { thread = newThread(); period.value = String(item.max_age_days || 30); closeSidebar(); sendMessage(item.query); }
-          else { thread = structuredClone(item); period.value = String(item.max_age_days || 30); renderConversation(); renderSidebar(); closeSidebar(); }
+          else { thread = structuredClone(item); period.value = String(item.max_age_days || 30); showPage('chat'); renderConversation(); renderSidebar(); closeSidebar(); }
         }); open.disabled = busy; actions.append(open);
       } else if (kind === 'saved') {
         row.append(el('h3','',title(item)),el('p','',number(item.prix_fcfa,' FCFA') + ' · ' + area(item.superficie_m2)));
@@ -114,21 +116,63 @@ function renderSidebar() {
       }); remove.disabled = busy && kind === 'history'; actions.append(remove); row.append(actions); list.append(row);
     }
   }
+  queueMicrotask(refreshSourceLinks);
 }
 function evidence(result, container) {
   const chips = el('div','evidence-chips');
   [...new Set(result.qualite?.atouts || [])].forEach(t => chips.append(el('span','evidence-chip',t)));
   if (chips.childNodes.length) container.append(chips);
 }
+function facebookUrl(raw) {
+  try {
+    const u = new URL(raw), host = u.hostname.toLowerCase();
+    if (!['http:','https:'].includes(u.protocol) || u.username || u.password || !['facebook.com','fb.com','fb.watch'].some(d => host === d || host.endsWith('.'+d))) return null;
+    if (['','/l.php','/login','/login.php','/sharer.php','/dialog/share'].includes(u.pathname.replace(/\/$/,''))) return null;
+    return u.href;
+  } catch { return null; }
+}
+function setSourceLink(link, url, failed = false) {
+  if (url) {
+    link.href = url; link.textContent = 'Voir'; link.removeAttribute('aria-disabled'); link.removeAttribute('role'); link.removeAttribute('tabindex');
+  } else {
+    link.removeAttribute('href'); link.textContent = failed ? 'Réessayer le lien' : 'Lien indisponible';
+    if (failed) { link.setAttribute('role','button'); link.tabIndex=0; link.removeAttribute('aria-disabled'); }
+    else { link.setAttribute('aria-disabled','true'); link.removeAttribute('role'); link.removeAttribute('tabindex'); }
+  }
+}
 function sourceLink(result, cls='table-action') {
-  const link=el('a',cls,'Voir');
-  link.href='/annonces/'+encodeURIComponent(result.id)+'/source';
-  link.target='_blank'; link.rel='noopener noreferrer';
+  const link = el('a',cls+' source-link','Voir');
+  link.dataset.sourceId = result.id; link.target='_blank'; link.rel='noopener noreferrer';
   link.setAttribute('aria-label','Voir la publication Facebook : '+title(result));
-  link.addEventListener('click',e=>{
-    if (!currentUser) { e.preventDefault(); requireLogin(()=>location.assign(link.href),'Connectez-vous pour ouvrir la publication et accéder au contact.'); }
-  });
+  const url = facebookUrl(result.facebook_url) || facebookUrl(result.url);
+  if (url) sourceCache.set(result.id,{url});
+  if (sourceCache.has(result.id)) { const cached=sourceCache.get(result.id); setSourceLink(link,cached.url,cached.error); }
+  else { link.textContent='Chargement du lien…'; link.setAttribute('aria-disabled','true'); }
+  const retry = e => {
+    if (link.hasAttribute('href')) return;
+    e.preventDefault();
+    if (sourceCache.get(result.id)?.error) { sourceCache.delete(result.id); link.textContent='Chargement du lien…'; refreshSourceLinks(); }
+  };
+  link.addEventListener('click',retry);
+  link.addEventListener('keydown',e=>{if(!link.hasAttribute('href') && ['Enter',' '].includes(e.key)) retry(e);});
   return link;
+}
+let sourcesRequest = false;
+async function refreshSourceLinks() {
+  if (sourcesRequest) return;
+  const refs=[...new Set($$('[data-source-id]').map(n=>n.dataset.sourceId))].filter(id=>!sourceCache.has(id)).slice(0,500);
+  if (!refs.length) return;
+  sourcesRequest=true;
+  try {
+    const results=await api('/annonces/liens',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({references:refs})});
+    refs.forEach(id=>sourceCache.set(id,{url:null}));
+    results.forEach(r=>sourceCache.set(r.id,{url:facebookUrl(r.facebook_url)}));
+  } catch { refs.forEach(id=>sourceCache.set(id,{url:null,error:true})); }
+  finally {
+    sourcesRequest=false;
+    $$('[data-source-id]').forEach(link=>{const cached=sourceCache.get(link.dataset.sourceId);if(cached)setSourceLink(link,cached.url,cached.error);});
+    refreshSourceLinks();
+  }
 }
 function contactCell(r) {
   const td=el('td','contact-cell'), cached=detailsCache.get(r.id);
@@ -210,7 +254,7 @@ function appendMessage(entry) {
   if (entry.mcp_used) {
     const heading=el('div','results-heading');
     heading.append(el('h2','',results.length ? (comparison?'Comparaison':analysis?'Des offres à considérer':recommendable?'Recommandation':'Offres à compléter') : (analysis?'': 'Aucune annonce correspondante')));
-    if (entry.criteria?.description) heading.append(button('Surveiller','secondary-button',()=>createAlert(entry.criteria,results)));
+    if (entry.criteria?.description) heading.append(button('Créer une alerte','secondary-button',()=>createAlert(entry.criteria,results)));
     content.append(heading);
     if (simpleSearch && results.length && recommendable) {
       const first=results[0], card=el('section','recommendation');
@@ -228,17 +272,17 @@ function appendMessage(entry) {
     }
     else if (simpleSearch) content.append(el('p','subtle','Vous pouvez élargir le quartier ou ajuster un critère.'));
   }
-  row.append(el('div','chat-avatar',entry.role==='assistant'?'H':'Vous'),content); messages.append(row); return row;
+  row.append(el('div','chat-avatar',entry.role==='assistant'?'H':'Vous'),content); messages.append(row); queueMicrotask(refreshSourceLinks); return row;
 }
 function renderSuggestions(entry) {
   const node=$('#followup-suggestions'); node.replaceChildren();
   if (!entry?.suggestions) return;
   entry.suggestions.slice(0,2).forEach(s => { const b=button(s.label || s,'',() => { if(s.action==='composer'){input.value=s.message;input.focus();}else sendMessage(s.message || s); }); b.disabled=busy; node.append(b); });
 }
-function scrollEnd() { const node=$('#conversation-scroll'); node.scrollTop=node.scrollHeight; }
+function scrollEnd() { if (activePage !== 'chat') return; const node=$('#conversation-scroll'); node.scrollTop=node.scrollHeight; }
 function renderConversation() {
-  messages.replaceChildren(); const items=thread?.messages || []; $('#welcome').hidden=items.length>0;
-  items.forEach(appendMessage); renderSuggestions(items.filter(m=>m.role==='assistant').at(-1)); requestAnimationFrame(scrollEnd); refreshContacts();
+  messages.replaceChildren(); const items=thread?.messages || []; $('#welcome').hidden=activePage === 'chat' && items.length>0;
+  items.forEach(appendMessage); renderSuggestions(items.filter(m=>m.role==='assistant').at(-1)); requestAnimationFrame(scrollEnd); refreshContacts(); refreshSourceLinks();
 }
 function historyContent(entry) {
   let text=entry.content || 'Résultats affichés dans le tableau.';
@@ -252,11 +296,11 @@ async function api(path, options={}) {
   if (!response.ok) { const e=new Error(typeof payload.detail==='string' ? payload.detail : 'Cette demande ne peut pas être traitée. Vérifiez les informations saisies.'); e.status=response.status; throw e; }
   return payload;
 }
-function setBusy(value) { busy=value; submit.disabled=value; period.disabled=value; $('#new-conversation').disabled=value; $('#account-button').disabled=value; submit.replaceChildren(document.createTextNode(value ? 'Analyse…' : 'Envoyer ')); if (!value) submit.append(el('span','', '↑')); $('#assistant-messages').setAttribute('aria-busy',String(value)); renderSidebar(); $$('#followup-suggestions button, .prompt-grid button').forEach(b=>b.disabled=value); }
+function setBusy(value) { busy=value; submit.disabled=value; period.disabled=value; $('#new-conversation').disabled=value; $('#account-button').disabled=value; $('#logout-button').disabled=value; submit.replaceChildren(document.createTextNode(value ? 'Analyse…' : 'Envoyer ')); if (!value) submit.append(el('span','', '↑')); $('#assistant-messages').setAttribute('aria-busy',String(value)); renderSidebar(); $$('#followup-suggestions button, .prompt-grid button').forEach(b=>b.disabled=value); }
 async function sendMessage(message) {
   if (busy || !message || message.trim().length<2) return; message=message.trim();
   if (message.length>6000) { toast('Limitez votre message à 6 000 caractères.'); return; }
-  thread ||= newThread(); const threadId=thread.id;
+  showPage('chat'); closeSidebar(); thread ||= newThread(); const threadId=thread.id;
   const previous=thread.messages.filter(m=>!m.error).slice(-12).map(m=>({role:m.role,content:historyContent(m)}));
   if (!thread.messages.length) thread.query=message.slice(0,110);
   const userEntry={role:'user',content:message}; thread.messages.push(userEntry); appendMessage(userEntry); $('#welcome').hidden=true; input.value=''; setBusy(true);
@@ -280,26 +324,49 @@ async function sendMessage(message) {
   } catch(error) {
     const entry={role:'assistant',content:error.message || 'La demande a échoué. Vous pouvez réessayer.',error:true}; thread.messages.push(entry);
     const row=appendMessage(entry); row.querySelector('.chat-content').append(button('Réessayer','secondary-button',() => { input.value=message; input.focus(); }));
-  } finally { stopWaiting(); checkingAlert=null; setBusy(false); persistThread(); scrollEnd(); input.focus(); }
+  } finally { stopWaiting(); checkingAlert=null; setBusy(false); persistThread(); scrollEnd(); if(activePage==='chat')input.focus(); }
 }
 form.addEventListener('submit', e=>{e.preventDefault();sendMessage(input.value);});
 input.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();form.requestSubmit();}});
 $$('[data-prompt]').forEach(b=>b.addEventListener('click',()=>sendMessage(b.dataset.prompt)));
-$('#paste-prompt').addEventListener('click',()=>{input.value='Est-ce une bonne affaire ? Voici l’annonce :\n';input.focus();toast('Collez le texte de la publication après cette phrase.');});
 function createAlert(criteria,results) {
   const query=criteria?.description; if (!query) { toast('Lancez une recherche avant de la surveiller.'); return; }
-  requireLogin(()=>{alertDraft={query,max_age_days:criteria.anciennete_maximale_jours || Number(period.value),seen_ids:results.map(r=>r.id)}; $('#alert-name').value=query.slice(0,75); $('#alert-query').textContent=query; $('#alert-dialog').showModal();},'Connectez-vous pour conserver cette surveillance.');
+  requireLogin(()=>{alertDraft={query,max_age_days:criteria.anciennete_maximale_jours || Number(period.value),seen_ids:results.map(r=>r.id)}; $('#alert-name').value=query.slice(0,75); $('#alert-query').textContent=query; $('#alert-dialog').showModal();},'Connectez-vous pour conserver cette alerte.');
 }
 $('#alert-form').addEventListener('submit',e=>{
   e.preventDefault(); if (!alertDraft) return;
   const alerts=read('alerts'); const next={...alertDraft,id:uid(),name:$('#alert-name').value.trim(),date:new Date().toISOString()};
-  if (write('alerts',[next,...alerts.filter(a=>a.query!==next.query || a.max_age_days!==next.max_age_days)].slice(0,50))) { $('#alert-dialog').close(); renderSidebar(); toast('Surveillance enregistrée. Utilisez « Vérifier » dans votre espace.'); }
+  if (write('alerts',[next,...alerts.filter(a=>a.query!==next.query || a.max_age_days!==next.max_age_days)].slice(0,50))) { $('#alert-dialog').close(); renderSidebar(); toast('Alerte créée. Utilisez « Vérifier » dans votre espace.'); }
 });
-function setAuthMode(mode) { authMode=mode; const register=mode==='register'; $('#auth-title').textContent=register?'Créer un compte':'Se connecter'; $('#auth-description').textContent='Un nom et un mot de passe pour accéder aux contacts et à vos enregistrements.'; $('#auth-submit').textContent=register?'Créer mon compte':'Se connecter'; $('#auth-switch').textContent=register?'J’ai déjà un compte':'Créer un compte'; $('#auth-password').autocomplete=register?'new-password':'current-password'; $('#auth-feedback').textContent=''; }
-function updateAccount() { $('#account-button').textContent=currentUser ? (currentUser.name || 'Mon compte')+' · Se déconnecter' : 'Se connecter'; renderSidebar(); updateSaveButtons(); }
-$('#account-button').addEventListener('click',async()=>{
-  if(!currentUser){pendingAuthAction=null;setAuthMode('login');$('#auth-dialog').showModal();return;}
-  try { await api('/auth/logout',{method:'POST'}); currentUser=null;detailsCache.clear();thread=read('conversations')[0] || newThread();period.value=String(thread.max_age_days || 30);renderConversation();updateAccount();toast('Vous êtes déconnecté.'); } catch(error){toast(error.message);}
+function setAuthMode(mode) { authMode=mode; const register=mode==='register'; $('#auth-title').textContent=register?'Créer un compte':'Se connecter'; $('#auth-description').textContent='Un nom et un mot de passe pour accéder aux contacts et à vos favoris.'; $('#auth-submit').textContent=register?'Créer mon compte':'Se connecter'; $('#auth-switch').textContent=register?'J’ai déjà un compte':'Créer un compte'; $('#auth-password').autocomplete=register?'new-password':'current-password'; $('#auth-feedback').textContent=''; }
+function updateAccount() {
+  $('#account-name').textContent=currentUser?.name || 'Se connecter';
+  $('#account-caption').textContent=currentUser ? 'Gérer mon compte' : 'Votre espace personnel';
+  $('#account-avatar').textContent=currentUser?.name ? currentUser.name.split(' ').filter(Boolean).slice(0,2).map(n=>n[0]).join('').toUpperCase() : 'H';
+  $('#welcome-greeting').textContent=currentUser?.name ? 'Bonjour, '+currentUser.name : 'Bonjour et bienvenue';
+  renderSidebar(); updateSaveButtons();
+}
+function openSettings() {
+  requireLogin(()=>{ $('#settings-form').reset(); $('#profile-name').value=currentUser.name; $('#settings-feedback').textContent=''; $('#settings-dialog').showModal(); },'Connectez-vous pour modifier les informations de votre compte.');
+}
+$('#account-button').addEventListener('click',openSettings);
+$('#open-settings').addEventListener('click',openSettings);
+$('#settings-form').addEventListener('submit',async e=>{
+  e.preventDefault(); const userId=currentUser?.id;
+  if(!userId)return;
+  $('#settings-submit').disabled=true; $('#settings-feedback').textContent='';
+  try {
+    const payload={name:$('#profile-name').value.trim(),current_password:$('#profile-current-password').value,new_password:$('#profile-new-password').value || null};
+    const updated=await api('/auth/me',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    if(currentUser?.id!==userId)return;
+    currentUser=updated; updateAccount(); $('#settings-dialog').close(); $('#settings-form').reset(); toast('Vos informations ont été mises à jour.');
+  } catch(error) { $('#settings-feedback').textContent=error.message; }
+  finally { $('#settings-submit').disabled=false; }
+});
+$('#settings-dialog').addEventListener('close',()=>$('#settings-form').reset());
+$('#logout-button').addEventListener('click',async()=>{
+  if(busy)return;
+  try { await api('/auth/logout',{method:'POST'}); $('#settings-dialog').close(); currentUser=null;detailsCache.clear();thread=read('conversations')[0] || newThread();period.value=String(thread.max_age_days || 30);renderConversation();updateAccount();toast('Vous êtes déconnecté.'); } catch(error){toast(error.message);}
 });
 $('#auth-switch').addEventListener('click',()=>setAuthMode(authMode==='login'?'register':'login'));
 $('#auth-form').addEventListener('submit',async e=>{
@@ -316,10 +383,53 @@ async function init() {
   setSidebarState();setBusy(true);
   try{currentUser=await api('/auth/me');}catch{currentUser=null;}
   thread=read('conversations')[0] || newThread();period.value=String(thread.max_age_days || 30);renderConversation();updateAccount();setBusy(false);
-  const ref=new URLSearchParams(location.search).get('annonce');if(ref)requireLogin(()=>location.assign('/annonces/'+encodeURIComponent(ref)+'/source'));
+  loadMarketStats();
+  const ref=new URLSearchParams(location.search).get('annonce');
+  if(ref) { try { const links=await api('/annonces/liens',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({references:[ref]})}); const url=facebookUrl(links[0]?.facebook_url); if(url)location.assign(url);else toast('La publication Facebook n’est plus disponible.'); } catch(error){toast(error.message);} }
 }
 $('#open-saved').addEventListener('click',()=>{renderSidebar();$('#saved-dialog').showModal();});
 $('#open-alerts').addEventListener('click',()=>{renderSidebar();$('#alerts-dialog').showModal();});
+function showPage(page) {
+  activePage = page === 'chat' ? 'chat' : 'home'; main.dataset.page=activePage;
+  const chat=activePage==='chat';
+  $('#page-label').textContent=chat?'Parlez-nous de votre projet immobilier':'Accueil';
+  $('#platform-intro').hidden=chat; messages.hidden=!chat; $('.composer-dock').hidden=!chat; $('.period-control').hidden=!chat;
+  $('#welcome').hidden=chat && Boolean(thread?.messages.length);
+  $$('.nav-link[data-page]').forEach(n=>{if(n.dataset.page===activePage)n.setAttribute('aria-current','page');else n.removeAttribute('aria-current');});
+  if (!chat) $('#conversation-scroll').scrollTop=0; else requestAnimationFrame(scrollEnd);
+}
+$$('.nav-link[data-page]').forEach(n=>n.addEventListener('click',()=>{showPage(n.dataset.page);closeSidebar();}));
+$$('[data-action]').forEach(n=>n.addEventListener('click',()=>{
+  if (busy) { showPage('chat');closeSidebar();return; }
+  showPage('chat');closeSidebar();
+  if(n.dataset.action==='analyze') { input.value='Est-ce une bonne affaire ? Voici l’annonce :\n';toast('Collez le texte de la publication après cette phrase.'); }
+  else if(n.dataset.action==='document') { input.value='Aide-moi à comprendre le document mentionné dans cette annonce : '; }
+  else input.value='';
+  input.focus();
+}));
+$('#discover-hakimo').addEventListener('click',()=>{showPage('home');closeSidebar();$('#platform-intro').scrollIntoView({block:'start'});});
+for (const name of ['guides','faq']) $('#open-'+name).addEventListener('click',()=>$('#'+name+'-dialog').showModal());
+$$('[data-resource-chat]').forEach(n=>n.addEventListener('click',()=>{n.closest('dialog').close();showPage('chat');closeSidebar();}));
+let loadingStats=false;
+async function loadMarketStats() {
+  if(loadingStats)return; loadingStats=true; $('#market-overview').setAttribute('aria-busy','true');$('#retry-stats').hidden=true;
+  $('#stats-status').textContent='Chargement des chiffres de la plateforme…';
+  try {
+    const stats=await api('/market/stats');
+    $('#stat-count').textContent=number(stats.annonces_30_jours);
+    $('#stat-price').textContent=stats.prix_m2_moyen_fcfa==null?'Non calculable':number(stats.prix_m2_moyen_fcfa,' FCFA');
+    $('#stat-price-note').textContent=stats.annonces_avec_prix_m2 ? 'Sur '+number(stats.annonces_avec_prix_m2)+' annonces avec prix et surface' : 'Aucun prix au m² renseigné';
+    $('#stat-neighborhood').textContent=stats.quartier_le_plus_represente || 'Non renseigné';
+    $('#stat-neighborhood-note').textContent=stats.quartier_le_plus_represente ? number(stats.annonces_quartier_principal)+' annonces dans ce quartier' : 'Aucun quartier renseigné sur la période';
+    const from=new Date(stats.depuis), to=new Date(stats.jusqu_a), options={day:'numeric',month:'short'};
+    $('#stats-status').textContent='Du '+from.toLocaleDateString('fr-FR',options)+' au '+to.toLocaleDateString('fr-FR',options)+' · Terrains, parcelles et maisons · Dates de publication connues';
+  } catch {
+    for(const id of ['stat-count','stat-price','stat-neighborhood']) $('#'+id).textContent='Indisponible';
+    $('#stat-price-note').textContent='';$('#stat-neighborhood-note').textContent='';
+    $('#stats-status').textContent='Les chiffres ne sont pas disponibles pour le moment.';$('#retry-stats').hidden=false;
+  } finally { loadingStats=false; $('#market-overview').setAttribute('aria-busy','false'); }
+}
+$('#retry-stats').addEventListener('click',loadMarketStats);
 const darkPreference=matchMedia('(prefers-color-scheme: dark)');
 let appearance={mode:'system',accent:'blue'};
 try { const stored=JSON.parse(localStorage.getItem('hakimo:appearance') || '{}'); if (['light','dark','system'].includes(stored.mode)) appearance.mode=stored.mode; if (['blue','green','violet','copper'].includes(stored.accent)) appearance.accent=stored.accent; } catch { /* Default appearance. */ }
@@ -336,4 +446,5 @@ darkPreference.addEventListener('change',applyAppearance);
 document.addEventListener('click',e=>{if(!$('#appearance-menu').contains(e.target))$('#appearance-menu').open=false;});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')$('#appearance-menu').open=false;});
 applyAppearance();
+showPage('home');
 init();

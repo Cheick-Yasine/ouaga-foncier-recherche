@@ -9,6 +9,7 @@ from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field, replace
 from app.offer_quality import land_family, offer_quality, document_evidence
 from app.neighborhoods import resolve_neighborhood
+from app.listing_scope import city_only_request, sale_eligible, within_ouagadougou
 from app.normalization import normalize_property_type
 from app.text_features import (
     extract_document_status,
@@ -77,6 +78,7 @@ class SearchCriteria:
     document_status: str | None = None
     required_fields: frozenset[str] = field(default_factory=frozenset)
     max_age_days: int | None = None
+    city_only: bool = False
 
 
 @dataclass(frozen=True)
@@ -183,6 +185,7 @@ def parse_search_description(description: str) -> SearchCriteria:
 
     return SearchCriteria(
         description=description.strip(),
+        city_only=city_only_request(description),
         property_type=property_type,
         neighborhood=neighborhood,
         price_fcfa=price,
@@ -276,6 +279,10 @@ def score_candidate(
 ) -> RankedResult | None:
     """Calcule un score explicable ou exclut une contrainte impossible."""
 
+    if not sale_eligible(candidate.text):
+        return None
+    if criteria.city_only and not within_ouagadougou(candidate.text, candidate.neighborhood):
+        return None
     if (
         criteria.max_age_days is not None
         and candidate.age_days is not None
@@ -297,7 +304,7 @@ def score_candidate(
     if criteria.neighborhood:
         components["quartier"] = (
             1.0
-            if _normalized_equal(criteria.neighborhood, candidate.neighborhood)
+            if _normalized_equal(criteria.neighborhood, candidate.neighborhood) or (criteria.city_only and criteria.neighborhood == "Ouagadougou")
             else (None if candidate.neighborhood is None else 0.0)
         )
     if criteria.price_fcfa is not None:
