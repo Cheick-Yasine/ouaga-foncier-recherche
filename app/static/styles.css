@@ -1089,9 +1089,9 @@ h1 span {
 /* HAKIMO: shared surfaces, accent palette and appearance controls. */
 :root {
   color-scheme:light;
-  --ink:#172d42; --muted:#637486; --line:#dde6ed;
-  --blue:#1267a3; --primary:#1267a3; --blue-soft:#eaf3f9;
-  --navy:#10283d; --surface:#fff; --surface-2:#f5f8fb;
+  --ink:#182844; --muted:#62718a; --line:#e4eaf3;
+  --blue:#345de3; --primary:#345de3; --blue-soft:#edf2ff;
+  --navy:#101e39; --surface:#fff; --surface-2:#f6f8fc;
   --warning-bg:#fff5df; --warning-ink:#78591e; --danger-bg:#fff1ee; --danger-ink:#963f30;
 }
 :root[data-accent="green"] { --blue:#317950; --primary:#317950; --blue-soft:#edf6ef; }
@@ -1100,8 +1100,8 @@ h1 span {
 :root[data-theme="dark"] {
   color-scheme:dark;
   --ink:#e4edf6; --muted:#a1b1c4; --line:#2b3c50;
-  --blue:#7ac0ed; --blue-soft:#1b3044;
-  --navy:#0a1725; --surface:#142231; --surface-2:#192a3c;
+  --blue:#9bb1ff; --blue-soft:#202e50;
+  --navy:#0d1730; --surface:#142039; --surface-2:#1b2b48;
   --warning-bg:#3b3020; --warning-ink:#e3c892; --danger-bg:#402d2a; --danger-ink:#f2b6aa;
 }
 :root[data-theme="dark"][data-accent="green"] { --blue:#93d4a9; --blue-soft:#1d342d; }
