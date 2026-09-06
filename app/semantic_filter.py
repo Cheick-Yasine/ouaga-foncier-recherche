@@ -15,10 +15,7 @@ from app.config import Settings, get_settings
 from app.search_engine import (
     RankedResult,
     SearchCriteria,
-    _descriptive_priority,
-    _good_deal_priority,
-    _price_match_priority,
-    _requested_area_price_priority,
+    _recommendation_priority,
     price_per_square_metre,
 )
 
@@ -236,17 +233,7 @@ def apply_semantic_filter(
                 )
             )
 
-        filtered.sort(
-            key=lambda item: (
-                _descriptive_priority(criteria, item),
-                _price_match_priority(criteria, item),
-                _requested_area_price_priority(criteria, item),
-                _good_deal_priority(criteria, item),
-                item.score,
-                item.coverage,
-            ),
-            reverse=True,
-        )
+        filtered.sort(key=lambda item: _recommendation_priority(criteria, item), reverse=True)
         return SemanticFilterOutcome(
             results=filtered[:10],
             used=True,

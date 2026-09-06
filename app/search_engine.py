@@ -522,6 +522,26 @@ def _completeness_priority(quality: dict) -> tuple:
     return (int(quality["informations_completes"]), int(document), completeness, indices["document"], indices["viabilite"], proximity_count)
 
 
+def _recommendation_priority(criteria: SearchCriteria, result: RankedResult, quality: dict | None = None) -> tuple:
+    """Ordre commun au moteur local et au filtre sémantique."""
+    quality = quality if quality is not None else offer_quality(result.candidate)
+    return (
+        _descriptive_priority(criteria, result),
+        _price_match_priority(criteria, result),
+        _comparable_priority(criteria, result),
+        _completeness_priority(quality),
+        -(price_per_square_metre(result.candidate) or float("inf")),
+        -(result.candidate.price_fcfa or float("inf")),
+        result.score,
+        result.candidate.area_m2 or 0.0 if _is_good_deal_request(criteria) else result.coverage,
+        -(
+            result.candidate.age_days
+            if result.candidate.age_days is not None
+            else float("inf")
+        ),
+    )
+
+
 def rank_candidates(
     criteria: SearchCriteria,
     candidates: Iterable[SearchCandidate],
@@ -550,22 +570,5 @@ def rank_candidates(
             or "Informations limitées : documents et équipements à préciser",
         )) for result in results]
 
-    results.sort(
-        key=lambda result: (
-            _descriptive_priority(criteria, result),
-            _price_match_priority(criteria, result),
-            _comparable_priority(criteria, result),
-            _completeness_priority(qualities[result.candidate.identifier]),
-            -(price_per_square_metre(result.candidate) or float("inf")),
-            -(result.candidate.price_fcfa or float("inf")),
-            result.score,
-            result.candidate.area_m2 or 0.0 if good_deal else result.coverage,
-            -(
-                result.candidate.age_days
-                if result.candidate.age_days is not None
-                else float("inf")
-            ),
-        ),
-        reverse=True,
-    )
+    results.sort(key=lambda result: _recommendation_priority(criteria, result, qualities[result.candidate.identifier]), reverse=True)
     return results[:limit]
