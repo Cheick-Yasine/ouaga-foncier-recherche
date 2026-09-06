@@ -296,7 +296,7 @@ async function api(path, options={}) {
   if (!response.ok) { const e=new Error(typeof payload.detail==='string' ? payload.detail : 'Cette demande ne peut pas être traitée. Vérifiez les informations saisies.'); e.status=response.status; throw e; }
   return payload;
 }
-function setBusy(value) { busy=value; submit.disabled=value; period.disabled=value; $('#new-conversation').disabled=value; $('#account-button').disabled=value; $('#logout-button').disabled=value; submit.replaceChildren(document.createTextNode(value ? 'Analyse…' : 'Envoyer ')); if (!value) submit.append(el('span','', '↑')); $('#assistant-messages').setAttribute('aria-busy',String(value)); renderSidebar(); $$('#followup-suggestions button, .prompt-grid button').forEach(b=>b.disabled=value); }
+function setBusy(value) { busy=value; submit.disabled=value; period.disabled=value; $('#new-conversation').disabled=value; $('#account-button').disabled=value; $('#logout-button').disabled=value; submit.replaceChildren(document.createTextNode(value ? 'Analyse…' : 'Envoyer ')); if (!value) submit.append(el('span','', '↑')); $('#assistant-messages').setAttribute('aria-busy',String(value)); renderSidebar(); $$('#followup-suggestions button, .prompt-grid button, [data-prompt], [data-action]').forEach(b=>b.disabled=value); }
 async function sendMessage(message) {
   if (busy || !message || message.trim().length<2) return; message=message.trim();
   if (message.length>6000) { toast('Limitez votre message à 6 000 caractères.'); return; }
@@ -399,6 +399,8 @@ function showPage(page) {
   if (!chat) $('#conversation-scroll').scrollTop=0; else requestAnimationFrame(scrollEnd);
 }
 $$('.nav-link[data-page]').forEach(n=>n.addEventListener('click',()=>{showPage(n.dataset.page);closeSidebar();}));
+$('.brand').addEventListener('click',e=>{e.preventDefault();showPage('home');closeSidebar();});
+$('.skip-link').addEventListener('click',e=>{e.preventDefault();showPage('chat');closeSidebar();input.focus();});
 $$('[data-action]').forEach(n=>n.addEventListener('click',()=>{
   if (busy) { showPage('chat');closeSidebar();return; }
   showPage('chat');closeSidebar();
