@@ -31,7 +31,7 @@ button {
   cursor:pointer
 }
 button:disabled {
-  cursor:wait;
+  cursor:not-allowed;
   opacity:.6
 }
 button,a {
@@ -458,13 +458,6 @@ h1 span {
 .is-user .chat-role {
   display:none
 }
-.is-pending .chat-bubble {
-  color:var(--muted)
-}
-.is-pending .chat-bubble:after {
-  content:' …';
-  animation:pulse 1.4s infinite
-}
 .is-error .chat-bubble {
   background:#fff3f1;
   padding:1rem;
@@ -881,11 +874,6 @@ h1 span {
 .workspace.is-expanded .sidebar-top {
   margin-bottom:1rem
 }
-@keyframes pulse {
-  50% {
-    opacity:.25
-  }
-}
 @media(min-width:1650px) {
   .conversation-scroll {
     padding:0 4rem
@@ -1165,3 +1153,58 @@ select,.modal,.modal input,.comparison-shell,.assistant-composer,.secondary-butt
 @media(max-width:1150px) { .conversation-header { padding:.8rem 1rem; gap:.5rem; } .header-button,.appearance-menu>summary { padding:.45rem .5rem; } }
 @media(max-width:800px) { .conversation-header { flex-wrap:wrap; } .header-tools { justify-content:flex-end; } .brand small { display:block; } }
 @media(max-width:480px) { .header-tools { gap:0; } .header-button,.appearance-menu>summary { padding:.5rem .35rem; font-size:.7rem; } .period-control { margin-left:auto; } .conversation-header { row-gap:.2rem; } .appearance-panel { position:fixed; top:4rem; right:1rem; } .recommendation { padding:1rem; } }
+
+/* Interactive waiting state, using the selected HAKIMO palette. */
+.waiting-panel {
+  max-width:880px; margin:0 auto 2rem; padding:1.4rem 1.5rem 1rem;
+  border:1px solid var(--line); border-radius:20px;
+  background:linear-gradient(135deg,var(--blue-soft),var(--surface) 68%);
+  box-shadow:0 12px 35px #101e3909; overflow:hidden;
+}
+.waiting-top { display:flex; align-items:center; gap:1.1rem; }
+.waiting-copy { flex:1; min-width:0; }
+.waiting-status { font-size:1rem; font-weight:700; color:var(--ink); line-height:1.5; }
+.waiting-caption { color:var(--muted); font-size:.8rem; margin-top:.35rem; }
+.waiting-clock { align-self:flex-start; color:var(--muted); font-size:.75rem; font-variant-numeric:tabular-nums; padding:.15rem 0 .15rem .3rem; }
+.waiting-land {
+  position:relative; display:grid; grid-template-columns:repeat(3,1fr); gap:4px;
+  width:70px; height:70px; flex:none; transform:rotate(-7deg);
+}
+.waiting-land span {
+  display:grid; place-items:center; border:1px solid var(--blue); border-radius:5px;
+  color:var(--blue); background:var(--blue-soft); opacity:.35;
+  animation:waiting-parcel 3.6s ease-in-out infinite;
+}
+.waiting-land span:nth-child(3n) { animation-delay:.6s; }
+.waiting-land span:nth-child(2n) { animation-delay:1.2s; }
+.waiting-land span:nth-child(5) { opacity:1; background:var(--primary); border-color:var(--primary); color:#fff; font-size:.7rem; font-weight:800; animation:none; }
+.waiting-topics { display:flex; flex-wrap:wrap; gap:.45rem; margin:1.2rem 0 .9rem; }
+.waiting-topics button {
+  border:1px solid var(--line); border-radius:20px; padding:.42rem .85rem;
+  background:var(--surface); color:var(--muted); font-size:.8rem; font-weight:600;
+}
+.waiting-topics button:hover { border-color:var(--blue); color:var(--blue); }
+.waiting-topics button[aria-pressed="true"] { background:var(--primary); border-color:var(--primary); color:#fff; box-shadow:0 3px 10px #101e3914; }
+.waiting-tip { min-height:92px; padding:.85rem 1rem; background:var(--surface); border:1px solid var(--line); border-radius:12px; }
+.waiting-tip-title { font-size:.875rem; font-weight:700; color:var(--ink); }
+.waiting-tip-text { font-size:.8rem; line-height:1.75; color:var(--muted); margin-top:.25rem; }
+.waiting-bottom { display:flex; align-items:center; justify-content:space-between; margin-top:.75rem; gap:1rem; }
+.waiting-pause { background:transparent; color:var(--muted); font-size:.75rem; padding:.25rem 0; }
+.waiting-pause:hover { color:var(--blue); text-decoration:underline; }
+.waiting-activity { display:flex; gap:5px; padding-left:.25rem; }
+.waiting-activity i { width:5px; height:5px; border-radius:50%; background:var(--blue); opacity:.4; animation:waiting-dot 1.5s ease-in-out infinite; }
+.waiting-activity i:nth-child(2) { animation-delay:.2s; }
+.waiting-activity i:nth-child(3) { animation-delay:.4s; }
+.waiting-panel.is-paused .waiting-land span,.waiting-panel.is-paused .waiting-activity i { animation-play-state:paused; }
+@keyframes waiting-parcel { 0%,100% { opacity:.3; transform:scale(.93); } 50% { opacity:.85; transform:scale(1); } }
+@keyframes waiting-dot { 0%,80%,100% { opacity:.3; transform:translateY(0); } 40% { opacity:1; transform:translateY(-3px); } }
+@media(max-width:600px) {
+  .waiting-panel { padding:1rem; border-radius:16px; }
+  .waiting-top { gap:.75rem; flex-wrap:wrap; }
+  .waiting-land { width:52px; height:52px; gap:3px; }
+  .waiting-status { font-size:.9rem; }
+  .waiting-clock { margin-left:auto; }
+  .waiting-topics { gap:.35rem; }
+  .waiting-topics button { padding:.4rem .7rem; font-size:.75rem; }
+  .waiting-tip { min-height:118px; }
+}

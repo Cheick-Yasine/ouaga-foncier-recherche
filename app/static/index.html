@@ -9,8 +9,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/styles.css?v=20260906-blue-original-1">
-  <script src="/static/app.js?v=20260905-hakimo-3" defer></script>
+  <link rel="stylesheet" href="/static/styles.css?v=20260906-waiting-1">
+  <script src="/static/waiting.js?v=20260906-waiting-1" defer></script>
+  <script src="/static/app.js?v=20260906-waiting-1" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#assistant-input">Aller à la conversation</a>
@@ -98,6 +99,18 @@
   <dialog id="alerts-dialog" class="modal collection-modal" aria-labelledby="alerts-title">
     <button class="modal-close" type="button" data-close="alerts-dialog" aria-label="Fermer">×</button><h2 id="alerts-title">Surveillances</h2><div id="alerts-list" class="dashboard-list"></div>
   </dialog>
+  <template id="waiting-template">
+    <section class="waiting-panel" aria-label="Demande en cours">
+      <div class="waiting-top">
+        <div class="waiting-land" aria-hidden="true"><span></span><span></span><span></span><span></span><span>H</span><span></span><span></span><span></span><span></span></div>
+        <div class="waiting-copy"><p class="waiting-status" role="status">HAKIMO s’occupe de votre demande…</p><p class="waiting-caption">Explorez les critères d’une bonne offre en attendant.</p></div>
+        <span class="waiting-clock" aria-hidden="true" title="Temps écoulé">0:00</span>
+      </div>
+      <div class="waiting-topics" role="group" aria-label="Explorer un critère"><button type="button" data-waiting-topic="0" aria-pressed="true" aria-controls="waiting-tip">Prix / m²</button><button type="button" data-waiting-topic="1" aria-pressed="false" aria-controls="waiting-tip">Documents</button><button type="button" data-waiting-topic="2" aria-pressed="false" aria-controls="waiting-tip">Accès</button><button type="button" data-waiting-topic="3" aria-pressed="false" aria-controls="waiting-tip">Eau &amp; électricité</button></div>
+      <div id="waiting-tip" class="waiting-tip" aria-live="off"><p class="waiting-tip-title"></p><p class="waiting-tip-text"></p></div>
+      <div class="waiting-bottom"><span class="waiting-activity" aria-hidden="true"><i></i><i></i><i></i></span><button class="waiting-pause" type="button" aria-pressed="false">Pause animation</button></div>
+    </section>
+  </template>
   <template id="comparison-template">
     <div class="comparison-shell"><div class="table-scroll" tabindex="0" role="region" aria-label="Tableau comparatif des annonces"><table class="comparison-table"><caption class="sr-only">Comparaison des annonces sélectionnées</caption><thead><tr><th scope="col">Rang</th><th scope="col">Localisation</th><th scope="col">Superficie</th><th scope="col">Prix</th><th scope="col">Prix / m²</th><th scope="col">Document</th><th scope="col">Contact</th><th scope="col">Actions</th></tr></thead><tbody></tbody></table></div></div>
   </template>

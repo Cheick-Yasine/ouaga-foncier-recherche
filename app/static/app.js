@@ -235,12 +235,16 @@ async function sendMessage(message) {
   const previous=thread.messages.filter(m=>!m.error).slice(-12).map(m=>({role:m.role,content:historyContent(m)}));
   if (!thread.messages.length) thread.query=message.slice(0,110);
   const userEntry={role:'user',content:message}; thread.messages.push(userEntry); appendMessage(userEntry); $('#welcome').hidden=true; input.value=''; setBusy(true);
-  const pending=appendMessage({role:'assistant',content:'Je compare les annonces et les informations disponibles…'}); pending.classList.add('is-pending'); scrollEnd();
+  const waiting=$('#waiting-template').content.firstElementChild.cloneNode(true);
+  messages.after(waiting);
+  let stopWaiting=()=>waiting.remove();
   try {
+    stopWaiting=window.HakimoWaiting.start(waiting);
+    scrollEnd();
     const payload=await api('/assistant/message',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message,history:previous,max_age_days:Number(period.value)})});
     if (thread.id!==threadId) return;
     const entry={role:'assistant',content:payload.answer,results:(payload.results || []).map(cleanResult),criteria:payload.criteria,analysis:payload.analysis,suggestions:payload.suggestions,mcp_used:payload.mcp_used,mode:payload.mode};
-    thread.messages.push(entry); thread.messages=thread.messages.slice(-40); pending.remove(); appendMessage(entry); renderSuggestions(entry); refreshContacts();
+    thread.messages.push(entry); thread.messages=thread.messages.slice(-40); appendMessage(entry); renderSuggestions(entry); refreshContacts();
     if (checkingAlert && payload.mcp_used) {
       const alerts=read('alerts').map(a => {
         if ((a.id || a.query)!==checkingAlert) return a;
@@ -249,9 +253,9 @@ async function sendMessage(message) {
       }); write('alerts',alerts);
     }
   } catch(error) {
-    pending.remove(); const entry={role:'assistant',content:error.message || 'La demande a échoué. Vous pouvez réessayer.',error:true}; thread.messages.push(entry);
+    const entry={role:'assistant',content:error.message || 'La demande a échoué. Vous pouvez réessayer.',error:true}; thread.messages.push(entry);
     const row=appendMessage(entry); row.querySelector('.chat-content').append(button('Réessayer','secondary-button',() => { input.value=message; input.focus(); }));
-  } finally { checkingAlert=null; setBusy(false); persistThread(); scrollEnd(); input.focus(); }
+  } finally { stopWaiting(); checkingAlert=null; setBusy(false); persistThread(); scrollEnd(); input.focus(); }
 }
 form.addEventListener('submit', e=>{e.preventDefault();sendMessage(input.value);});
 input.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();form.requestSubmit();}});
