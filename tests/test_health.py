@@ -16,7 +16,8 @@ def test_root_serves_conversational_interface() -> None:
     assert 'id="assistant-form"' in response.text
     assert 'id="search-form"' not in response.text
     assert 'data-view=' not in response.text
-    assert 'id="sidebar-expand"' in response.text
+    assert 'id="history-toggle"' in response.text
+    assert response.text.count('aria-controls="sidebar"') == 1
     assert 'id="history-list"' in response.text
     assert 'id="saved-list"' in response.text
     assert 'id="alerts-list"' in response.text
