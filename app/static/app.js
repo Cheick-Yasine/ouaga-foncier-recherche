@@ -2,6 +2,7 @@
 const $ = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
 const workspace = $('#workspace'), sidebar = $('#sidebar'), main = $('#conversation-main');
+const historyToggle = $('#history-toggle'), sidebarTop = $('.sidebar-top'), conversationHeader = $('.conversation-header');
 const input = $('#assistant-input'), form = $('#assistant-form'), submit = $('#assistant-submit');
 const messages = $('#assistant-messages'), period = $('#assistant-max-age-days');
 const money = new Intl.NumberFormat('fr-FR', {maximumFractionDigits: 0});
@@ -31,21 +32,26 @@ function newThread() { return {id:uid(), query:'Nouvelle conversation', messages
 function persistThread() { if (!thread?.messages.length) return; thread.date = new Date().toISOString(); thread.max_age_days = Number(period.value); write('conversations', [thread, ...read('conversations').filter(x => x.id !== thread.id)].slice(0,20)); renderSidebar(); }
 function setSidebarState() {
   const visible = expanded || (mobile.matches ? mobileOpen : !sidebarCollapsed);
+  const wasFocused = document.activeElement === historyToggle;
   sidebar.hidden = !visible; workspace.classList.toggle('is-expanded', expanded);
   workspace.classList.toggle('sidebar-collapsed', !visible);
   main.inert = expanded || (mobile.matches && mobileOpen);
-  $('#history-expand-icon').hidden = expanded; $('#history-restore-icon').hidden = !expanded;
-  $('#sidebar-expand').setAttribute('aria-label', expanded ? 'Réduire l’historique' : 'Afficher l’historique en plein écran');
-  $('#sidebar-expand').title = expanded ? 'Réduire l’historique' : 'Historique en plein écran';
-  $('#sidebar-expand').setAttribute('aria-expanded', String(expanded));
-  $('#sidebar-open').setAttribute('aria-expanded', String(visible));
-  $('#sidebar-open').hidden = visible;
+  // Le même bouton reste accessible dans chacun des trois modes, sans copie.
+  if (visible && historyToggle.parentElement !== sidebarTop) sidebarTop.append(historyToggle);
+  else if (!visible && historyToggle.parentElement !== conversationHeader) conversationHeader.prepend(historyToggle);
+  const nextAction = !visible ? 'Afficher le volet historique' : expanded ? 'Masquer l’historique' : 'Afficher l’historique en plein écran';
+  historyToggle.setAttribute('aria-label', nextAction); historyToggle.title = nextAction;
+  historyToggle.setAttribute('aria-expanded', String(visible));
+  if (wasFocused) historyToggle.focus();
 }
 function rememberSidebar() { try { localStorage.setItem('hakimo:sidebar-collapsed', String(sidebarCollapsed)); } catch {} }
 function closeSidebar() { expanded = false; mobileOpen = false; setSidebarState(); input.focus(); }
-$('#sidebar-expand').addEventListener('click', () => { expanded = !expanded; setSidebarState(); });
-$('#sidebar-open').addEventListener('click', () => { sidebarCollapsed = false; mobileOpen = true; rememberSidebar(); setSidebarState(); $('#sidebar-close').focus(); });
-$('#sidebar-close').addEventListener('click', () => { sidebarCollapsed = true; rememberSidebar(); closeSidebar(); $('#sidebar-open').focus(); });
+historyToggle.addEventListener('click', () => {
+  if (sidebar.hidden) { sidebarCollapsed = false; mobileOpen = true; expanded = false; }
+  else if (!expanded) { expanded = true; }
+  else { expanded = false; mobileOpen = false; sidebarCollapsed = true; }
+  rememberSidebar(); setSidebarState(); historyToggle.focus();
+});
 mobile.addEventListener('change', setSidebarState);
 document.addEventListener('keydown', e => {
   if (document.querySelector('dialog[open]')) return;
