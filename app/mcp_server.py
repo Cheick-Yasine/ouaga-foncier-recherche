@@ -87,6 +87,7 @@ def _public_result(result) -> dict[str, Any]:
         "proximite": candidate.proximity,
         "viabilite": candidate.viability,
         "qualite": quality,
+        **({"comparaison_annonce": result.comparison} if getattr(result, "comparison", None) else {}),
         "score": result.score,
         "couverture": result.coverage,
         "explications": [

@@ -9,18 +9,21 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/styles.css?v=20260906-waiting-1">
+  <link rel="stylesheet" href="/static/styles.css?v=20260906-nearby-1">
   <script src="/static/waiting.js?v=20260906-waiting-1" defer></script>
-  <script src="/static/app.js?v=20260906-waiting-1" defer></script>
+  <script src="/static/app.js?v=20260906-nearby-1" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#assistant-input">Aller à la conversation</a>
   <div id="workspace" class="workspace">
-    <aside id="sidebar" class="sidebar" aria-label="Votre espace personnel">
+    <aside id="sidebar" class="sidebar" aria-label="Historique des conversations">
       <div class="sidebar-top">
         <a class="brand" href="/" aria-label="HAKIMO, accueil"><img class="brand-logo" src="/static/hakilab-logo.png" alt="Logo HAKILAB" width="52" height="44"><span><strong>HAKIMO</strong><small>HAKILAB IMMOBILIER</small></span></a>
-        <button id="sidebar-expand" class="icon-button" type="button" title="Étendre sur toute la page" aria-label="Étendre votre espace sur toute la page" aria-expanded="false">⤢</button>
-        <button id="sidebar-close" class="icon-button mobile-only" type="button" aria-label="Fermer votre espace">×</button>
+        <button id="sidebar-expand" class="icon-button" type="button" title="Historique en plein écran" aria-label="Afficher l’historique en plein écran" aria-expanded="false" aria-controls="sidebar">
+          <span id="history-expand-icon"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></svg></span>
+          <span id="history-restore-icon" hidden><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/></svg></span>
+        </button>
+        <button id="sidebar-close" class="icon-button" type="button" title="Masquer l’historique" aria-label="Masquer l’historique" aria-controls="sidebar"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18m-3-7v2"/></svg></button>
       </div>
       <button id="new-conversation" class="new-conversation" type="button"><span aria-hidden="true">＋</span> Nouvelle conversation</button>
       <div class="side-content">
@@ -29,11 +32,11 @@
           <div id="history-list" class="dashboard-list"></div>
         </details>
       </div>
-      <div class="sidebar-bottom"><button id="account-button" class="account-button" type="button">Se connecter <span aria-hidden="true">↗</span></button></div>
+      <div class="sidebar-bottom"><button id="account-button" class="account-button" type="button">Se connecter</button></div>
     </aside>
     <main id="conversation-main" class="conversation-main">
       <header class="conversation-header">
-        <button id="sidebar-open" class="icon-button mobile-only" type="button" aria-label="Ouvrir votre espace" aria-expanded="false" aria-controls="sidebar">☰</button>
+        <button id="sidebar-open" class="icon-button" type="button" title="Afficher l’historique" aria-label="Afficher l’historique" aria-expanded="false" aria-controls="sidebar" hidden><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18m-3-7v2"/></svg></button>
         <div class="header-tools">
           <button id="open-saved" class="header-button" type="button" aria-haspopup="dialog">Enregistrements</button>
           <button id="open-alerts" class="header-button" type="button" aria-haspopup="dialog">Surveillances</button>
@@ -50,13 +53,10 @@
       <div id="conversation-scroll" class="conversation-scroll">
         <section id="welcome" class="welcome">
 
-          <p class="eyebrow">OUAGADOUGOU & SES ENVIRONS</p>
-          <h1>Parlons de votre<br><span>prochaine parcelle.</span></h1>
-          <p class="welcome-description">Décrivez votre projet ou collez une annonce.</p>
           <div class="prompt-grid" aria-label="Commencer une conversation">
-            <button type="button" data-prompt="Trouve-moi une bonne affaire : une parcelle à Ouagadougou ou dans ses environs, budget maximum 10 millions FCFA."><span class="prompt-icon" aria-hidden="true">✦</span><strong>Dénicher une bonne affaire</strong><span>Un bon prix, des documents et des atouts concrets.</span><i aria-hidden="true">↗</i></button>
-            <button type="button" id="paste-prompt"><span class="prompt-icon" aria-hidden="true">▤</span><strong>Analyser une annonce</strong><span>Collez une publication pour la comparer aux offres.</span><i aria-hidden="true">↗</i></button>
-            <button type="button" data-prompt="Je cherche une parcelle d’environ 300 m² à Saaba, budget maximum 6 millions FCFA, avec une attestation."><span class="prompt-icon" aria-hidden="true">⌖</span><strong>Préciser mon projet</strong><span>Une parcelle à Saaba, 300 m², jusqu’à 6 millions.</span><i aria-hidden="true">↗</i></button>
+            <button type="button" data-prompt="Trouve-moi une bonne affaire : une parcelle à Ouagadougou ou dans ses environs, budget maximum 10 millions FCFA."><span class="prompt-icon" aria-hidden="true">✦</span><strong>Dénicher une bonne affaire</strong><span>Un bon prix, des documents et des atouts concrets.</span></button>
+            <button type="button" id="paste-prompt"><span class="prompt-icon" aria-hidden="true">▤</span><strong>Analyser une annonce</strong><span>Collez une publication pour la comparer aux offres.</span></button>
+            <button type="button" data-prompt="Je cherche une parcelle d’environ 300 m² à Saaba, budget maximum 6 millions FCFA, avec une attestation."><span class="prompt-icon" aria-hidden="true">⌖</span><strong>Préciser mon projet</strong><span>Une parcelle à Saaba, 300 m², jusqu’à 6 millions.</span></button>
           </div>
         </section>
         <div id="assistant-messages" class="assistant-messages" role="log" aria-label="Conversation" aria-live="polite" aria-relevant="additions"></div>

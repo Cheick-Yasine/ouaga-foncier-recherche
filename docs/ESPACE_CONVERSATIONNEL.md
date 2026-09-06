@@ -5,8 +5,8 @@ HAKIMO est l’interface conversationnelle. Le moteur `/search` et les outils MC
 ## Présentation
 
 - Une recherche affiche directement la recommandation puis le tableau existant : Rang, Localisation, Superficie, Prix, Prix / m², Document, Contact, Actions. Le texte du modèle ne recopie ni les annonces ni les critères.
-- Une publication copiée reçoit une explication en français avec prix, documents, viabilité et proximités, puis les alternatives du même quartier. Le gras et les puces sont rendus comme des éléments DOM ; aucun HTML du modèle n’est exécuté. L’ancien encadré technique d’analyse est supprimé.
-- Le volet latéral contient seulement l’historique et peut s’étendre à toute la page. Les enregistrements et surveillances s’ouvrent depuis les boutons du bandeau supérieur.
+- Une publication copiée reçoit un résumé développé en français simple : prix, points forts, éléments à vérifier et justification des alternatives. Le gras et les puces sont rendus comme des éléments DOM ; aucun HTML du modèle n’est exécuté. L’ancien encadré technique d’analyse est supprimé.
+- Le volet latéral contient seulement l’historique et peut s’étendre à toute la page ou disparaître complètement. Son bouton reste accessible dans le bandeau supérieur ; le choix est conservé dans le navigateur. Les enregistrements et surveillances s’ouvrent depuis les boutons du bandeau supérieur. L’accueil contient uniquement les propositions de conversation, sans slogan ni flèches.
 - Le menu Apparence permet les modes clair, sombre ou système et quatre couleurs. Ce choix reste dans le navigateur.
 - Après connexion, les contacts du tableau se chargent automatiquement en une seule requête `POST /annonces/selection`. Le lien Voir redirige vers la publication Facebook d’origine via `GET /annonces/{reference}/source`, sans fenêtre de détail intermédiaire.
 
@@ -24,7 +24,7 @@ Il s’agit d’informations annoncées : une mention n’est pas une vérificat
 
 L’outil d’évaluation reçoit le texte original fourni par l’utilisateur, après retrait des contacts, plutôt qu’une réécriture des nombres par le modèle. Les montants tels que 3 500 000, 3.500.000 ou 3 millions 500 restent 3 500 000 FCFA. Les préférences de budget restent séparées du prix vendeur.
 
-Les comparables et alternatives proviennent du même quartier, du même type de bien et de surfaces proches (±25 %). Un lieu explicite absent du référentiel, tel que Roumtenga, reste une mention littérale ; il n’est ni assimilé à toute la ville ni ajouté automatiquement au périmètre de collecte. Une localisation à l’échelle de Ouagadougou seule ne suffit pas pour une comparaison locale. La publication analysée et ses republications sont écartées.
+Les comparables servant de repère de prix proviennent du même quartier, du même type de bien et de surfaces proches (±25 %). Les alternatives peuvent venir de zones proches, jusqu’à 8 km entre repères cartographiques sourcés, avec la distance approximative et un lien vers la carte dans la colonne Localisation. Elles doivent apporter un avantage réel et respecter les critères. Les règles et les licences des données sont dans [cartographie.md](cartographie.md). Un lieu explicite absent du référentiel, tel que Roumtenga, reste une mention littérale, sans voisinage inventé. Une localisation à l’échelle de Ouagadougou seule ne suffit pas pour une comparaison locale. La publication analysée et ses republications sont écartées.
 
 Un repère médian nécessite au moins trois comparables. Sinon l’assistant explique simplement qu’il manque des éléments pour conclure sur le prix. Aucun autre quartier n’est proposé silencieusement comme équivalent.
 

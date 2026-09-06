@@ -7,10 +7,11 @@ const messages = $('#assistant-messages'), period = $('#assistant-max-age-days')
 const money = new Intl.NumberFormat('fr-FR', {maximumFractionDigits: 0});
 const decimal = new Intl.NumberFormat('fr-FR', {maximumFractionDigits: 2});
 let currentUser = null, authMode = 'login', pendingAuthAction = null;
-let thread = null, busy = false, expanded = false, mobileOpen = false, alertDraft = null;
+let thread = null, busy = false, expanded = false, mobileOpen = false, sidebarCollapsed = false, alertDraft = null;
 let toastTimer, checkingAlert = null;
 const detailsCache = new Map();
 const mobile = window.matchMedia('(max-width: 800px)');
+try { sidebarCollapsed = localStorage.getItem('hakimo:sidebar-collapsed') === 'true'; } catch {}
 function el(tag, cls, text) { const n = document.createElement(tag); if (cls) n.className = cls; if (text !== undefined) n.textContent = text; return n; }
 function button(text, cls, action) { const b = el('button', cls, text); b.type = 'button'; b.addEventListener('click', action); return b; }
 function number(v, suffix = '') { return v !== null && v !== undefined && v !== '' && Number.isFinite(Number(v)) ? money.format(Number(v)) + suffix : 'Non précisé'; }
@@ -29,19 +30,22 @@ function cleanResult(r) { const {contact, contact_masque, lien_whatsapp, ...rest
 function newThread() { return {id:uid(), query:'Nouvelle conversation', messages:[], date:new Date().toISOString(), max_age_days:Number(period.value)}; }
 function persistThread() { if (!thread?.messages.length) return; thread.date = new Date().toISOString(); thread.max_age_days = Number(period.value); write('conversations', [thread, ...read('conversations').filter(x => x.id !== thread.id)].slice(0,20)); renderSidebar(); }
 function setSidebarState() {
-  const visible = !mobile.matches || mobileOpen || expanded;
+  const visible = expanded || (mobile.matches ? mobileOpen : !sidebarCollapsed);
   sidebar.hidden = !visible; workspace.classList.toggle('is-expanded', expanded);
+  workspace.classList.toggle('sidebar-collapsed', !visible);
   main.inert = expanded || (mobile.matches && mobileOpen);
-  $('#sidebar-expand').textContent = expanded ? '↙' : '⤢';
-  $('#sidebar-expand').setAttribute('aria-label', expanded ? 'Revenir à la conversation' : 'Étendre votre espace sur toute la page');
-  $('#sidebar-expand').title = expanded ? 'Revenir à la conversation' : 'Étendre sur toute la page';
+  $('#history-expand-icon').hidden = expanded; $('#history-restore-icon').hidden = !expanded;
+  $('#sidebar-expand').setAttribute('aria-label', expanded ? 'Réduire l’historique' : 'Afficher l’historique en plein écran');
+  $('#sidebar-expand').title = expanded ? 'Réduire l’historique' : 'Historique en plein écran';
   $('#sidebar-expand').setAttribute('aria-expanded', String(expanded));
   $('#sidebar-open').setAttribute('aria-expanded', String(visible));
+  $('#sidebar-open').hidden = visible;
 }
+function rememberSidebar() { try { localStorage.setItem('hakimo:sidebar-collapsed', String(sidebarCollapsed)); } catch {} }
 function closeSidebar() { expanded = false; mobileOpen = false; setSidebarState(); input.focus(); }
 $('#sidebar-expand').addEventListener('click', () => { expanded = !expanded; setSidebarState(); });
-$('#sidebar-open').addEventListener('click', () => { mobileOpen = true; setSidebarState(); $('#sidebar-close').focus(); });
-$('#sidebar-close').addEventListener('click', closeSidebar);
+$('#sidebar-open').addEventListener('click', () => { sidebarCollapsed = false; mobileOpen = true; rememberSidebar(); setSidebarState(); $('#sidebar-close').focus(); });
+$('#sidebar-close').addEventListener('click', () => { sidebarCollapsed = true; rememberSidebar(); closeSidebar(); $('#sidebar-open').focus(); });
 mobile.addEventListener('change', setSidebarState);
 document.addEventListener('keydown', e => {
   if (document.querySelector('dialog[open]')) return;
@@ -175,6 +179,14 @@ function resultTable(results) {
     const row = el('tr'); row.dataset.resultId = r.id;
     const values = [i+1,r.quartier || 'Non précisée',area(r.superficie_m2),number(r.prix_fcfa,' FCFA'),unitPrice(r),label(r.document || r.statut_document)];
     values.forEach((value,j) => { const td = el('td',j===3 ? 'money' : j===4 ? 'unit-price' : ''); if (j===0) td.append(el('span','rank-badge',value)); else td.textContent=value;
+      if (j===1 && r.comparaison_annonce) {
+        const relation=r.comparaison_annonce;
+        td.append(el('small','location-distance',relation.distance_libelle));
+        if (!relation.meme_quartier && safeUrl(relation.carte_url)) {
+          const link=el('a','location-map','Voir sur la carte'); link.href=safeUrl(relation.carte_url); link.target='_blank'; link.rel='noopener noreferrer';
+          link.setAttribute('aria-label','Voir '+(r.quartier || 'ce quartier')+' sur la carte (nouvel onglet)'); td.append(link);
+        }
+      }
       if (j===5 && r.qualite?.document_etat && r.qualite.document_etat !== 'non_precise') td.append(el('small','document-status',r.qualite.document_libelle)); row.append(td); });
     row.append(contactCell(r)); const cell=el('td'), actions=el('div','table-actions');
     actions.append(sourceLink(r),saveButton(r)); cell.append(actions); row.append(cell); body.append(row);
@@ -191,7 +203,7 @@ function appendMessage(entry) {
   if (!simpleSearch) content.append(entry.role==='assistant' ? formattedReply(entry.content) : el('div','chat-bubble',entry.content));
   if (entry.mcp_used) {
     const heading=el('div','results-heading');
-    heading.append(el('h2','',results.length ? (comparison?'Comparaison':analysis?'Alternatives du même quartier':recommendable?'Recommandation':'Offres à compléter') : (analysis?'': 'Aucune annonce correspondante')));
+    heading.append(el('h2','',results.length ? (comparison?'Comparaison':analysis?'Des offres à considérer':recommendable?'Recommandation':'Offres à compléter') : (analysis?'': 'Aucune annonce correspondante')));
     if (entry.criteria?.description) heading.append(button('Surveiller','secondary-button',()=>createAlert(entry.criteria,results)));
     content.append(heading);
     if (simpleSearch && results.length && recommendable) {
@@ -200,7 +212,14 @@ function appendMessage(entry) {
       evidence(first,card); content.append(card);
     }
     if (simpleSearch && results.length && !recommendable) content.append(el('p','subtle','Aucune annonce suffisamment complète pour être recommandée pour le moment.'));
-    if (results.length) content.append(resultTable(results));
+    if (results.length) {
+      content.append(resultTable(results));
+      if (results.some(r => r.comparaison_annonce?.distance_km != null)) {
+        const note=el('p','map-attribution','Distances approximatives entre les quartiers, en ligne droite. Le trajet par la route peut être plus long. Repères : ');
+        [['GeoNames','https://www.geonames.org/about.html'],['© OpenStreetMap','https://www.openstreetmap.org/copyright']].forEach(([name,url],i)=>{ if(i)note.append(document.createTextNode(' · ')); const link=el('a','',name); link.href=url; link.target='_blank'; link.rel='noopener noreferrer'; note.append(link); });
+        content.append(note);
+      }
+    }
     else if (simpleSearch) content.append(el('p','subtle','Vous pouvez élargir le quartier ou ajuster un critère.'));
   }
   row.append(el('div','chat-avatar',entry.role==='assistant'?'H':'Vous'),content); messages.append(row); return row;
@@ -271,7 +290,7 @@ $('#alert-form').addEventListener('submit',e=>{
   if (write('alerts',[next,...alerts.filter(a=>a.query!==next.query || a.max_age_days!==next.max_age_days)].slice(0,50))) { $('#alert-dialog').close(); renderSidebar(); toast('Surveillance enregistrée. Utilisez « Vérifier » dans votre espace.'); }
 });
 function setAuthMode(mode) { authMode=mode; const register=mode==='register'; $('#auth-title').textContent=register?'Créer un compte':'Se connecter'; $('#auth-description').textContent='Un nom et un mot de passe pour accéder aux contacts et à vos enregistrements.'; $('#auth-submit').textContent=register?'Créer mon compte':'Se connecter'; $('#auth-switch').textContent=register?'J’ai déjà un compte':'Créer un compte'; $('#auth-password').autocomplete=register?'new-password':'current-password'; $('#auth-feedback').textContent=''; }
-function updateAccount() { $('#account-button').textContent=currentUser ? (currentUser.name || 'Mon compte')+' · Se déconnecter' : 'Se connecter ↗'; renderSidebar(); updateSaveButtons(); }
+function updateAccount() { $('#account-button').textContent=currentUser ? (currentUser.name || 'Mon compte')+' · Se déconnecter' : 'Se connecter'; renderSidebar(); updateSaveButtons(); }
 $('#account-button').addEventListener('click',async()=>{
   if(!currentUser){pendingAuthAction=null;setAuthMode('login');$('#auth-dialog').showModal();return;}
   try { await api('/auth/logout',{method:'POST'}); currentUser=null;detailsCache.clear();thread=read('conversations')[0] || newThread();period.value=String(thread.max_age_days || 30);renderConversation();updateAccount();toast('Vous êtes déconnecté.'); } catch(error){toast(error.message);}

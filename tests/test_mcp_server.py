@@ -153,7 +153,7 @@ def test_search_can_skip_internal_llm_for_conversational_assistant(
 
 
 def test_evaluation_returns_evidence_and_preserves_private_contacts(monkeypatch):
-    candidates=[SearchCandidate(identifier=str(i),text=f'Offre {i} à Saaba, contact 70 12 34 56',property_type='parcelle',neighborhood='Saaba',price_fcfa=price,area_m2=300,age_days=1) for i,price in enumerate([3_000_000,4_000_000,5_000_000])]
+    candidates=[SearchCandidate(identifier=str(i),text=f'Offre {i} à Saaba. PUH disponible. Contact 70 12 34 56',property_type='parcelle',neighborhood='Saaba',price_fcfa=price,area_m2=300,age_days=1) for i,price in enumerate([3_000_000,4_000_000,5_000_000])]
     monkeypatch.setattr(mcp_server,'load_recent_candidates',lambda _:candidates)
     result=mcp_server.evaluer_annonce('Parcelle à Saaba 300 m² à 12 000 000 FCFA. APFR déposée. Contact 70 12 34 56',anciennete_jours=30)
     assert result['analyse']['bien']['prix_fcfa']==12_000_000
@@ -171,6 +171,19 @@ def test_compare_reloads_exact_public_references_in_requested_order(monkeypatch)
     assert [r['id'] for r in result['results']]==references
     assert result['mode']=='comparaison'
     assert result['results'][0]['prix_fcfa']==3_000_000
+
+
+def test_evaluation_exposes_nearby_distances_and_reasons_without_internal_ids(monkeypatch):
+    candidate=SearchCandidate(identifier='private-database-id',text='Parcelle à Bendogo. PUH disponible.',property_type='parcelle',neighborhood='Bendogo',price_fcfa=3_000_000,area_m2=300,age_days=1)
+    monkeypatch.setattr(mcp_server,'load_recent_candidates',lambda _: [candidate])
+    result=mcp_server.evaluer_annonce('Parcelle à Saaba 300 m² prix 5 millions FCFA')
+    assert result['nombre_resultats']==1
+    relation=result['results'][0]['comparaison_annonce']
+    assert relation['quartier_origine']=='Saaba'
+    assert relation['distance_km']==5.0
+    assert relation['avantages']
+    assert result['analyse']['nombre_comparables']==0
+    assert 'private-database-id' not in str(result)
 
 
 def test_comparison_of_different_neighborhoods_does_not_claim_local_benchmark(monkeypatch):

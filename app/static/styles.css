@@ -393,14 +393,6 @@ h1 span {
   display:block;
   line-height:1.7
 }
-.prompt-grid i {
-  position:absolute;
-  right:1rem;
-  top:1rem;
-  font-size:1.1rem;
-  font-style:normal;
-  color:#8498c5
-}
 
 .assistant-messages {
   max-width:1180px;
@@ -1035,9 +1027,6 @@ h1 span {
   .workspace.is-expanded .sidebar {
     padding:1rem
   }
-  .workspace.is-expanded #sidebar-close {
-    display:none
-  }
   .workspace.is-expanded .dashboard-list {
     grid-template-columns:1fr
   }
@@ -1208,3 +1197,15 @@ select,.modal,.modal input,.comparison-shell,.assistant-composer,.secondary-butt
   .waiting-topics button { padding:.4rem .7rem; font-size:.75rem; }
   .waiting-tip { min-height:118px; }
 }
+
+/* Conversation pleine largeur, avec accès discret à l’historique. */
+.workspace.sidebar-collapsed { grid-template-columns:minmax(0,1fr); }
+.icon-button { display:inline-grid; place-items:center; flex-shrink:0; }
+.icon-button svg { width:20px; height:20px; display:block; fill:none; stroke:currentColor; stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round; }
+.conversation-header .icon-button { color:var(--muted); border:1px solid var(--line); }
+.conversation-header .icon-button:hover { background:var(--blue-soft); color:var(--blue); }
+.location-distance { display:block; color:var(--blue); font-size:.75rem; line-height:1.55; margin-top:.4rem; white-space:normal; min-width:130px; max-width:220px; }
+.location-map { display:inline-block; color:var(--muted); font-size:.7rem; margin-top:.2rem; text-underline-offset:3px; }
+.location-map:hover { color:var(--blue); }
+.map-attribution { font-size:.75rem; color:var(--muted); line-height:1.65; margin:.75rem 0 1rem; }
+.map-attribution a { color:inherit; text-underline-offset:3px; }
