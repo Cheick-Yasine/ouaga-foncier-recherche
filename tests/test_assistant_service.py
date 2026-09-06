@@ -110,6 +110,7 @@ async def test_assistant_executes_search_through_mcp_and_returns_results() -> No
     )
 
     assert outcome.mcp_used is True
+    assert outcome.answer == "J’ai trouvé une parcelle adaptée à Saaba."
     assert outcome.results == [result]
     assert received["name"] == "rechercher_annonces"
     assert received["arguments"]["anciennete_jours"] == 7
@@ -229,3 +230,23 @@ def test_comparison_suggestion_chooses_same_neighborhood_ranks():
     suggestions=_suggestions(results,{})
     comparison=next(s for s in suggestions if s['label'].startswith('Comparer'))
     assert 'rang 1 et 3' in comparison['message']
+
+
+@pytest.mark.anyio
+async def test_search_budget_is_kept_before_mcp_and_before_the_advisory_reply():
+    from app.search_engine import parse_search_description
+    client=FakeClient([
+        tool_response({'description':'Une bonne affaire avec un budget de 20 millions','criteres_obligatoires':[]}),
+        text_response('Je privilégierais les documents disponibles et un accès à l’eau. Cette offre respecte votre budget et mérite une visite.'),
+    ])
+    received={}
+    async def execute(name,arguments):
+        received.update(arguments)
+        return {'criteres':{'prix_fcfa':20_000_000},'results':[{'id':'too-expensive','prix_fcfa':20_000_000},{'id':'within-budget','prix_fcfa':9_000_000}]}
+    outcome=await run_assistant('Je cherche une parcelle, budget maximum 10 millions FCFA',[],max_age_days=30,client=client,tool_executor=execute,settings=Settings(openai_api_key='test'))
+    assert parse_search_description(received['description']).price_fcfa==10_000_000
+    assert outcome.criteria['prix_fcfa']==10_000_000
+    assert [r['id'] for r in outcome.results]==['within-budget']
+    assert outcome.answer.startswith('Je privilégierais')
+    tool_output=next(item['output'] for item in client.responses.calls[1]['input'] if isinstance(item,dict) and item.get('type')=='function_call_output')
+    assert [r['id'] for r in json.loads(tool_output)['results']]==['within-budget']

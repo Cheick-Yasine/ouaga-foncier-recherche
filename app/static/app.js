@@ -206,7 +206,7 @@ function appendMessage(entry) {
   const simpleSearch=entry.mcp_used && !analysis && !comparison && !entry.error;
   const quality=results[0]?.qualite || {};
   const recommendable=quality.informations_completes ?? (['mentionne','annonce_disponible'].includes(quality.document_etat) && ['mentionne','annonce_disponible'].includes(quality.eau_etat) && ['mentionne','annonce_disponible'].includes(quality.electricite_etat) && quality.proximites?.length>0);
-  if (!simpleSearch) content.append(entry.role==='assistant' ? formattedReply(entry.content) : el('div','chat-bubble',entry.content));
+  if (entry.content?.trim()) content.append(entry.role==='assistant' ? formattedReply(entry.content) : el('div','chat-bubble',entry.content));
   if (entry.mcp_used) {
     const heading=el('div','results-heading');
     heading.append(el('h2','',results.length ? (comparison?'Comparaison':analysis?'Des offres à considérer':recommendable?'Recommandation':'Offres à compléter') : (analysis?'': 'Aucune annonce correspondante')));
@@ -241,7 +241,7 @@ function renderConversation() {
   items.forEach(appendMessage); renderSuggestions(items.filter(m=>m.role==='assistant').at(-1)); requestAnimationFrame(scrollEnd); refreshContacts();
 }
 function historyContent(entry) {
-  let text=entry.mcp_used && !entry.analysis && entry.mode!=='comparaison' ? 'Résultats affichés dans le tableau.' : entry.content;
+  let text=entry.content || 'Résultats affichés dans le tableau.';
   if (entry.criteria) text+='\nRecherche retenue : '+JSON.stringify(entry.criteria);
   if (entry.results?.length) text+='\nAnnonces déjà proposées (ordre du tableau) : '+JSON.stringify(entry.results.map((r,i)=>({rang:i+1,id:r.id,type:r.type_bien,quartier:r.quartier,prix:r.prix_fcfa,superficie:r.superficie_m2,document:r.document,qualite:r.qualite}))).slice(0,3500);
   return text.slice(0,6000);

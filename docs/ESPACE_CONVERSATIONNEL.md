@@ -4,7 +4,7 @@ HAKIMO est l’interface conversationnelle. Le moteur `/search` et les outils MC
 
 ## Présentation
 
-- Une recherche affiche directement la recommandation puis le tableau existant : Rang, Localisation, Superficie, Prix, Prix / m², Document, Contact, Actions. Le texte du modèle ne recopie ni les annonces ni les critères.
+- Une recherche affiche d’abord l’avis de HAKIMO en trois ou quatre phrases : ce qu’il privilégie pour le projet, un conseil concret et pourquoi il retient cette offre. Viennent ensuite la recommandation puis le tableau existant : Rang, Localisation, Superficie, Prix, Prix / m², Document, Contact, Actions. Cet avis reste dans l’historique de conversation ; il ne recopie ni les annonces ni les critères.
 - Une publication copiée reçoit un résumé développé en français simple : prix, points forts, éléments à vérifier et justification des alternatives. Le gras et les puces sont rendus comme des éléments DOM ; aucun HTML du modèle n’est exécuté. L’ancien encadré technique d’analyse est supprimé.
 - Le volet latéral contient seulement l’historique. Un seul bouton, avec la même icône de volet, alterne à chaque clic entre volet latéral, plein écran et masqué. Ce bouton reste accessible dans le bandeau supérieur quand le volet est masqué ; son infobulle indique la prochaine action. Le choix de masquer le volet est conservé dans le navigateur. Les enregistrements et surveillances s’ouvrent depuis les boutons du bandeau supérieur. L’accueil contient uniquement les propositions de conversation, sans slogan ni flèches.
 - Le menu Apparence permet les modes clair, sombre ou système et quatre couleurs. Ce choix reste dans le navigateur.
@@ -15,6 +15,8 @@ Les conversations, enregistrements et surveillances restent dans ce navigateur, 
 ## Recommandations
 
 Le budget maximum reste un plafond strict. Les critères explicites de quartier, type, document, proximité et viabilité sont prioritaires ; une superficie demandée favorise les biens comparables. Une demande générale de bonne affaire privilégie les parcelles courantes aux grands terrains agricoles.
+
+Pour les recherches de l’assistant, le dernier budget explicite retrouvé dans les messages de l’utilisateur corrige un plafond oublié ou modifié dans la description reformulée par le modèle. Un second contrôle retire les offres hors plafond ou sans prix vérifiable avant de les transmettre au modèle et à l’interface. Une réponse de l’assistant ou un prix de vente ne remplace pas ce plafond.
 
 À critères comparables, les annonces avec documentation, eau, électricité et proximité renseignées sont prioritaires. Viennent ensuite la complétude des informations utiles et leur disponibilité annoncée, puis le prix au m² le plus bas et le prix total. Le prix n’annule donc plus l’absence de documentation ou d’équipements. Si aucune annonce n’a ces informations, le tableau reste consultable sous « Offres à compléter », sans carte de recommandation.
 

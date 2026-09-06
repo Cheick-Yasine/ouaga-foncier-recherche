@@ -15,6 +15,7 @@ from mcp.client.streamable_http import streamable_http_client
 from openai import AsyncOpenAI
 
 from app.config import Settings, get_settings
+from app.assistant_constraints import conversation_budget, budget_description, respect_search_budget
 from app.semantic_filter import sanitize_external_text
 
 
@@ -130,9 +131,21 @@ Dis « prix de repère des offres similaires » et « eau et électricité ».
 
 RECHERCHE : appelle rechercher_annonces immédiatement. Pour une bonne affaire,
 conserve ces mots dans la description, privilégie les parcelles sans type explicite.
-L'interface affiche directement la recommandation et le tableau. Ta réponse tient
-en une phrase courte : aucune liste d'annonces, aucun récapitulatif des critères,
-aucun tableau Markdown, aucun nombre de résultats, aucune conclusion générique.
+Ton avis s'affiche AVANT la recommandation et le tableau. Réponds comme un
+conseiller en 3 ou 4 phrases courtes, en un ou deux paragraphes. Prends position
+sur la demande : explique ce que tu privilégierais pour ce projet et ce budget,
+puis donne un conseil concret adapté aux informations disponibles. Relie ensuite
+cet avis à l'offre retenue : explique pourquoi elle mérite d'être regardée ou quel
+compromis elle demande. Appuie ton avis sur les résultats réels, pas sur une
+promesse générale de bonne affaire ou une connaissance supposée des prix locaux.
+S'il n'y a aucune offre complète, dis ce qui manque et propose une piste utile,
+sans présenter une annonce incomplète comme une recommandation. S'il n'y a aucun
+résultat dans le budget, dis-le clairement et conseille un autre quartier ou une
+surface plus petite, sans augmenter le budget de toi-même. Ne pose pas de
+question avant de proposer : l'utilisateur peut affiner ensuite.
+Aucune liste d'annonces, aucun récapitulatif des critères, aucun tableau Markdown,
+aucun nombre de résultats, aucune formule creuse. Ne répète pas les détails de la
+carte ni tous ses atouts ; le texte apporte ton conseil et la raison de ton choix.
 Le premier résultat est choisi selon les critères, la documentation et les
 équipements/proximités renseignés, puis le prix/m² le plus faible à qualité
 comparable. Ne le remplace pas par une annonce moins complète parce que moins chère.
@@ -340,6 +353,7 @@ async def run_assistant(
     latest_analysis: dict[str, Any] | None = None
     latest_mode = "recherche"
     mcp_used = False
+    user_budget = conversation_budget(message, history)
 
     for _ in range(3):
         response = await api_client.responses.create(
@@ -397,6 +411,8 @@ async def run_assistant(
                 arguments = {k: v for k, v in arguments.items() if k in allowed_arguments}
                 if call.name == "evaluer_annonce":
                     arguments["publication"] = _original_publication(message, history, arguments.get("publication", ""))
+                elif call.name == "rechercher_annonces" and user_budget is not None:
+                    arguments["description"] = budget_description(arguments.get("description", ""), user_budget)
                 arguments.update(
                     {
                         "limit": 10,
@@ -408,6 +424,8 @@ async def run_assistant(
                 mcp_used = True
                 if payload.get("erreur"):
                     raise MCPAssistantError(str(payload["erreur"]))
+                if call.name == "rechercher_annonces" and user_budget is not None:
+                    payload = respect_search_budget(payload, user_budget, arguments["description"])
                 latest_criteria = payload.get("criteres", {})
                 latest_analysis = payload.get("analyse")
                 latest_mode = payload.get("mode", "recherche")
