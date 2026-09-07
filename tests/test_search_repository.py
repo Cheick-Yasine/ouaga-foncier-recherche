@@ -278,3 +278,37 @@ def test_recent_candidates_are_cached_between_searches(monkeypatch) -> None:
     assert [item.identifier for item in second] == ["cached-post"]
     assert connections == 1
     clear_candidate_cache()
+
+
+def test_statistics_filters_publication_dates_before_text_analysis(monkeypatch):
+    from contextlib import nullcontext
+    from unittest.mock import Mock
+    from app.search_repository import _candidate_cache_key
+
+    now = datetime(2026, 9, 7, 12, tzinfo=timezone.utc)
+    rows = [
+        {'id': name, 'date_publication': date}
+        for name, date in [
+            ('recent', '2026-09-01T12:00:00Z'),
+            ('boundary', (now - timedelta(days=30)).isoformat()),
+            ('old', '2026-07-01T12:00:00Z'),
+            ('unknown', 'Il y a un mois'),
+            ('future', '2026-10-01T12:00:00Z'),
+            ('missing', None),
+        ]
+    ]
+    connection = Mock()
+    connection.transaction.return_value = nullcontext()
+    connection.execute.return_value.fetchall.return_value = rows
+    monkeypatch.setattr('app.search_repository.psycopg.connect', lambda *a, **k: nullcontext(connection))
+    mapper = Mock(side_effect=lambda row, **kwargs: row['id'])
+    monkeypatch.setattr('app.search_repository._candidate_from_row', mapper)
+    monkeypatch.setattr('app.search_repository._is_prepared_candidate', lambda _: True)
+    settings = Settings(database_url='postgresql://example.test/database')
+    assert load_recent_candidates(settings=settings, now=now, pool_limit=None, publication_days=30) == ['recent', 'boundary']
+    assert mapper.call_count == 2
+    query = connection.execute.call_args.args[0]
+    assert 'LIMIT' not in query
+    assert _candidate_cache_key('db', None, None, 30) != _candidate_cache_key('db', None, None)
+    # Une recherche ordinaire conserve sa politique de date de collecte.
+    assert len(load_recent_candidates(settings=settings, now=now, pool_limit=None)) == 6

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import hashlib
 import re
 from threading import Lock
@@ -16,6 +16,7 @@ from app.config import Settings, get_settings
 from app.database import DatabaseNotConfiguredError
 from app.neighborhoods import resolve_neighborhood
 from app.listing_scope import sale_eligible
+from app.market_stats import publication_time
 from app.normalization import normalize_property_type
 from app.search_engine import SearchCandidate
 from app.text_features import (
@@ -26,7 +27,7 @@ from app.text_features import (
 
 _CANDIDATE_CACHE_TTL_SECONDS = 300.0
 _candidate_cache: dict[
-    tuple[str, int | None, int | None],
+    tuple[str, int | None, int | None, int | None],
     tuple[float, tuple[SearchCandidate, ...]],
 ] = {}
 _candidate_cache_lock = Lock()
@@ -43,9 +44,10 @@ def _candidate_cache_key(
     database_url: str,
     max_age_days: int | None,
     pool_limit: int | None,
-) -> tuple[str, int | None, int | None]:
+    publication_days: int | None = None,
+) -> tuple[str, int | None, int | None, int | None]:
     database_key = hashlib.sha256(database_url.encode("utf-8")).hexdigest()
-    return database_key, max_age_days, pool_limit
+    return database_key, max_age_days, pool_limit, publication_days
 
 
 
@@ -196,6 +198,7 @@ def load_recent_candidates(
     *,
     now: datetime | None = None,
     pool_limit: int | None = 2_000,
+    publication_days: int | None = None,
 ) -> list[SearchCandidate]:
     """Charge les annonces admissibles sans modifier Neon."""
 
@@ -212,6 +215,7 @@ def load_recent_candidates(
         database_url,
         max_age_days,
         pool_limit,
+        publication_days,
     )
 
     if cache_enabled:
@@ -266,6 +270,14 @@ def load_recent_candidates(
                 """,
                 parameters,
             ).fetchall()
+
+    # Écarter les dates absentes, anciennes ou futures avant l'analyse du texte.
+    # Aucun LIMIT : les statistiques restent complètes sur leur période.
+    if publication_days is not None:
+        start = current_time - timedelta(days=publication_days)
+        rows = [row for row in rows
+                if (published := publication_time(_optional_text(row.get("date_publication")))) is not None
+                and start <= published <= current_time]
 
     candidates = [
         _candidate_from_row(dict(row), now=current_time)
