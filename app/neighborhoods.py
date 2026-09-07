@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 import unicodedata
 from collections.abc import Iterable
+from functools import lru_cache
 from dataclasses import asdict, dataclass
 
 
@@ -48,6 +49,12 @@ OUT_OF_SCOPE_LOCALITIES = (
 
 _NON_ALPHANUMERIC = re.compile(r"[^a-z0-9]+")
 _SPACE_BETWEEN_TEXT_AND_NUMBER = re.compile(r"(?<=[a-z])(?=\d)|(?<=\d)(?=[a-z])")
+
+
+@lru_cache(maxsize=1024)
+def _compiled_pattern(expression: str) -> re.Pattern[str]:
+    """Conserve les motifs des quartiers entre les annonces et les requêtes."""
+    return re.compile(expression)
 
 
 def neighborhood_key(value: str | None) -> str:
@@ -151,7 +158,7 @@ def detect_neighborhoods(text: str | None) -> tuple[str, ...]:
 
     raw_matches: list[tuple[int, int, str]] = []
     for alias, canonical in KNOWN_NEIGHBORHOOD_ALIASES.items():
-        pattern = re.compile(
+        pattern = _compiled_pattern(
             rf"(?<![a-z0-9]){re.escape(alias)}(?![a-z0-9])"
         )
         raw_matches.extend(
@@ -202,7 +209,7 @@ def detect_explicit_neighborhood(text: str | None) -> str | None:
     for haystack, prefix in priority_prefixes:
         matches: list[tuple[int, str]] = []
         for alias, canonical in aliases:
-            pattern = re.compile(
+            pattern = _compiled_pattern(
                 rf"{prefix}{re.escape(alias)}(?![a-z0-9])"
             )
             matches.extend(
@@ -219,7 +226,7 @@ def is_only_directional_reference(text: str | None, canonical: str) -> bool:
 
     searchable = neighborhood_key(text)
     alias = neighborhood_key(canonical)
-    directional = re.compile(
+    directional = _compiled_pattern(
         rf"(?:apres|avant|route\s+de|route\s+du|vers|non\s+loin\s+de"
         rf"|proche\s+de|a\s+\d+\s*(?:m|km)\s+de)\s+"
         rf"{re.escape(alias)}(?![a-z0-9])"
