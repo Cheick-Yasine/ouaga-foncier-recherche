@@ -15,10 +15,7 @@ from app.config import Settings, get_settings
 from app.search_engine import (
     RankedResult,
     SearchCriteria,
-    _descriptive_priority,
-    _good_deal_priority,
-    _price_match_priority,
-    _requested_area_price_priority,
+    _recommendation_priority,
     price_per_square_metre,
 )
 
@@ -26,7 +23,21 @@ LOGGER = logging.getLogger(__name__)
 
 _URL_RE = re.compile(r"(?i)\b(?:https?://|www\.)\S+")
 _EMAIL_RE = re.compile(r"(?i)\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b")
-_PHONE_RE = re.compile(r"(?<!\d)\+?\d(?:[\s.()/-]*\d){7,}(?!\d)")
+_PHONE_RE = re.compile(r"(?<!\w)\+?\d(?:[\s.()/-]*\d){7,}(?!\w)")
+
+
+def _mask_nonfinancial_number(match: re.Match[str]) -> str:
+    """Conserve les montants/surfaces explicites sans révéler les contacts."""
+    value = match.group()
+    before = match.string[max(0, match.start() - 65):match.start()].casefold()
+    after = match.string[match.end():match.end() + 20].casefold()
+    numeric = bool(re.fullmatch(r"\d+|\d{1,3}(?:[\s.,]\d{3})+", value))
+    price_context = re.search(r"(?:prix(?:_fcfa)?|budget|montant|superficie(?:_m2)?|surface)\W*(?:(?:de|est|max|maximum|maximal|cible)\W*)*$", before)
+    unit_context = re.match(r"\s*(?:fcfa|f\s*cfa|cfa|m²|m2|millions?|milliards?)\b", after)
+    contact_context = re.search(r"(?:contact|tel|telephone|whatsapp|wats?app)\W*$", before)
+    if numeric and not contact_context and (price_context or unit_context):
+        return value
+    return "[contact retire]"
 
 
 class SemanticDecision(BaseModel):
@@ -54,7 +65,7 @@ def sanitize_external_text(value: str | None, *, limit: int = 900) -> str:
     text = value or ""
     text = _URL_RE.sub("[lien retire]", text)
     text = _EMAIL_RE.sub("[email retire]", text)
-    text = _PHONE_RE.sub("[contact retire]", text)
+    text = _PHONE_RE.sub(_mask_nonfinancial_number, text)
     return " ".join(text.split())[:limit]
 
 
@@ -222,17 +233,7 @@ def apply_semantic_filter(
                 )
             )
 
-        filtered.sort(
-            key=lambda item: (
-                _descriptive_priority(criteria, item),
-                _price_match_priority(criteria, item),
-                _requested_area_price_priority(criteria, item),
-                _good_deal_priority(criteria, item),
-                item.score,
-                item.coverage,
-            ),
-            reverse=True,
-        )
+        filtered.sort(key=lambda item: _recommendation_priority(criteria, item), reverse=True)
         return SemanticFilterOutcome(
             results=filtered[:10],
             used=True,

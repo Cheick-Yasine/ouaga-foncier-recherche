@@ -64,6 +64,45 @@ uvicorn app.mcp_server:http_app --host 127.0.0.1 --port 8001
 
 Le point d’entrée local est `http://127.0.0.1:8001/mcp`. Consultez [la documentation MCP](docs/SERVEUR_MCP.md).
 
+## Tester l'assistant conversationnel en local
+
+L'assistant utilise le LLM comme cerveau : il comprend la conversation et décide
+quand une recherche est nécessaire. La recherche est ensuite exécutée par le
+serveur MCP, qui interroge le moteur Ouaga Foncier en lecture seule.
+
+Vérifiez d'abord ces valeurs dans votre fichier `.env` :
+
+```dotenv
+DATABASE_URL=postgresql://...
+OPENAI_API_KEY=sk-...
+ASSISTANT_MODEL=gpt-4o-mini
+MCP_SERVER_URL=http://127.0.0.1:8001/mcp
+```
+
+Ouvrez un premier terminal PowerShell :
+
+```powershell
+cd ouaga-foncier-recherche
+.\.venv\Scripts\Activate.ps1
+uvicorn app.mcp_server:http_app --host 127.0.0.1 --port 8001
+```
+
+Gardez-le ouvert, puis ouvrez un deuxième terminal PowerShell :
+
+```powershell
+cd ouaga-foncier-recherche
+.\.venv\Scripts\Activate.ps1
+uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+```
+
+Ouvrez ensuite http://127.0.0.1:8000 et cliquez sur **Assistant**.
+Vous pouvez commencer par :
+
+> Je cherche une parcelle à Saaba avec un budget maximum de 6 millions FCFA.
+
+Si la demande est trop vague, l'assistant pose une question. Quand elle est assez
+précise, il appelle automatiquement l'outil MCP `rechercher_annonces`.
+
 ## Lancer les tests
 
 ```powershell

@@ -238,7 +238,7 @@ def test_good_deal_prioritizes_large_area_within_budget() -> None:
     )
 
     assert [result.candidate.identifier for result in results] == ["large", "small"]
-    assert "grande superficie" in results[0].explanations[-1]
+    assert "Informations limitées" in results[0].explanations[-1]
 
 
 def test_near_identical_republication_is_listed_once() -> None:
@@ -357,7 +357,7 @@ def test_good_deal_for_requested_area_prefers_lower_price() -> None:
     )
 
     assert results[0].candidate.identifier == "cheap-exact"
-    assert "prix le plus faible" in results[0].explanations[-1]
+    assert "Informations limitées" in results[0].explanations[-1]
 
 
 def test_requested_neighborhood_precedes_a_better_price() -> None:
@@ -426,7 +426,10 @@ def test_good_price_prefers_lowest_unit_price_in_requested_neighborhood() -> Non
     assert results[0].candidate.identifier == "saaba-low-unit-price"
     assert results[1].candidate.identifier == "saaba-high-unit-price"
     assert results[2].candidate.identifier == "outside-cheapest"
-    assert "15 000 FCFA/m²" in results[0].explanations[-1]
+    assert all(
+        "prix au m² le plus avantageux" not in explanation
+        for explanation in results[0].explanations
+    )
 
 
 def test_missing_price_is_excluded_when_budget_is_requested() -> None:
@@ -466,7 +469,7 @@ def test_good_deal_does_not_reward_spending_more_budget() -> None:
     )
 
     assert results[0].candidate.identifier == "cheap"
-    assert "prix faible" in results[0].explanations[-1]
+    assert "Informations limitées" in results[0].explanations[-1]
 
 
 def test_same_dakoure_property_from_different_groups_is_listed_once() -> None:

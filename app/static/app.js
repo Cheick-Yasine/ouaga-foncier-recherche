@@ -1,76 +1,452 @@
-const $=(s)=>document.querySelector(s),$$=(s)=>Array.from(document.querySelectorAll(s));
-const form=$("#search-form"),descriptionInput=$("#description"),maxAgeInput=$("#max-age-days"),submitButton=$("#submit-button"),feedback=$("#feedback"),output=$("#search-output"),resultsTable=$("#results-table"),resultCards=$("#result-cards"),winner=$("#winner"),accountButton=$("#account-button"),authDialog=$("#auth-dialog"),authForm=$("#auth-form"),authFeedback=$("#auth-feedback"),alertDialog=$("#alert-dialog"),alertForm=$("#alert-form");
-let currentUser=null,authMode="login",lastSearch=null,lastResults=[];
-const fmt=new Intl.NumberFormat("fr-FR",{maximumFractionDigits:0});
-function el(tag,cls,value){const node=document.createElement(tag);if(cls)node.className=cls;if(value!==undefined)node.textContent=value;return node}
-function showValue(v,suffix=""){return v===null||v===undefined||v===""?"Non précisé":typeof v==="number"?fmt.format(v)+suffix:String(v)+suffix}
-function formatArea(value){if(value===null||value===undefined||value==="")return"Non précisé";const area=Number(value);if(!Number.isFinite(area))return String(value);if(area>=10000){const hectares=area/10000;const ha=new Intl.NumberFormat("fr-FR",{maximumFractionDigits:2}).format(hectares);return ha+" ha ("+fmt.format(area)+" m²)"}return fmt.format(area)+" m²"}
-function unitPrice(r){if(r.prix_m2_fcfa!==null&&r.prix_m2_fcfa!==undefined){const value=Number(r.prix_m2_fcfa);if(Number.isFinite(value)&&value>0)return value}const price=Number(r.prix_fcfa),area=Number(r.superficie_m2);return Number.isFinite(price)&&price>0&&Number.isFinite(area)&&area>0?price/area:null}
-function formatUnitPrice(r){const value=unitPrice(r);return value===null?"Prix/m² non calculable":fmt.format(value)+" FCFA/m²"}
-function safeUrl(raw){if(!raw)return null;try{const u=new URL(raw);return["http:","https:"].includes(u.protocol)?u.href:null}catch{return null}}
-function setFeedback(message="",state=""){feedback.textContent=message;feedback.className=state?"feedback is-"+state:"feedback"}
-function key(kind){return"foncier-ouaga:"+(currentUser?.id||"visitor")+":"+kind}
-function read(kind){try{return JSON.parse(localStorage.getItem(key(kind))||"[]")}catch{return[]}}
-function write(kind,data){localStorage.setItem(key(kind),JSON.stringify(data))}
-function title(r){const t=r.type_bien?r.type_bien[0].toUpperCase()+r.type_bien.slice(1):"Bien";return[t,r.superficie_m2?"de "+formatArea(r.superficie_m2):null,r.quartier?"à "+r.quartier:null].filter(Boolean).join(" ")}
-function opinion(r,index){const useful=(r.explications||[]).map(text=>String(text).replace(/^Filtre sémantique\s*:\s*/i,"").trim()).filter(text=>text&&!/^Proximité de (?:superficie|prix)\s*:/i.test(text));const base=useful[useful.length-1]||(index===0?"Meilleur équilibre avec votre demande.":"Option intéressante à vérifier selon vos priorités.");return r.note_prix?r.note_prix+". "+base:base}
-function relativeDate(r){
- if(typeof r.anciennete_jours==="number"){
-  const days=Math.max(0,Math.floor(r.anciennete_jours));
-  if(days===0)return"Aujourd’hui";
-  if(days===1)return"Il y a 1 jour";
-  return"Il y a "+days+" jours";
- }
- if(r.premiere_collecte){
-  const date=new Date(r.premiere_collecte);
-  if(!Number.isNaN(date.getTime())){
-   const days=Math.max(0,Math.floor((Date.now()-date.getTime())/86400000));
-   if(days===0)return"Aujourd’hui";
-   if(days===1)return"Il y a 1 jour";
-   return"Il y a "+days+" jours";
+'use strict';
+const $ = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+const workspace = $('#workspace'), sidebar = $('#sidebar'), main = $('#conversation-main');
+const historyToggle = $('#history-toggle'), sidebarTop = $('.sidebar-top'), conversationHeader = $('.conversation-header');
+const input = $('#assistant-input'), form = $('#assistant-form'), submit = $('#assistant-submit');
+const messages = $('#assistant-messages'), period = $('#assistant-max-age-days');
+const money = new Intl.NumberFormat('fr-FR', {maximumFractionDigits: 0});
+const decimal = new Intl.NumberFormat('fr-FR', {maximumFractionDigits: 2});
+let currentUser = null, authMode = 'login', pendingAuthAction = null;
+let thread = null, busy = false, expanded = false, mobileOpen = false, sidebarCollapsed = false, alertDraft = null;
+let toastTimer, checkingAlert = null, activePage = 'home';
+const sourceCache = new Map();
+const detailsCache = new Map();
+const mobile = window.matchMedia('(max-width: 800px)');
+try { sidebarCollapsed = localStorage.getItem('hakimo:sidebar-collapsed') === 'true'; } catch {}
+function el(tag, cls, text) { const n = document.createElement(tag); if (cls) n.className = cls; if (text !== undefined) n.textContent = text; return n; }
+function button(text, cls, action) { const b = el('button', cls, text); b.type = 'button'; b.addEventListener('click', action); return b; }
+function number(v, suffix = '') { return v !== null && v !== undefined && v !== '' && Number.isFinite(Number(v)) ? money.format(Number(v)) + suffix : 'Non précisé'; }
+function area(v) { return Number(v) >= 10000 ? decimal.format(v / 10000) + ' ha (' + number(v, ' m²') + ')' : number(v, ' m²'); }
+function unitPrice(r) { const value = Number(r.prix_m2_fcfa) || (Number(r.prix_fcfa) / Number(r.superficie_m2)); return Number.isFinite(value) && value > 0 ? decimal.format(value) + ' FCFA/m²' : 'Non calculable'; }
+const labels = {attestation_possession:'Attestation de possession',attestation_attribution:'Attestation d’attribution',attestation_non_precisee:'Attestation (type non précisé)',apfr:'APFR',puh:'PUH',titre_foncier:'Titre foncier',plusieurs_documents:'Plusieurs documents',recepisse:'Récépissé de dépôt',croquis:'Croquis',non_precise:'Non précisé',non_precisee:'Non précisé',eau:'Eau',electricite:'Électricité',eau_et_electricite:'Eau et électricité',ecole:'École',centre_sante_hopital:'Centre de santé',voie_bitumee:'Voie bitumée',voie_route:'Route',acces_voie_bitumee:'Accès bitumé',marche:'Marché'};
+function label(v) { return v ? String(v).split('+').map(x => labels[x] || x.replaceAll('_',' ')).join(' · ') : 'Non précisé'; }
+function title(r) { return [r.type_bien ? r.type_bien[0].toUpperCase() + r.type_bien.slice(1) : 'Annonce', r.quartier ? 'à ' + r.quartier : ''].filter(Boolean).join(' '); }
+function safeUrl(raw) { try { const u = new URL(raw); return ['http:','https:'].includes(u.protocol) ? u.href : null; } catch { return null; } }
+function toast(text) { clearTimeout(toastTimer); $('#feedback').textContent = text; $('#feedback').hidden = false; toastTimer = setTimeout(() => { $('#feedback').hidden = true; }, 6500); }
+function key(kind) { return 'foncier-ouaga:' + (currentUser?.id || 'visitor') + ':' + kind; }
+function read(kind) { try { const v = JSON.parse(localStorage.getItem(key(kind)) || '[]'); return Array.isArray(v) ? v.filter(x => x && typeof x === 'object') : []; } catch { return []; } }
+function write(kind, value) { try { localStorage.setItem(key(kind), JSON.stringify(value)); return true; } catch { toast('Le navigateur ne peut pas enregistrer ces données. Votre conversation reste ouverte.'); return false; } }
+function uid() { return globalThis.crypto?.randomUUID?.() || Date.now().toString(36) + Math.random().toString(36).slice(2); }
+function cleanResult(r) { const {contact, contact_masque, lien_whatsapp, ...rest} = r; return rest; }
+function newThread() { return {id:uid(), query:'Nouvelle conversation', messages:[], date:new Date().toISOString(), max_age_days:Number(period.value)}; }
+function persistThread() { if (!thread?.messages.length) return; thread.date = new Date().toISOString(); thread.max_age_days = Number(period.value); write('conversations', [thread, ...read('conversations').filter(x => x.id !== thread.id)].slice(0,20)); renderSidebar(); }
+function setSidebarState() {
+  const visible = expanded || (mobile.matches ? mobileOpen : !sidebarCollapsed);
+  const wasFocused = document.activeElement === historyToggle;
+  sidebar.hidden = !visible; workspace.classList.toggle('is-expanded', expanded);
+  workspace.classList.toggle('sidebar-collapsed', !visible);
+  main.inert = expanded || (mobile.matches && mobileOpen);
+  if (expanded) $('#history-section').open = true;
+  // Le même bouton reste accessible dans chacun des trois modes, sans copie.
+  if (visible && historyToggle.parentElement !== sidebarTop) sidebarTop.append(historyToggle);
+  else if (!visible && historyToggle.parentElement !== conversationHeader) conversationHeader.prepend(historyToggle);
+  const nextAction = !visible ? 'Afficher le volet historique' : expanded ? 'Masquer l’historique' : 'Afficher l’historique en plein écran';
+  historyToggle.setAttribute('aria-label', nextAction); historyToggle.title = nextAction;
+  historyToggle.setAttribute('aria-expanded', String(visible));
+  if (wasFocused) historyToggle.focus();
+}
+function rememberSidebar() { try { localStorage.setItem('hakimo:sidebar-collapsed', String(sidebarCollapsed)); } catch {} }
+function closeSidebar() { expanded = false; mobileOpen = false; setSidebarState(); if (activePage === 'chat') input.focus(); }
+historyToggle.addEventListener('click', () => {
+  if (sidebar.hidden) { sidebarCollapsed = false; mobileOpen = true; expanded = false; }
+  else if (!expanded) { expanded = true; }
+  else { expanded = false; mobileOpen = false; sidebarCollapsed = true; }
+  rememberSidebar(); setSidebarState(); historyToggle.focus();
+});
+mobile.addEventListener('change', setSidebarState);
+document.addEventListener('keydown', e => {
+  if (document.querySelector('dialog[open]')) return;
+  if (e.key === 'Escape' && (mobileOpen || expanded)) closeSidebar();
+  if (e.key === 'Tab' && (expanded || (mobile.matches && mobileOpen))) {
+    const nodes = Array.from(sidebar.querySelectorAll('button, a, summary')).filter(n => !n.disabled && n.getClientRects().length);
+    if (e.shiftKey && document.activeElement === nodes[0]) { e.preventDefault(); nodes.at(-1)?.focus(); }
+    else if (!e.shiftKey && document.activeElement === nodes.at(-1)) { e.preventDefault(); nodes[0]?.focus(); }
   }
- }
- return showValue(r.date_publication)
+});
+function startConversation() { if (busy) return; persistThread(); thread = newThread(); showPage('chat'); renderConversation(); renderSidebar(); closeSidebar(); }
+$('#new-conversation').addEventListener('click', startConversation);
+function dateText(date) { const d = new Date(date); return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('fr-FR', {day:'numeric',month:'short'}); }
+function isSaved(id) { return read('saved').some(x => x.id === id); }
+function requireLogin(action, message) {
+  if (currentUser) { action(); return; }
+  pendingAuthAction = action; setAuthMode('login');
+  if (message) $('#auth-description').textContent = message;
+  $('#auth-dialog').showModal();
 }
-function documentLabel(value){const labels={attestation_possession:"Attestation de possession",attestation_attribution:"Attestation d’attribution",attestation_non_precisee:"Attestation, type non précisé",apfr:"APFR",puh:"PUH",titre_foncier:"Titre foncier",plusieurs_documents:"Plusieurs documents",non_precise:"Non précisé"};return labels[value]||showValue(value)}
-function facts(r){return[showValue(r.prix_fcfa," FCFA"),formatUnitPrice(r),formatArea(r.superficie_m2),documentLabel(r.statut_document),relativeDate(r)].join(" · ")}
-function contactLabel(r){return r.contact||r.contact_masque||"Non disponible"}
-function appendContact(container,r){const url=safeUrl(r.lien_whatsapp),label=contactLabel(r),className=label==="Non disponible"?"contact-value contact-unavailable":"contact-value";if(url){const link=el("a","contact-link",label);link.href=url;link.target="_blank";link.rel="noopener noreferrer";container.append(link)}else container.append(el("span",className,label))}
-function requireLogin(message){if(currentUser)return true;$("#auth-description").textContent=message||"Connectez-vous pour utiliser cette fonction.";setAuthMode("login");authDialog.showModal();return false}
-function isSaved(id){return read("saved").some(x=>x.id===id)}
-function toggleSaved(result,button){if(!requireLogin("Connectez-vous pour enregistrer cette annonce."))return;let items=read("saved");items=items.some(x=>x.id===result.id)?items.filter(x=>x.id!==result.id):[{...result,saved_at:new Date().toISOString()},...items];write("saved",items.slice(0,100));button.textContent=isSaved(result.id)?"Enregistrée":"Enregistrer";renderDashboard("saved")}
-function actions(result,compact=false){const box=el("div",compact?"mobile-actions":"winner-actions"),url=safeUrl(result.url);if(url){const a=el("a","action-primary","Voir l’annonce");a.href=url;a.target="_blank";a.rel="noopener noreferrer";box.append(a)}else{const b=el("button","action-primary","Voir le détail");b.type="button";b.addEventListener("click",()=>requireLogin("Connectez-vous pour consulter le contact et le détail de l’annonce."));box.append(b)}const save=el("button","save-button",isSaved(result.id)?"Enregistrée":"Enregistrer");save.type="button";save.addEventListener("click",()=>toggleSaved(result,save));box.append(save);return box}
-function renderWinner(result){winner.replaceChildren();if(!result)return;const grid=el("div","winner-grid"),score=el("div","score-card");score.append(el("strong","score-value",Math.round(result.score)+"%"),el("span","score-label","Compatibilité"));const copy=el("div","winner-copy"),contact=el("p","winner-contact");appendContact(contact,result);copy.append(el("h2","winner-title",title(result)),el("p","winner-facts",facts(result)),contact,el("p","winner-opinion",opinion(result,0)));grid.append(score,copy,actions(result));winner.append(el("div","winner-label","Notre recommandation"),grid)}
-function renderTable(results){
- resultsTable.replaceChildren();
- resultCards.replaceChildren();
- results.forEach((r,index)=>{
-  const row=document.createElement("tr");
-  const entries=[index+1,r.quartier||"Non précisée",formatArea(r.superficie_m2),showValue(r.prix_fcfa," FCFA"),formatUnitPrice(r),documentLabel(r.statut_document)];
-  entries.forEach((entry,i)=>{const td=document.createElement("td");if(i===0)td.append(el("span","rank-badge",entry));else{td.textContent=entry;if(i===3||i===4)td.className="money"}row.append(td)});
-  const contactCell=el("td","contact-cell");appendContact(contactCell,r);row.append(contactCell);
-  const td=document.createElement("td"),tableActions=el("div","table-actions"),url=safeUrl(r.url);
-  if(url){const a=el("a","table-action","Voir");a.href=url;a.target="_blank";a.rel="noopener noreferrer";tableActions.append(a)}
-  else{const b=el("button","table-action","Détail");b.type="button";b.addEventListener("click",()=>requireLogin());tableActions.append(b)}
-  const save=el("button","table-save",isSaved(r.id)?"Enregistrée":"Enregistrer");save.type="button";save.addEventListener("click",()=>toggleSaved(r,save));tableActions.append(save);td.append(tableActions);row.append(td);resultsTable.append(row);
-  const card=el("article","mobile-card"),top=el("div","mobile-card-top"),copy=el("div"),mobileContact=el("p","mobile-contact");
-  copy.append(el("span","rank-badge",index+1),el("h3","",title(r)));top.append(copy,el("strong","",Math.round(r.score)+"%"));appendContact(mobileContact,r);
-  card.append(top,el("p","mobile-meta",facts(r)),mobileContact,actions(r,true));resultCards.append(card)
- })
+function saveResult(result) { requireLogin(() => {
+  const list = read('saved'), exists = list.some(x => x.id === result.id);
+  const next = exists ? list.filter(x => x.id !== result.id) : [{...cleanResult(result),saved_at:new Date().toISOString()}, ...list].slice(0,100);
+  if (write('saved', next)) { renderSidebar(); updateSaveButtons(); toast(exists ? 'Annonce retirée des favoris.' : 'Annonce ajoutée aux favoris.'); }
+}, 'Connectez-vous pour enregistrer cette annonce.'); }
+function saveButton(result) { const b = button(isSaved(result.id) ? 'Dans les favoris' : 'Favori','table-save', () => saveResult(result)); b.dataset.saveId = result.id; b.classList.toggle('is-saved',isSaved(result.id)); return b; }
+function updateSaveButtons() { $$('[data-save-id]').forEach(b => { const saved = isSaved(b.dataset.saveId); b.textContent = saved ? 'Dans les favoris' : 'Favori'; b.classList.toggle('is-saved', saved); }); }
+function renderSidebar() {
+  const conversations = read('conversations');
+  const history = conversations.concat(read('history').filter(h => !conversations.some(c => c.query === h.query)).map(h => ({...h,legacy:true})));
+  for (const kind of ['history','saved','alerts']) {
+    const list = $('#' + kind + '-list'), items = kind === 'history' ? history : read(kind);
+    list.replaceChildren(); const count = $('#' + kind + '-count'); if (count) count.textContent = items.length;
+    if (!items.length) { list.append(el('p','empty-dashboard', {history:'Vos conversations apparaîtront ici.',saved:'Ajoutez une annonce aux favoris pour la retrouver ici.',alerts:'Suivez une recherche depuis ses résultats.'}[kind])); continue; }
+    for (const item of items) {
+      const row = el('article','dashboard-item'), actions = el('div','side-actions');
+      if (kind === 'history') {
+        row.classList.toggle('is-current',item.id === thread?.id);
+        row.append(el('h3','',item.query),el('p','',dateText(item.date)));
+        const open = button(item.legacy ? 'Relancer' : 'Reprendre','side-action', () => {
+          if (busy) return; persistThread();
+          if (item.legacy) { thread = newThread(); period.value = String(item.max_age_days || 30); closeSidebar(); sendMessage(item.query); }
+          else { thread = structuredClone(item); period.value = String(item.max_age_days || 30); showPage('chat'); renderConversation(); renderSidebar(); closeSidebar(); }
+        }); open.disabled = busy; actions.append(open);
+      } else if (kind === 'saved') {
+        row.append(el('h3','',title(item)),el('p','',number(item.prix_fcfa,' FCFA') + ' · ' + area(item.superficie_m2)));
+        actions.append(sourceLink(item, 'side-action'));
+      } else {
+        row.append(el('h3','',item.name || item.query),el('p','',item.last_checked ? 'Vérifiée le ' + dateText(item.last_checked) : 'À vérifier à votre demande'));
+        const check = button('Vérifier','side-action', () => {
+          if (busy) return; $('#alerts-dialog').close(); checkingAlert = item.id || item.query; startConversation(); period.value = String(item.max_age_days || 30); sendMessage(item.query);
+        }); check.disabled = busy; actions.append(check);
+      }
+      const remove = button('Retirer','side-action remove', () => {
+        if (busy && kind === 'history') return;
+        const storage = kind === 'history' ? (item.legacy ? 'history' : 'conversations') : kind;
+        write(storage, read(storage).filter(x => item.id ? x.id !== item.id : x.query !== item.query));
+        if (kind === 'history' && item.id === thread?.id) { thread = newThread(); renderConversation(); }
+        renderSidebar(); updateSaveButtons();
+      }); remove.disabled = busy && kind === 'history'; actions.append(remove); row.append(actions); list.append(row);
+    }
+  }
+  queueMicrotask(refreshSourceLinks);
 }
-function unique(results){const seen=new Set();return results.filter(r=>{const normalized=(r.texte||"").toLowerCase().replace(/\s+/g," ").trim(),fingerprint=normalized||String(r.id);if(seen.has(fingerprint))return false;seen.add(fingerprint);return true}).slice(0,10)}
-function saveHistory(query,count){if(!currentUser)return;const max_age_days=Number(maxAgeInput.value);const items=read("history").filter(x=>x.query!==query||x.max_age_days!==max_age_days);items.unshift({query,count,max_age_days,date:new Date().toISOString()});write("history",items.slice(0,30))}
-function renderResponse(payload,query){lastResults=unique(payload.resultats||[]);lastSearch=query;$("#selection-title").textContent=lastResults.length?"Recommandation personnalisée":"Aucune correspondance suffisamment précise";renderWinner(lastResults[0]);renderTable(lastResults);saveHistory(query,lastResults.length);output.hidden=false;output.scrollIntoView({behavior:"smooth",block:"start"})}
-form.addEventListener("submit",async event=>{event.preventDefault();const query=descriptionInput.value.trim();submitButton.disabled=true;submitButton.textContent="Analyse en cours";output.hidden=true;setFeedback("Comparaison des annonces en cours.","loading");try{const response=await fetch("/search",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({description:query,limit:10,max_age_days:Number(maxAgeInput.value)})}),payload=await response.json();if(!response.ok)throw new Error(payload.detail||"La recherche n’a pas pu être exécutée.");setFeedback();renderResponse(payload,query)}catch(error){const message=error.message||"Une erreur inattendue est survenue.";setFeedback(message,"error")}finally{submitButton.disabled=false;submitButton.textContent="Rechercher"}});
-function setAuthMode(mode){authMode=mode;const register=mode==="register";$("#auth-title").textContent=register?"Créer un compte":"Se connecter";$("#auth-description").textContent=register?"Créez votre espace pour enregistrer vos annonces, recherches et surveillances.":"Retrouvez vos annonces, vos recherches et vos surveillances.";$("#auth-submit").textContent=register?"Créer mon compte":"Se connecter";$("#auth-switch").textContent=register?"J’ai déjà un compte":"Créer un compte";authFeedback.textContent=""}
-async function refreshSession(){try{const response=await fetch("/auth/me");currentUser=response.ok?await response.json():null}catch{currentUser=null}updateAccountUI()}
-function updateAccountUI(){accountButton.textContent=currentUser?currentUser.email.split("@")[0]:"Se connecter";$$(".member-only").forEach(node=>node.hidden=!currentUser);["saved","history","alerts"].forEach(renderDashboard)}
-accountButton.addEventListener("click",async()=>{if(!currentUser){setAuthMode("login");authDialog.showModal();return}await fetch("/auth/logout",{method:"POST"});currentUser=null;showView("search");updateAccountUI();setFeedback("Vous êtes déconnecté.")});
-$("#close-auth").addEventListener("click",()=>authDialog.close());$("#auth-switch").addEventListener("click",()=>setAuthMode(authMode==="login"?"register":"login"));
-authForm.addEventListener("submit",async event=>{event.preventDefault();authFeedback.textContent="";$("#auth-submit").disabled=true;try{const response=await fetch("/auth/"+authMode,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:$("#auth-email").value.trim(),password:$("#auth-password").value})}),payload=await response.json();if(!response.ok)throw new Error(payload.detail||"La connexion a échoué.");currentUser=payload;authDialog.close();authForm.reset();updateAccountUI();setFeedback("Connexion réussie.","loading")}catch(error){authFeedback.textContent=error.message}finally{$("#auth-submit").disabled=false}});
-function showView(name){$$(".view").forEach(node=>node.hidden=node.id!==name+"-view");$$(".nav-link").forEach(node=>node.classList.toggle("is-active",node.dataset.view===name));if(name!=="search")renderDashboard(name)}
-$$(".nav-link").forEach(button=>button.addEventListener("click",()=>{if(button.classList.contains("member-only")&&!requireLogin())return;showView(button.dataset.view)}));
-function renderDashboard(kind){const list=$("#"+kind+"-list");if(!list)return;const items=read(kind);list.replaceChildren();if(!items.length){const labels={saved:"Aucune annonce enregistrée pour le moment.",history:"Votre historique apparaîtra après votre première recherche.",alerts:"Aucune surveillance active."};list.append(el("div","empty-dashboard",labels[kind]));return}items.forEach((item,index)=>{const row=el("article","dashboard-item"),copy=el("div");if(kind==="saved")copy.append(el("h3","",title(item)),el("p","",facts(item)));else if(kind==="history")copy.append(el("h3","",item.query),el("p","",item.count+" résultat(s) · "+new Date(item.date).toLocaleDateString("fr-FR")));else copy.append(el("h3","",item.name),el("p","",item.query+" · vérification "+(item.daily?"quotidienne":"manuelle")));const action=el("button","secondary-button",kind==="history"?"Relancer":"Retirer");action.type="button";action.addEventListener("click",()=>{if(kind==="history"){descriptionInput.value=item.query;if(item.max_age_days)maxAgeInput.value=String(item.max_age_days);showView("search");form.requestSubmit()}else{write(kind,read(kind).filter((_,i)=>i!==index));renderDashboard(kind)}});row.append(copy,action);list.append(row)})}
-$("#create-alert").addEventListener("click",()=>{if(!lastSearch)return;if(!requireLogin("Connectez-vous pour activer une surveillance."))return;$("#alert-name").value=lastSearch.length>45?lastSearch.slice(0,42)+"...":lastSearch;alertDialog.showModal()});$("#close-alert").addEventListener("click",()=>alertDialog.close());
-alertForm.addEventListener("submit",event=>{event.preventDefault();const alerts=read("alerts");if(!alerts.some(x=>x.query===lastSearch))alerts.unshift({name:$("#alert-name").value.trim(),query:lastSearch,max_age_days:Number(maxAgeInput.value),daily:$("#alert-daily").checked,date:new Date().toISOString()});write("alerts",alerts);alertDialog.close();renderDashboard("alerts");setFeedback("Surveillance enregistrée. La notification automatique sera activée lors de la mise en production.","loading")});
-refreshSession();
+function evidence(result, container) {
+  const chips = el('div','evidence-chips');
+  [...new Set(result.qualite?.atouts || [])].forEach(t => chips.append(el('span','evidence-chip',t)));
+  if (chips.childNodes.length) container.append(chips);
+}
+function facebookUrl(raw) {
+  try {
+    const u = new URL(raw), host = u.hostname.toLowerCase();
+    if (!['http:','https:'].includes(u.protocol) || u.username || u.password || !['facebook.com','fb.com','fb.watch'].some(d => host === d || host.endsWith('.'+d))) return null;
+    if (['','/l.php','/login','/login.php','/sharer.php','/dialog/share'].includes(u.pathname.replace(/\/$/,''))) return null;
+    return u.href;
+  } catch { return null; }
+}
+function setSourceLink(link, url, failed = false) {
+  if (url) {
+    link.href = url; link.textContent = 'Voir'; link.removeAttribute('aria-disabled'); link.removeAttribute('role'); link.removeAttribute('tabindex');
+  } else {
+    link.removeAttribute('href'); link.textContent = failed ? 'Réessayer le lien' : 'Lien indisponible';
+    if (failed) { link.setAttribute('role','button'); link.tabIndex=0; link.removeAttribute('aria-disabled'); }
+    else { link.setAttribute('aria-disabled','true'); link.removeAttribute('role'); link.removeAttribute('tabindex'); }
+  }
+}
+function sourceLink(result, cls='table-action') {
+  const link = el('a',cls+' source-link','Voir');
+  link.dataset.sourceId = result.id; link.target='_blank'; link.rel='noopener noreferrer';
+  link.setAttribute('aria-label','Voir la publication Facebook : '+title(result));
+  const url = facebookUrl(result.facebook_url) || facebookUrl(result.url);
+  if (url) sourceCache.set(result.id,{url});
+  if (sourceCache.has(result.id)) { const cached=sourceCache.get(result.id); setSourceLink(link,cached.url,cached.error); }
+  else { link.textContent='Chargement du lien…'; link.setAttribute('aria-disabled','true'); }
+  const retry = e => {
+    if (link.hasAttribute('href')) return;
+    e.preventDefault();
+    if (sourceCache.get(result.id)?.error) { sourceCache.delete(result.id); link.textContent='Chargement du lien…'; refreshSourceLinks(); }
+  };
+  link.addEventListener('click',retry);
+  link.addEventListener('keydown',e=>{if(!link.hasAttribute('href') && ['Enter',' '].includes(e.key)) retry(e);});
+  return link;
+}
+let sourcesRequest = false;
+async function refreshSourceLinks() {
+  if (sourcesRequest) return;
+  const refs=[...new Set($$('[data-source-id]').map(n=>n.dataset.sourceId))].filter(id=>!sourceCache.has(id)).slice(0,500);
+  if (!refs.length) return;
+  sourcesRequest=true;
+  try {
+    const results=await api('/annonces/liens',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({references:refs})});
+    refs.forEach(id=>sourceCache.set(id,{url:null}));
+    results.forEach(r=>sourceCache.set(r.id,{url:facebookUrl(r.facebook_url)}));
+  } catch { refs.forEach(id=>sourceCache.set(id,{url:null,error:true})); }
+  finally {
+    sourcesRequest=false;
+    $$('[data-source-id]').forEach(link=>{const cached=sourceCache.get(link.dataset.sourceId);if(cached)setSourceLink(link,cached.url,cached.error);});
+    refreshSourceLinks();
+  }
+}
+function contactCell(r) {
+  const td=el('td','contact-cell'), cached=detailsCache.get(r.id);
+  if (!currentUser) td.append(button('Se connecter','contact-button',()=>requireLogin(refreshContacts)));
+  else if (cached?.contact) {
+    const link=el('a','contact-link',cached.contact), url=safeUrl(cached.lien_whatsapp);
+    if (url) { link.href=url; link.target='_blank'; link.rel='noopener noreferrer'; }
+    td.append(link);
+  } else td.append(el('span','subtle',cached ? (cached.error ? 'Indisponible' : 'Non précisé') : 'Chargement…'));
+  return td;
+}
+let contactsRequest = null;
+function redrawContacts() {
+  messages.querySelectorAll('tr[data-result-id]').forEach(row=>row.children[6].replaceWith(contactCell({id:row.dataset.resultId})));
+}
+async function refreshContacts() {
+  redrawContacts();
+  if (!currentUser || contactsRequest) return;
+  const userId=currentUser.id;
+  const references=[...new Set($$('tr[data-result-id]').map(row=>row.dataset.resultId))].filter(id=>!detailsCache.has(id)).slice(0,500);
+  if (!references.length) return;
+  contactsRequest=userId;
+  try {
+    const payload=await api('/annonces/selection',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({references})});
+    if (currentUser?.id!==userId) return;
+    references.forEach(id=>detailsCache.set(id,{contact:null}));
+    payload.forEach(item=>detailsCache.set(item.id,item));
+  } catch(error) {
+    if (currentUser?.id!==userId) return;
+    if (error.status===401) { currentUser=null; detailsCache.clear(); updateAccount(); }
+    else references.forEach(id=>detailsCache.set(id,{error:true}));
+  } finally {
+    contactsRequest=null; redrawContacts();
+    if (currentUser) refreshContacts();
+  }
+}
+// Render a small Markdown subset as DOM text, never as untrusted HTML.
+function formattedReply(text) {
+  const box=el('div','chat-bubble formatted-reply'); let list=null;
+  function inline(node,value) {
+    value.split(/(\*\*[^*]+\*\*)/g).forEach(part=>node.append(part.startsWith('**') && part.endsWith('**') ? el('strong','',part.slice(2,-2)) : document.createTextNode(part)));
+  }
+  for (const raw of String(text || '').split('\n')) {
+    const line=raw.trim(); if (!line) { list=null; continue; }
+    const bullet=line.match(/^(?:[-*•]|\d+[.)])\s+(.+)/);
+    if (bullet) { if (!list) { list=el('ul'); box.append(list); } const item=el('li'); inline(item,bullet[1]); list.append(item); }
+    else { list=null; const heading=/^#{1,6}\s+/.test(line); const node=el(heading?'h3':'p'); inline(node,line.replace(/^#{1,6}\s+/,'')); box.append(node); }
+  }
+  return box;
+}
+function resultTable(results) {
+  const fragment = $('#comparison-template').content.cloneNode(true), body = fragment.querySelector('tbody');
+  results.forEach((r,i) => {
+    const row = el('tr'); row.dataset.resultId = r.id;
+    const values = [i+1,r.quartier || 'Non précisée',area(r.superficie_m2),number(r.prix_fcfa,' FCFA'),unitPrice(r),label(r.document || r.statut_document)];
+    values.forEach((value,j) => { const td = el('td',j===3 ? 'money' : j===4 ? 'unit-price' : ''); if (j===0) td.append(el('span','rank-badge',value)); else td.textContent=value;
+      if (j===1 && r.comparaison_annonce) {
+        const relation=r.comparaison_annonce;
+        td.append(el('small','location-distance',relation.distance_libelle));
+        if (!relation.meme_quartier && safeUrl(relation.carte_url)) {
+          const link=el('a','location-map','Voir sur la carte'); link.href=safeUrl(relation.carte_url); link.target='_blank'; link.rel='noopener noreferrer';
+          link.setAttribute('aria-label','Voir '+(r.quartier || 'ce quartier')+' sur la carte (nouvel onglet)'); td.append(link);
+        }
+      }
+      if (j===5 && r.qualite?.document_etat && r.qualite.document_etat !== 'non_precise') td.append(el('small','document-status',r.qualite.document_libelle)); row.append(td); });
+    row.append(contactCell(r)); const cell=el('td'), actions=el('div','table-actions');
+    actions.append(sourceLink(r),saveButton(r)); cell.append(actions); row.append(cell); body.append(row);
+  });
+  return fragment;
+}
+function appendMessage(entry) {
+  const row=el('article','chat-row is-'+entry.role+(entry.error?' is-error':'')), content=el('div','chat-content');
+  content.append(el('p','chat-role',entry.role==='assistant'?'HAKIMO':'Vous'));
+  const results=entry.results || [], analysis=Boolean(entry.analysis), comparison=entry.mode==='comparaison';
+  const simpleSearch=entry.mcp_used && !analysis && !comparison && !entry.error;
+  const quality=results[0]?.qualite || {};
+  const recommendable=quality.informations_completes ?? (['mentionne','annonce_disponible'].includes(quality.document_etat) && ['mentionne','annonce_disponible'].includes(quality.eau_etat) && ['mentionne','annonce_disponible'].includes(quality.electricite_etat) && quality.proximites?.length>0);
+  if (entry.content?.trim()) content.append(entry.role==='assistant' ? formattedReply(entry.content) : el('div','chat-bubble',entry.content));
+  if (entry.mcp_used) {
+    const heading=el('div','results-heading');
+    heading.append(el('h2','',results.length ? (comparison?'Comparaison':analysis?'Des offres à considérer':recommendable?'Recommandation':'Offres à compléter') : (analysis?'': 'Aucune annonce correspondante')));
+    if (entry.criteria?.description) heading.append(button('Créer une alerte','secondary-button',()=>createAlert(entry.criteria,results)));
+    content.append(heading);
+    if (simpleSearch && results.length && recommendable) {
+      const first=results[0], card=el('section','recommendation');
+      card.append(el('h3','',title(first)),el('p','facts',number(first.prix_fcfa,' FCFA')+' · '+area(first.superficie_m2)+' · '+unitPrice(first)));
+      evidence(first,card); content.append(card);
+    }
+    if (simpleSearch && results.length && !recommendable) content.append(el('p','subtle','Aucune annonce suffisamment complète pour être recommandée pour le moment.'));
+    if (results.length) {
+      content.append(resultTable(results));
+      if (results.some(r => r.comparaison_annonce?.distance_km != null)) {
+        const note=el('p','map-attribution','Distances approximatives entre les quartiers, en ligne droite. Le trajet par la route peut être plus long. Repères : ');
+        [['GeoNames','https://www.geonames.org/about.html'],['© OpenStreetMap','https://www.openstreetmap.org/copyright']].forEach(([name,url],i)=>{ if(i)note.append(document.createTextNode(' · ')); const link=el('a','',name); link.href=url; link.target='_blank'; link.rel='noopener noreferrer'; note.append(link); });
+        content.append(note);
+      }
+    }
+    else if (simpleSearch) content.append(el('p','subtle','Vous pouvez élargir le quartier ou ajuster un critère.'));
+  }
+  row.append(el('div','chat-avatar',entry.role==='assistant'?'H':'Vous'),content); messages.append(row); queueMicrotask(refreshSourceLinks); return row;
+}
+function renderSuggestions(entry) {
+  const node=$('#followup-suggestions'); node.replaceChildren();
+  if (!entry?.suggestions) return;
+  entry.suggestions.slice(0,2).forEach(s => { const b=button(s.label || s,'',() => { if(s.action==='composer'){input.value=s.message;input.focus();}else sendMessage(s.message || s); }); b.disabled=busy; node.append(b); });
+}
+function scrollEnd() { if (activePage !== 'chat') return; const node=$('#conversation-scroll'); node.scrollTop=node.scrollHeight; }
+function renderConversation() {
+  messages.replaceChildren(); const items=thread?.messages || []; $('#welcome').hidden=activePage === 'chat' && items.length>0;
+  items.forEach(appendMessage); renderSuggestions(items.filter(m=>m.role==='assistant').at(-1)); requestAnimationFrame(scrollEnd); refreshContacts(); refreshSourceLinks();
+}
+function historyContent(entry) {
+  let text=entry.content || 'Résultats affichés dans le tableau.';
+  if (entry.criteria) text+='\nRecherche retenue : '+JSON.stringify(entry.criteria);
+  if (entry.results?.length) text+='\nAnnonces déjà proposées (ordre du tableau) : '+JSON.stringify(entry.results.map((r,i)=>({rang:i+1,id:r.id,type:r.type_bien,quartier:r.quartier,prix:r.prix_fcfa,superficie:r.superficie_m2,document:r.document,qualite:r.qualite}))).slice(0,3500);
+  return text.slice(0,6000);
+}
+async function api(path, options={}) {
+  const response=await fetch(path,options); if(response.status===204)return null; let payload;
+  try { payload=await response.json(); } catch { throw new Error('Le service ne répond pas correctement. Réessayez dans un instant.'); }
+  if (!response.ok) { const e=new Error(typeof payload.detail==='string' ? payload.detail : 'Cette demande ne peut pas être traitée. Vérifiez les informations saisies.'); e.status=response.status; throw e; }
+  return payload;
+}
+function setBusy(value) { busy=value; submit.disabled=value; period.disabled=value; $('#new-conversation').disabled=value; $('#account-button').disabled=value; $('#logout-button').disabled=value; submit.replaceChildren(document.createTextNode(value ? 'Analyse…' : 'Envoyer ')); if (!value) submit.append(el('span','', '↑')); $('#assistant-messages').setAttribute('aria-busy',String(value)); renderSidebar(); $$('#followup-suggestions button, .prompt-grid button, [data-prompt], [data-action]').forEach(b=>b.disabled=value); }
+async function sendMessage(message) {
+  if (busy || !message || message.trim().length<2) return; message=message.trim();
+  if (message.length>6000) { toast('Limitez votre message à 6 000 caractères.'); return; }
+  showPage('chat'); closeSidebar(); thread ||= newThread(); const threadId=thread.id;
+  const previous=thread.messages.filter(m=>!m.error).slice(-12).map(m=>({role:m.role,content:historyContent(m)}));
+  if (!thread.messages.length) thread.query=message.slice(0,110);
+  const userEntry={role:'user',content:message}; thread.messages.push(userEntry); appendMessage(userEntry); $('#welcome').hidden=true; input.value=''; setBusy(true);
+  const waiting=$('#waiting-template').content.firstElementChild.cloneNode(true);
+  messages.after(waiting);
+  let stopWaiting=()=>waiting.remove();
+  try {
+    stopWaiting=window.HakimoWaiting.start(waiting);
+    scrollEnd();
+    const payload=await api('/assistant/message',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message,history:previous,max_age_days:Number(period.value)})});
+    if (thread.id!==threadId) return;
+    const entry={role:'assistant',content:payload.answer,results:(payload.results || []).map(cleanResult),criteria:payload.criteria,analysis:payload.analysis,suggestions:payload.suggestions,mcp_used:payload.mcp_used,mode:payload.mode};
+    thread.messages.push(entry); thread.messages=thread.messages.slice(-40); appendMessage(entry); renderSuggestions(entry); refreshContacts();
+    if (checkingAlert && payload.mcp_used) {
+      const alerts=read('alerts').map(a => {
+        if ((a.id || a.query)!==checkingAlert) return a;
+        const ids=entry.results.map(r=>r.id), seen=new Set(a.seen_ids || []);
+        return {...a,last_checked:new Date().toISOString(),new_count:ids.filter(id=>!seen.has(id)).length,seen_ids:Array.from(new Set([...ids,...seen])).slice(0,500)};
+      }); write('alerts',alerts);
+    }
+  } catch(error) {
+    const entry={role:'assistant',content:error.message || 'La demande a échoué. Vous pouvez réessayer.',error:true}; thread.messages.push(entry);
+    const row=appendMessage(entry); row.querySelector('.chat-content').append(button('Réessayer','secondary-button',() => { input.value=message; input.focus(); }));
+  } finally { stopWaiting(); checkingAlert=null; setBusy(false); persistThread(); scrollEnd(); if(activePage==='chat')input.focus(); }
+}
+form.addEventListener('submit', e=>{e.preventDefault();sendMessage(input.value);});
+input.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();form.requestSubmit();}});
+$$('[data-prompt]').forEach(b=>b.addEventListener('click',()=>sendMessage(b.dataset.prompt)));
+function createAlert(criteria,results) {
+  const query=criteria?.description; if (!query) { toast('Lancez une recherche avant de la surveiller.'); return; }
+  requireLogin(()=>{alertDraft={query,max_age_days:criteria.anciennete_maximale_jours || Number(period.value),seen_ids:results.map(r=>r.id)}; $('#alert-name').value=query.slice(0,75); $('#alert-query').textContent=query; $('#alert-dialog').showModal();},'Connectez-vous pour conserver cette alerte.');
+}
+$('#alert-form').addEventListener('submit',e=>{
+  e.preventDefault(); if (!alertDraft) return;
+  const alerts=read('alerts'); const next={...alertDraft,id:uid(),name:$('#alert-name').value.trim(),date:new Date().toISOString()};
+  if (write('alerts',[next,...alerts.filter(a=>a.query!==next.query || a.max_age_days!==next.max_age_days)].slice(0,50))) { $('#alert-dialog').close(); renderSidebar(); toast('Alerte créée. Utilisez « Vérifier » dans votre espace.'); }
+});
+function setAuthMode(mode) { authMode=mode; const register=mode==='register'; $('#auth-title').textContent=register?'Créer un compte':'Se connecter'; $('#auth-description').textContent='Un nom et un mot de passe pour accéder aux contacts et à vos favoris.'; $('#auth-submit').textContent=register?'Créer mon compte':'Se connecter'; $('#auth-switch').textContent=register?'J’ai déjà un compte':'Créer un compte'; $('#auth-password').autocomplete=register?'new-password':'current-password'; $('#auth-feedback').textContent=''; }
+function updateAccount() {
+  $('#account-name').textContent=currentUser?.name || 'Se connecter';
+  $('#account-caption').textContent=currentUser ? 'Gérer mon compte' : 'Votre espace personnel';
+  $('#account-avatar').textContent=currentUser?.name ? currentUser.name.split(' ').filter(Boolean).slice(0,2).map(n=>n[0]).join('').toUpperCase() : 'H';
+  $('#welcome-greeting').textContent=currentUser?.name ? 'Bonjour, '+currentUser.name : 'Bonjour et bienvenue';
+  renderSidebar(); updateSaveButtons();
+}
+function openSettings() {
+  requireLogin(()=>{ $('#settings-form').reset(); $('#profile-name').value=currentUser.name; $('#settings-feedback').textContent=''; $('#settings-dialog').showModal(); },'Connectez-vous pour modifier les informations de votre compte.');
+}
+$('#account-button').addEventListener('click',openSettings);
+$('#open-settings').addEventListener('click',openSettings);
+$('#settings-form').addEventListener('submit',async e=>{
+  e.preventDefault(); const userId=currentUser?.id;
+  if(!userId)return;
+  $('#settings-submit').disabled=true; $('#settings-feedback').textContent='';
+  try {
+    const payload={name:$('#profile-name').value.trim(),current_password:$('#profile-current-password').value,new_password:$('#profile-new-password').value || null};
+    const updated=await api('/auth/me',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    if(currentUser?.id!==userId)return;
+    currentUser=updated; updateAccount(); $('#settings-dialog').close(); $('#settings-form').reset(); toast('Vos informations ont été mises à jour.');
+  } catch(error) { $('#settings-feedback').textContent=error.message; }
+  finally { $('#settings-submit').disabled=false; }
+});
+$('#settings-dialog').addEventListener('close',()=>$('#settings-form').reset());
+$('#logout-button').addEventListener('click',async()=>{
+  if(busy)return;
+  try { await api('/auth/logout',{method:'POST'}); $('#settings-dialog').close(); currentUser=null;detailsCache.clear();thread=read('conversations')[0] || newThread();period.value=String(thread.max_age_days || 30);renderConversation();updateAccount();toast('Vous êtes déconnecté.'); } catch(error){toast(error.message);}
+});
+$('#auth-switch').addEventListener('click',()=>setAuthMode(authMode==='login'?'register':'login'));
+$('#auth-form').addEventListener('submit',async e=>{
+  e.preventDefault();$('#auth-submit').disabled=true;$('#auth-feedback').textContent='';
+  try {
+    currentUser=await api('/auth/'+authMode,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:$('#auth-name').value.trim(),password:$('#auth-password').value})});
+    $('#auth-dialog').close();$('#auth-form').reset();detailsCache.clear();updateAccount();persistThread();refreshContacts();
+    const next=pendingAuthAction;pendingAuthAction=null;if(next)next();
+  } catch(error){$('#auth-feedback').textContent=error.message;} finally{$('#auth-submit').disabled=false;}
+});
+$$('[data-close]').forEach(b=>b.addEventListener('click',()=>$('#'+b.dataset.close).close()));
+$('#auth-dialog').addEventListener('cancel',()=>{pendingAuthAction=null;});
+async function init() {
+  setSidebarState();setBusy(true);
+  try{currentUser=await api('/auth/me');}catch{currentUser=null;}
+  thread=read('conversations')[0] || newThread();period.value=String(thread.max_age_days || 30);renderConversation();updateAccount();setBusy(false);
+  loadMarketStats();
+  const ref=new URLSearchParams(location.search).get('annonce');
+  if(ref) { try { const links=await api('/annonces/liens',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({references:[ref]})}); const url=facebookUrl(links[0]?.facebook_url); if(url)location.assign(url);else toast('La publication Facebook n’est plus disponible.'); } catch(error){toast(error.message);} }
+}
+$('#open-saved').addEventListener('click',()=>{renderSidebar();$('#saved-dialog').showModal();});
+$('#open-alerts').addEventListener('click',()=>{renderSidebar();$('#alerts-dialog').showModal();});
+function showPage(page) {
+  activePage = page === 'chat' ? 'chat' : 'home'; main.dataset.page=activePage;
+  const chat=activePage==='chat';
+  $('#page-label').textContent=chat?'Parlez-nous de votre projet immobilier':'Accueil';
+  $('#platform-intro').hidden=chat; messages.hidden=!chat; $('.composer-dock').hidden=!chat; $('.period-control').hidden=!chat;
+  $('#welcome').hidden=chat && Boolean(thread?.messages.length);
+  $$('.nav-link[data-page]').forEach(n=>{if(n.dataset.page===activePage)n.setAttribute('aria-current','page');else n.removeAttribute('aria-current');});
+  if (!chat) $('#conversation-scroll').scrollTop=0; else requestAnimationFrame(scrollEnd);
+}
+$$('.nav-link[data-page]').forEach(n=>n.addEventListener('click',()=>{showPage(n.dataset.page);closeSidebar();}));
+$('.brand').addEventListener('click',e=>{e.preventDefault();showPage('home');closeSidebar();});
+$('.skip-link').addEventListener('click',e=>{e.preventDefault();showPage('chat');closeSidebar();input.focus();});
+$$('[data-action]').forEach(n=>n.addEventListener('click',()=>{
+  if (busy) { showPage('chat');closeSidebar();return; }
+  showPage('chat');closeSidebar();
+  if(n.dataset.action==='analyze') { input.value='Est-ce une bonne affaire ? Voici l’annonce :\n';toast('Collez le texte de la publication après cette phrase.'); }
+  else if(n.dataset.action==='document') { input.value='Aide-moi à comprendre le document mentionné dans cette annonce : '; }
+  else input.value='';
+  input.focus();
+}));
+$('#discover-hakimo').addEventListener('click',()=>{showPage('home');closeSidebar();$('#platform-intro').scrollIntoView({block:'start'});});
+for (const name of ['guides','faq']) $('#open-'+name).addEventListener('click',()=>$('#'+name+'-dialog').showModal());
+$$('[data-resource-chat]').forEach(n=>n.addEventListener('click',()=>{n.closest('dialog').close();showPage('chat');closeSidebar();}));
+let loadingStats=false;
+async function loadMarketStats() {
+  if(loadingStats)return; loadingStats=true; $('#market-overview').setAttribute('aria-busy','true');$('#retry-stats').hidden=true;
+  $('#stats-status').textContent='Chargement des chiffres de la plateforme…';
+  try {
+    const stats=await api('/market/stats');
+    $('#stat-count').textContent=number(stats.annonces_30_jours);
+    $('#stat-price').textContent=stats.prix_m2_moyen_fcfa==null?'Non calculable':number(stats.prix_m2_moyen_fcfa,' FCFA');
+    $('#stat-price-note').textContent=stats.annonces_avec_prix_m2 ? 'Sur '+number(stats.annonces_avec_prix_m2)+' annonces avec prix et surface' : 'Aucun prix au m² renseigné';
+    $('#stat-neighborhood').textContent=stats.quartier_le_plus_represente || 'Non renseigné';
+    $('#stat-neighborhood-note').textContent=stats.quartier_le_plus_represente ? number(stats.annonces_quartier_principal)+' annonces dans ce quartier' : 'Aucun quartier renseigné sur la période';
+    const from=new Date(stats.depuis), to=new Date(stats.jusqu_a), options={day:'numeric',month:'short'};
+    $('#stats-status').textContent='Du '+from.toLocaleDateString('fr-FR',options)+' au '+to.toLocaleDateString('fr-FR',options)+' · Terrains, parcelles et maisons · Dates de publication connues';
+  } catch {
+    for(const id of ['stat-count','stat-price','stat-neighborhood']) $('#'+id).textContent='Indisponible';
+    $('#stat-price-note').textContent='';$('#stat-neighborhood-note').textContent='';
+    $('#stats-status').textContent='Les chiffres ne sont pas disponibles pour le moment.';$('#retry-stats').hidden=false;
+  } finally { loadingStats=false; $('#market-overview').setAttribute('aria-busy','false'); }
+}
+$('#retry-stats').addEventListener('click',loadMarketStats);
+const darkPreference=matchMedia('(prefers-color-scheme: dark)');
+let appearance={mode:'system',accent:'blue'};
+try { const stored=JSON.parse(localStorage.getItem('hakimo:appearance') || '{}'); if (['light','dark','system'].includes(stored.mode)) appearance.mode=stored.mode; if (['blue','green','violet','copper'].includes(stored.accent)) appearance.accent=stored.accent; } catch { /* Default appearance. */ }
+function applyAppearance() {
+  document.documentElement.dataset.theme=appearance.mode==='system'?(darkPreference.matches?'dark':'light'):appearance.mode;
+  document.documentElement.dataset.accent=appearance.accent;
+  $('#theme-mode').value=appearance.mode;
+  $$('[data-accent]').filter(n=>n.tagName==='BUTTON').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.accent===appearance.accent)));
+  try { localStorage.setItem('hakimo:appearance',JSON.stringify(appearance)); } catch { /* Appearance still works without storage. */ }
+}
+$('#theme-mode').addEventListener('change',e=>{appearance.mode=e.target.value;applyAppearance();});
+$$('button[data-accent]').forEach(b=>b.addEventListener('click',()=>{appearance.accent=b.dataset.accent;applyAppearance();}));
+darkPreference.addEventListener('change',applyAppearance);
+document.addEventListener('click',e=>{if(!$('#appearance-menu').contains(e.target))$('#appearance-menu').open=false;});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')$('#appearance-menu').open=false;});
+applyAppearance();
+showPage('home');
+init();

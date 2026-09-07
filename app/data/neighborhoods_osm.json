@@ -1,0 +1,15 @@
+{
+  "source": "OpenStreetMap",
+  "source_url": "https://www.openstreetmap.org/copyright",
+  "license": "ODbL 1.0",
+  "license_url": "https://opendatacommons.org/licenses/odbl/1-0/",
+  "attribution": "© OpenStreetMap contributors",
+  "retrieved_at": "2026-09-06",
+  "coordinate_system": "WGS84",
+  "locations": [
+    {"name": "Bassinko", "source_name": "Bassinko", "aliases": [], "latitude": 12.4110386, "longitude": -1.6572757, "source_id": 9214406931, "feature_type": "node", "point_kind": "place_node"},
+    {"name": "Karpala", "source_name": "Karpala", "aliases": [], "latitude": 12.3313404, "longitude": -1.4846215, "source_id": 27863585, "feature_type": "way", "point_kind": "bounding_box_center"},
+    {"name": "Paglayiri", "source_name": "Paglayiri", "aliases": [], "latitude": 12.3333989, "longitude": -1.5310937, "source_id": 3296496974, "feature_type": "node", "point_kind": "place_node"},
+    {"name": "Yagma", "source_name": "Yagma", "aliases": [], "latitude": 12.4163601, "longitude": -1.6280544, "source_id": 9587569259, "feature_type": "node", "point_kind": "place_node"}
+  ]
+}

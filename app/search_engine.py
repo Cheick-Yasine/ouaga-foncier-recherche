@@ -7,7 +7,9 @@ import re
 from collections import Counter
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field, replace
+from app.offer_quality import land_family, offer_quality, document_evidence
 from app.neighborhoods import resolve_neighborhood
+from app.listing_scope import city_only_request, sale_eligible, within_ouagadougou
 from app.normalization import normalize_property_type
 from app.text_features import (
     extract_document_status,
@@ -29,7 +31,7 @@ DEFAULT_WEIGHTS = {
 }
 
 _AREA_PATTERN = re.compile(
-    r"\b(\d+(?:[.,]\d+)?)\s*(?:m2|metres? carres?)\b"
+    r"\b((?:\d{1,3}(?: \d{3})+|\d+)(?:[.,]\d+)?)\s*(?:m2|metres? carres?)\b"
 )
 _HECTARE_PATTERN = re.compile(
     r"\b(\d+(?:[.,]\d+)?)\s*(?:hectares?|ha)\b"
@@ -55,6 +57,11 @@ _GOOD_DEAL_MARKERS = (
     "meilleur prix",
     "prix interessant",
     "prix avantageux",
+    "bonnes affaires",
+    "meilleure offre",
+    "meilleures offres",
+    "bon dill",
+    "bons deals",
 )
 
 
@@ -71,6 +78,7 @@ class SearchCriteria:
     document_status: str | None = None
     required_fields: frozenset[str] = field(default_factory=frozenset)
     max_age_days: int | None = None
+    city_only: bool = False
 
 
 @dataclass(frozen=True)
@@ -111,7 +119,11 @@ def _parse_number(value: str) -> float:
 def parse_search_description(description: str) -> SearchCriteria:
     """Interprète les critères explicites d'une description utilisateur."""
 
-    normalized = normalize_text(description)
+    # La normalisation textuelle efface les virgules : préserver 6,5 millions.
+    numeric_text = re.sub(r"\b\d{1,3}(?:[.,]\d{3})+\b", lambda m: re.sub(r"[.,]", "", m.group()), description)
+    numeric_text = re.sub(r"(?<=\d)[.,](?=\d)", "decimalmark", numeric_text)
+    numeric_text = re.sub(r"(?i)(millions?|milliards?)(?=\d)", r"\1 ", numeric_text)
+    normalized = normalize_text(numeric_text).replace("decimalmark", ".")
     area_match = _AREA_PATTERN.search(normalized)
     hectare_match = _HECTARE_PATTERN.search(normalized)
     if area_match:
@@ -140,9 +152,16 @@ def parse_search_description(description: str) -> SearchCriteria:
         )
         if unit and unit.startswith("million"):
             price *= 1_000_000
+            fraction = re.match(r"\s+(\d{3})\b(?!\s+\d)", text_without_area[price_match.end():])
+            if fraction:
+                price += int(fraction.group(1)) * 1_000
         elif unit and unit.startswith("milliard"):
             price *= 1_000_000_000
 
+    if price is not None and (not math.isfinite(price) or price <= 0):
+        price = None
+    if area is not None and (not math.isfinite(area) or area <= 0):
+        area = None
     property_type = normalize_property_type(None, description)
     resolution = resolve_neighborhood(description, None)
     neighborhood = resolution.canonical if resolution.in_scope else None
@@ -166,6 +185,7 @@ def parse_search_description(description: str) -> SearchCriteria:
 
     return SearchCriteria(
         description=description.strip(),
+        city_only=city_only_request(description),
         property_type=property_type,
         neighborhood=neighborhood,
         price_fcfa=price,
@@ -216,7 +236,7 @@ def price_per_square_metre(candidate: SearchCandidate) -> float | None:
 
     price = candidate.price_fcfa
     area = candidate.area_m2
-    if price is None or area is None or price <= 0 or area <= 0:
+    if price is None or area is None or not math.isfinite(price) or not math.isfinite(area) or price <= 0 or area <= 0:
         return None
     return round(price / area, 2)
 
@@ -259,6 +279,10 @@ def score_candidate(
 ) -> RankedResult | None:
     """Calcule un score explicable ou exclut une contrainte impossible."""
 
+    if not sale_eligible(candidate.text):
+        return None
+    if criteria.city_only and not within_ouagadougou(candidate.text, candidate.neighborhood):
+        return None
     if (
         criteria.max_age_days is not None
         and candidate.age_days is not None
@@ -280,7 +304,7 @@ def score_candidate(
     if criteria.neighborhood:
         components["quartier"] = (
             1.0
-            if _normalized_equal(criteria.neighborhood, candidate.neighborhood)
+            if _normalized_equal(criteria.neighborhood, candidate.neighborhood) or (criteria.city_only and criteria.neighborhood == "Ouagadougou")
             else (None if candidate.neighborhood is None else 0.0)
         )
     if criteria.price_fcfa is not None:
@@ -313,6 +337,16 @@ def score_candidate(
                 if observed is None
                 else float(_normalized_equal(expected, observed))
             )
+    if criteria.document_status:
+        document, document_state, _, _ = document_evidence(candidate)
+        match = _normalized_equal(criteria.document_status, document)
+        if criteria.document_status == "attestation_non_precisee" and document:
+            match = document.startswith("attestation_") or document == "apfr"
+        components["statut_document"] = float(match and document_state in {"mentionne", "annonce_disponible"}) if document else None
+    if criteria.viability:
+        quality = offer_quality(candidate)
+        expected_utilities = {"eau"} if criteria.viability == "eau" else {"electricite"} if criteria.viability == "electricite" else {"eau", "electricite"}
+        components["viabilite"] = float(all(quality[name + "_etat"] in {"mentionne", "annonce_disponible"} for name in expected_utilities))
 
     if criteria.proximity:
         if candidate.proximity is None:
@@ -475,54 +509,43 @@ def _is_good_deal_request(criteria: SearchCriteria) -> bool:
     return any(marker in normalized for marker in _GOOD_DEAL_MARKERS)
 
 
-def _requested_area_price_priority(
-    criteria: SearchCriteria,
-    result: RankedResult,
-) -> tuple[float, float]:
-    """À superficie comparable, préfère le prix total le plus faible."""
-
+def _comparable_priority(criteria: SearchCriteria, result: RankedResult) -> float:
     candidate = result.candidate
-    if criteria.area_m2 is None or candidate.area_m2 is None:
-        return (0.0, float("-inf"))
-    area_match = numeric_similarity(criteria.area_m2, candidate.area_m2)
-    price = candidate.price_fcfa if candidate.price_fcfa is not None else float("inf")
-    return (round(area_match, 3), -price)
-
-
-def _good_deal_priority(
-    criteria: SearchCriteria,
-    result: RankedResult,
-) -> tuple[float, float, float, float]:
-    """Classe un bon prix par surface comparable, puis par prix au m²."""
-
-    if not _is_good_deal_request(criteria):
-        return (0.0, 0.0, 0.0, 0.0)
-    candidate = result.candidate
-    area_match = (
-        numeric_similarity(criteria.area_m2, candidate.area_m2)
-        if criteria.area_m2 is not None and candidate.area_m2 is not None
-        else 0.0
-    )
-    unit_price = price_per_square_metre(candidate)
-    unit_price_known = float(unit_price is not None)
-    unit_price_priority = -unit_price if unit_price is not None else float("-inf")
-    price = (
-        candidate.price_fcfa
-        if candidate.price_fcfa is not None
-        else float("inf")
-    )
     if criteria.area_m2 is not None:
-        return (
-            round(area_match, 3),
-            unit_price_known,
-            unit_price_priority,
-            -price,
-        )
+        match = numeric_similarity(criteria.area_m2, candidate.area_m2) if candidate.area_m2 else 0.0
+        return float(match >= 0.8) if _is_good_deal_request(criteria) else round(match, 3)
+    if _is_good_deal_request(criteria) and criteria.property_type in {None, "parcelle"}:
+        return float(candidate.property_type == "parcelle" and land_family(candidate) != "grand_terrain")
+    return 0.0
+
+
+def _completeness_priority(quality: dict) -> tuple:
+    """La présence d'informations utiles prime sur le prix, sans inventer leur disponibilité."""
+    indices = quality["indices"]
+    document = indices["document"] >= 0.7
+    utilities = sum(quality[key] in {"mentionne", "annonce_disponible"} for key in ("eau_etat", "electricite_etat"))
+    proximity_count = len(quality["proximites"])
+    completeness = int(document) + utilities + min(proximity_count, 2)
+    return (int(quality["informations_completes"]), int(document), completeness, indices["document"], indices["viabilite"], proximity_count)
+
+
+def _recommendation_priority(criteria: SearchCriteria, result: RankedResult, quality: dict | None = None) -> tuple:
+    """Ordre commun au moteur local et au filtre sémantique."""
+    quality = quality if quality is not None else offer_quality(result.candidate)
     return (
-        unit_price_known,
-        unit_price_priority,
-        candidate.area_m2 or 0.0,
-        -price,
+        _descriptive_priority(criteria, result),
+        _price_match_priority(criteria, result),
+        _comparable_priority(criteria, result),
+        _completeness_priority(quality),
+        -(price_per_square_metre(result.candidate) or float("inf")),
+        -(result.candidate.price_fcfa or float("inf")),
+        result.score,
+        result.candidate.area_m2 or 0.0 if _is_good_deal_request(criteria) else result.coverage,
+        -(
+            result.candidate.age_days
+            if result.candidate.age_days is not None
+            else float("inf")
+        ),
     )
 
 
@@ -547,70 +570,12 @@ def rank_candidates(
         if (result := score_candidate(criteria, candidate)) is not None
     ]
     good_deal = _is_good_deal_request(criteria)
-    if good_deal and results:
-        known_unit_prices = [
-            unit_price
-            for result in results
-            if (unit_price := price_per_square_metre(result.candidate)) is not None
-        ]
-        lowest_unit_price = min(known_unit_prices, default=1.0)
-        adjusted: list[RankedResult] = []
-        for result in results:
-            candidate = result.candidate
-            unit_price = price_per_square_metre(candidate)
-            unit_price_value = (
-                lowest_unit_price / unit_price
-                if unit_price is not None and unit_price > 0
-                else 0.0
-            )
-            if criteria.area_m2 is not None:
-                area_value = (
-                    numeric_similarity(criteria.area_m2, candidate.area_m2)
-                    if candidate.area_m2 is not None
-                    else 0.0
-                )
-                deal_score = 0.70 * area_value + 0.30 * unit_price_value
-                deal_explanation = "Bon deal : superficie demandée au prix le plus faible"
-            elif criteria.price_fcfa is not None and not criteria.price_is_maximum:
-                price_match = (
-                    numeric_similarity(criteria.price_fcfa, candidate.price_fcfa)
-                    if candidate.price_fcfa is not None
-                    else 0.0
-                )
-                deal_score = 0.70 * price_match + 0.30 * unit_price_value
-                deal_explanation = "Bon deal : grande superficie au prix demandé"
-            elif criteria.price_is_maximum:
-                deal_score = unit_price_value
-                deal_explanation = "Bon deal : grande superficie et prix faible"
-            else:
-                deal_score = unit_price_value
-                deal_explanation = "Bon prix : prix au m² le plus avantageux"
-            if unit_price is not None:
-                deal_explanation += f"; {unit_price:,.0f} FCFA/m²".replace(",", " ")
-            adjusted.append(
-                replace(
-                    result,
-                    score=round(0.40 * result.score + 60 * deal_score, 2),
-                    explanations=result.explanations
-                    + (deal_explanation,),
-                )
-            )
-        results = adjusted
+    qualities = {result.candidate.identifier: offer_quality(result.candidate) for result in results}
+    if good_deal:
+        results = [replace(result, explanations=result.explanations + (
+            " ; ".join(qualities[result.candidate.identifier]["atouts"])
+            or "Informations limitées : documents et équipements à préciser",
+        )) for result in results]
 
-    results.sort(
-        key=lambda result: (
-            _descriptive_priority(criteria, result),
-            _price_match_priority(criteria, result),
-            _requested_area_price_priority(criteria, result),
-            _good_deal_priority(criteria, result),
-            result.score,
-            result.candidate.area_m2 or 0.0 if good_deal else result.coverage,
-            -(
-                result.candidate.age_days
-                if result.candidate.age_days is not None
-                else float("inf")
-            ),
-        ),
-        reverse=True,
-    )
+    results.sort(key=lambda result: _recommendation_priority(criteria, result, qualities[result.candidate.identifier]), reverse=True)
     return results[:limit]

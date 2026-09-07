@@ -13,7 +13,7 @@ from fastapi import APIRouter, Cookie, HTTPException
 from pydantic import BaseModel, Field
 
 from app.auth import SESSION_COOKIE, get_session_user
-from app.contacts import mask_contact, whatsapp_url
+from app.contacts import first_contact, mask_contact, whatsapp_url
 from app.config import get_settings
 from app.database import DatabaseNotConfiguredError
 from app.search_engine import (
@@ -135,7 +135,8 @@ def _result_response(
     authenticated: bool,
 ) -> SearchResult:
     candidate = result.candidate
-    visible_contact = candidate.contact if authenticated else None
+    candidate_contact = first_contact(candidate.contact)
+    visible_contact = candidate_contact if authenticated else None
     return SearchResult(
         id=candidate.identifier,
         texte=candidate.text,
@@ -161,10 +162,10 @@ def _result_response(
         composantes=dict(result.components),
         explications=list(result.explanations),
         contact=visible_contact,
-        contact_masque=mask_contact(candidate.contact),
+        contact_masque=mask_contact(candidate_contact),
         lien_whatsapp=whatsapp_url(visible_contact),
         connexion_requise_pour_contact=bool(
-            candidate.contact and not authenticated
+            candidate_contact and not authenticated
         ),
     )
 

@@ -16,6 +16,9 @@ class Settings(BaseSettings):
     max_ad_age_days: int | None = Field(default=None, ge=1, le=365)
     openai_api_key: SecretStr | None = None
     llm_model: str = "gpt-4o-mini"
+    assistant_model: str = "gpt-4o-mini"
+    mcp_server_url: str = "http://127.0.0.1:8001/mcp"
+    assistant_history_limit: int = Field(default=12, ge=2, le=30)
     llm_candidate_limit: int = Field(default=15, ge=10, le=30)
     llm_relevance_threshold: int = Field(default=55, ge=0, le=100)
 
@@ -45,6 +48,14 @@ class Settings(BaseSettings):
         normalized = value.strip().rstrip("/")
         if not normalized.startswith(("https://", "http://localhost", "http://127.0.0.1")):
             raise ValueError("PUBLIC_APP_URL doit être une URL HTTPS publique.")
+        return normalized
+
+    @field_validator("mcp_server_url")
+    @classmethod
+    def validate_mcp_server_url(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized.startswith(("https://", "http://localhost", "http://127.0.0.1")):
+            raise ValueError("MCP_SERVER_URL doit être une URL HTTPS ou locale.")
         return normalized
 
 

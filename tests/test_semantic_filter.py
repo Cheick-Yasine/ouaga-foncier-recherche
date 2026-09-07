@@ -157,3 +157,31 @@ def test_sanitizer_limits_default_announcement_length() -> None:
     cleaned = sanitize_external_text("a" * 1_200)
 
     assert len(cleaned) == 900
+
+
+
+def test_sanitization_keeps_explicit_amounts_and_masks_phones():
+    from app.semantic_filter import sanitize_external_text
+    text='Budget maximum 12 000 000 FCFA. Contact 70 12 34 56, tél. 70123456.'
+    safe=sanitize_external_text(text)
+    assert '12 000 000 FCFA' in safe
+    assert '70 12 34 56' not in safe
+    assert '70123456' not in safe
+    assert sanitize_external_text('prix_fcfa: 12000000') == 'prix_fcfa: 12000000'
+    assert sanitize_external_text('id: a123456789abcdef') == 'id: a123456789abcdef'
+
+
+
+def test_semantic_filter_preserves_completeness_before_price():
+    from app.search_engine import parse_search_description
+    criteria=parse_search_description('Bonne affaire parcelle à Saaba de 300 m² budget maximum 6 millions')
+    bare=score_candidate(criteria,SearchCandidate(identifier='bare',text='Parcelle à Saaba avec PUH mentionné.',property_type='parcelle',neighborhood='Saaba',price_fcfa=100_000,area_m2=300))
+    complete=score_candidate(criteria,SearchCandidate(identifier='complete',text='PUH disponible. Eau et électricité disponibles. Proche du goudron.',property_type='parcelle',neighborhood='Saaba',price_fcfa=6_000_000,area_m2=300))
+    client=_FakeClient(SemanticDecisionBatch(decisions=[
+        SemanticDecision(candidate_key='c1',pertinent=True,score_pertinence=100,raison='Petit prix.'),
+        SemanticDecision(candidate_key='c2',pertinent=True,score_pertinence=70,raison='Annonce complète.'),
+    ]))
+    outcome=apply_semantic_filter(criteria,[bare,complete],settings=Settings(openai_api_key='test-key',llm_relevance_threshold=55),client=client)
+    assert outcome.used is True
+    assert outcome.fallback is False
+    assert [item.candidate.identifier for item in outcome.results]==['complete','bare']

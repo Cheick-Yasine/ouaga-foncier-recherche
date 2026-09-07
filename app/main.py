@@ -9,10 +9,12 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from app.announcement_routes import router as announcement_router
+from app.assistant_routes import router as assistant_router
 from app.auth_routes import router as auth_router
 from app.config import get_settings
 from app.database import DatabaseNotConfiguredError, check_database_connection
 from app.search_routes import router as search_router
+from app.market_routes import router as market_router
 
 
 class HealthResponse(BaseModel):
@@ -32,8 +34,10 @@ app = FastAPI(
     version="0.6.0",
 )
 app.include_router(search_router)
+app.include_router(assistant_router)
 app.include_router(auth_router)
 app.include_router(announcement_router)
+app.include_router(market_router)
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")

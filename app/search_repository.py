@@ -15,6 +15,7 @@ from psycopg.rows import dict_row
 from app.config import Settings, get_settings
 from app.database import DatabaseNotConfiguredError
 from app.neighborhoods import resolve_neighborhood
+from app.listing_scope import sale_eligible
 from app.normalization import normalize_property_type
 from app.search_engine import SearchCandidate
 from app.text_features import (
@@ -25,7 +26,7 @@ from app.text_features import (
 
 _CANDIDATE_CACHE_TTL_SECONDS = 300.0
 _candidate_cache: dict[
-    tuple[str, int | None, int],
+    tuple[str, int | None, int | None],
     tuple[float, tuple[SearchCandidate, ...]],
 ] = {}
 _candidate_cache_lock = Lock()
@@ -41,8 +42,8 @@ def clear_candidate_cache() -> None:
 def _candidate_cache_key(
     database_url: str,
     max_age_days: int | None,
-    pool_limit: int,
-) -> tuple[str, int | None, int]:
+    pool_limit: int | None,
+) -> tuple[str, int | None, int | None]:
     database_key = hashlib.sha256(database_url.encode("utf-8")).hexdigest()
     return database_key, max_age_days, pool_limit
 
@@ -175,14 +176,13 @@ def _candidate_from_row(
 
 
 _ALLOWED_PROPERTY_TYPES = frozenset({"terrain", "parcelle", "maison"})
-
-
 def _is_prepared_candidate(candidate: SearchCandidate) -> bool:
     """Applique les règles validées de la base finale avant le classement."""
 
     return (
         candidate.neighborhood is not None
         and candidate.property_type in _ALLOWED_PROPERTY_TYPES
+        and sale_eligible(candidate.text)
         and not (
             candidate.price_fcfa is None
             and candidate.area_m2 is None
@@ -195,7 +195,7 @@ def load_recent_candidates(
     settings: Settings | None = None,
     *,
     now: datetime | None = None,
-    pool_limit: int = 2_000,
+    pool_limit: int | None = 2_000,
 ) -> list[SearchCandidate]:
     """Charge les annonces admissibles sans modifier Neon."""
 
@@ -235,11 +235,8 @@ def load_recent_candidates(
                 if max_age_days is not None
                 else ""
             )
-            parameters: tuple[int, ...] = (
-                (max_age_days, pool_limit)
-                if max_age_days is not None
-                else (pool_limit,)
-            )
+            limit_clause = "LIMIT %s" if pool_limit is not None else ""
+            parameters = ((max_age_days,) if max_age_days is not None else ()) + ((pool_limit,) if pool_limit is not None else ())
             rows = connection.execute(
                 f"""
                 SELECT
@@ -265,7 +262,7 @@ def load_recent_candidates(
                       ''
                   ) <> 'villa'
                 ORDER BY premiere_collecte DESC NULLS LAST, id
-                LIMIT %s
+                {limit_clause}
                 """,
                 parameters,
             ).fetchall()
@@ -282,7 +279,8 @@ def load_recent_candidates(
 
     if cache_enabled:
         with _candidate_cache_lock:
-            _candidate_cache.clear()
+            if len(_candidate_cache) >= 8:
+                _candidate_cache.clear()
             _candidate_cache[cache_key] = (
                 monotonic(),
                 tuple(prepared),

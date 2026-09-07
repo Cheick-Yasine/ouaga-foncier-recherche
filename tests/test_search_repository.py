@@ -176,6 +176,42 @@ def test_unwanted_property_type_is_rejected() -> None:
     assert _is_prepared_candidate(candidate) is False
 
 
+def test_house_for_rent_is_rejected() -> None:
+    candidate = _candidate_from_row(
+        {
+            "id": "rental-house",
+            "type_bien": "Maison",
+            "type_bien_normalise": "maison",
+            "quartier_zone": "Karpala",
+            "superficie_m2": 300,
+            "prix_fcfa": 150_000,
+            "texte_nettoye": "Maison à louer à Karpala, loyer 150 000 FCFA",
+            "premiere_collecte": datetime(2026, 9, 3, tzinfo=timezone.utc),
+        },
+        now=datetime(2026, 9, 3, tzinfo=timezone.utc),
+    )
+
+    assert _is_prepared_candidate(candidate) is False
+
+
+def test_house_for_sale_is_kept() -> None:
+    candidate = _candidate_from_row(
+        {
+            "id": "sale-house",
+            "type_bien": "Maison",
+            "type_bien_normalise": "maison",
+            "quartier_zone": "Karpala",
+            "superficie_m2": 300,
+            "prix_fcfa": 25_000_000,
+            "texte_nettoye": "Maison à vendre à Karpala",
+            "premiere_collecte": datetime(2026, 9, 3, tzinfo=timezone.utc),
+        },
+        now=datetime(2026, 9, 3, tzinfo=timezone.utc),
+    )
+
+    assert _is_prepared_candidate(candidate) is True
+
+
 def test_recent_candidates_are_cached_between_searches(monkeypatch) -> None:
     now = datetime.now(timezone.utc)
     rows = [

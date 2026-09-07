@@ -9,22 +9,43 @@ from app.main import app
 client = TestClient(app)
 
 
-def test_root_serves_search_interface() -> None:
+def test_root_serves_conversational_interface() -> None:
+    from html.parser import HTMLParser
     response = client.get("/")
-
     assert response.status_code == 200
-    assert "text/html" in response.headers["content-type"]
-    assert "Foncier Ouaga" in response.text
-    assert 'id="search-form"' in response.text
-    assert 'id="max-age-days"' in response.text
-    assert '<option value="30" selected>1 mois</option>' in response.text
-    assert "Trouvez les annonces qui vous correspondent." in response.text
-    assert "<th>Contact</th>" in response.text
-    assert "<th>Prix / m²</th>" in response.text
-    assert "Critères compris" not in response.text
-    assert "Comparer les annonces" not in response.text
-    assert "Annonces publiées par des tiers." not in response.text
-    assert 'id="result-count"' not in response.text
+    assert 'id="assistant-form"' in response.text
+    assert 'id="search-form"' not in response.text
+    assert 'data-view=' not in response.text
+    assert 'id="history-toggle"' in response.text
+    assert response.text.count('aria-controls="sidebar"') == 1
+    assert 'id="history-list"' in response.text
+    assert 'id="saved-list"' in response.text
+    assert 'id="alerts-list"' in response.text
+    class Headers(HTMLParser):
+        def __init__(self):
+            super().__init__(); self.in_th=False; self.columns=[]
+        def handle_starttag(self, tag, attrs):
+            self.in_th = tag == "th"
+        def handle_endtag(self,tag):
+            if tag=="th": self.in_th=False
+        def handle_data(self,data):
+            if self.in_th: self.columns.append(data)
+    parser=Headers(); parser.feed(response.text)
+    assert parser.columns == ["Rang","Localisation","Superficie","Prix","Prix / m²","Document","Contact","Actions"]
+    sidebar=response.text.split('<aside',1)[1].split('</aside>',1)[0]
+    assert 'id="saved-list"' not in sidebar
+    assert 'id="alerts-list"' not in sidebar
+    assert 'HAKIMO' in response.text
+    assert 'id="theme-mode"' in response.text
+    for identifier in ('nav-home', 'nav-chat', 'open-settings', 'settings-form', 'stat-count', 'stat-price', 'stat-neighborhood'):
+        assert f'id="{identifier}"' in response.text
+    assert 'Détecter une arnaque' not in response.text
+    assert 'Enregistrements' not in response.text
+    assert 'Mes alertes' in response.text
+    assert 'Votre recherche, en résumé' not in response.text
+    assert 'id="detail-dialog"' not in response.text
+    assert 'minlength="4"' in response.text
+    assert 'Adresse e-mail' not in response.text
 
 
 def test_api_information() -> None:
@@ -35,21 +56,9 @@ def test_api_information() -> None:
 
 
 def test_static_assets_are_available() -> None:
-    css = client.get("/static/styles.css")
-    javascript = client.get("/static/app.js")
-
-    assert css.status_code == 200
-    assert "--accent" in css.text
-    assert javascript.status_code == 200
-    assert 'fetch("/search"' in javascript.text
-    assert "AbortController" not in javascript.text
-    assert "50000" not in javascript.text
-    assert "max_age_days:Number(maxAgeInput.value)" in javascript.text
-    assert "emptyState" not in javascript.text
-    assert "function appendContact" in javascript.text
-    assert "function formatUnitPrice" in javascript.text
-    assert "resultCount" not in javascript.text
-    assert "criteriaSummary" not in javascript.text
+    assert client.get("/static/styles.css").status_code == 200
+    assert client.get("/static/app.js").status_code == 200
+    assert client.get("/static/hakilab-logo.png").status_code == 200
 
 
 def test_health() -> None:

@@ -16,6 +16,7 @@ from app.auth import (
     create_user,
     delete_session,
     get_session_user,
+    update_user,
 )
 from app.config import get_settings
 from app.database import DatabaseNotConfiguredError
@@ -25,20 +26,26 @@ LOGGER = logging.getLogger("uvicorn.error")
 
 
 class Credentials(BaseModel):
-    email: str = Field(min_length=5, max_length=254)
-    password: str = Field(min_length=10, max_length=128)
+    name: str = Field(min_length=2, max_length=80)
+    password: str = Field(min_length=4, max_length=128)
 
 
 class UserResponse(BaseModel):
     id: str
-    email: str
+    name: str
+
+
+class ProfileUpdate(BaseModel):
+    name: str = Field(min_length=2, max_length=80)
+    current_password: str = Field(min_length=4, max_length=128)
+    new_password: str | None = Field(default=None, min_length=4, max_length=128)
 
 
 router = APIRouter(prefix="/auth", tags=["Authentification"])
 
 
 def _user_response(user: AuthenticatedUser) -> UserResponse:
-    return UserResponse(id=user.id, email=user.email)
+    return UserResponse(id=user.id, name=user.name)
 
 
 def _log_database_error(action: str, error: Exception) -> None:
@@ -70,7 +77,7 @@ def _set_session_cookie(response: Response, token: str) -> None:
 )
 def register(payload: Credentials, response: Response) -> UserResponse:
     try:
-        user = create_user(payload.email, payload.password)
+        user = create_user(payload.name, payload.password)
         token = create_session(user.id)
     except AuthenticationError as error:
         raise HTTPException(status_code=409, detail=str(error)) from None
@@ -88,17 +95,17 @@ def register(payload: Credentials, response: Response) -> UserResponse:
 @router.post("/login", response_model=UserResponse)
 def login(payload: Credentials, response: Response) -> UserResponse:
     try:
-        user = authenticate_user(payload.email, payload.password)
+        user = authenticate_user(payload.name, payload.password)
         if user is None:
             raise HTTPException(
                 status_code=401,
-                detail="Adresse e-mail ou mot de passe incorrect.",
+                detail="Nom ou mot de passe incorrect.",
             )
         token = create_session(user.id)
     except AuthenticationError:
         raise HTTPException(
             status_code=401,
-            detail="Adresse e-mail ou mot de passe incorrect.",
+            detail="Nom ou mot de passe incorrect.",
         ) from None
     except (DatabaseNotConfiguredError, psycopg.Error) as error:
         _log_database_error("login", error)
@@ -138,3 +145,20 @@ def logout(
     except (DatabaseNotConfiguredError, psycopg.Error):
         pass
     response.delete_cookie(SESSION_COOKIE, path="/")
+
+
+@router.patch('/me', response_model=UserResponse)
+def update_profile(payload: ProfileUpdate,
+                   session_token: str | None = Cookie(default=None, alias=SESSION_COOKIE)) -> UserResponse:
+    try:
+        user = get_session_user(session_token)
+        if user is None or session_token is None:
+            raise HTTPException(status_code=401, detail='Connexion requise.')
+        updated = update_user(user.id, payload.name, payload.current_password,
+                              payload.new_password, session_token)
+    except AuthenticationError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from None
+    except (DatabaseNotConfiguredError, psycopg.Error) as error:
+        _log_database_error('profile_update', error)
+        raise HTTPException(status_code=503, detail='Votre compte ne peut pas être modifié pour le moment.') from None
+    return _user_response(updated)
