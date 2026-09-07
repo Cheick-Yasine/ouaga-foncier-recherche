@@ -57,6 +57,7 @@ def _compiled_pattern(expression: str) -> re.Pattern[str]:
     return re.compile(expression)
 
 
+@lru_cache(maxsize=8192)
 def neighborhood_key(value: str | None) -> str:
     """Construit une clé comparable sans accents, casse ni ponctuation."""
 
@@ -252,6 +253,7 @@ def detect_out_of_scope_locality(text: str | None) -> str | None:
     return None
 
 
+@lru_cache(maxsize=8192)
 def resolve_neighborhood(
     text: str | None,
     fallback: str | None,
