@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+from time import perf_counter
 from dataclasses import replace
 from typing import Any
 
@@ -20,6 +22,8 @@ from app.search_engine import (
 from app.search_repository import load_recent_candidates
 from app.listing_scope import facebook_publication_url, within_ouagadougou
 from app.semantic_filter import apply_semantic_filter, sanitize_external_text
+
+LOGGER = logging.getLogger("uvicorn.error")
 
 mcp = FastMCP(
     "Ouaga Foncier Recherche",
@@ -147,7 +151,9 @@ def rechercher_annonces(
     )
 
     try:
+        load_started = perf_counter()
         candidates = load_recent_candidates(anciennete_jours)
+        LOGGER.info("search_timing stage=load seconds=%.3f candidates=%d", perf_counter() - load_started, len(candidates))
     except (DatabaseNotConfiguredError, psycopg.Error):
         return {"erreur": "La base d'annonces est temporairement indisponible."}
 
@@ -156,7 +162,9 @@ def rechercher_annonces(
         if utiliser_filtre_llm
         else safe_limit
     )
+    rank_started = perf_counter()
     ranked = rank_candidates(criteria, candidates, limit=local_limit)
+    LOGGER.info("search_timing stage=rank seconds=%.3f candidates=%d", perf_counter() - rank_started, len(candidates))
     if utiliser_filtre_llm:
         semantic = apply_semantic_filter(criteria, ranked, settings=settings)
         selected = semantic.results[:safe_limit]

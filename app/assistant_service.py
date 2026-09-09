@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+from time import perf_counter
 import re
 from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass, field
@@ -367,6 +368,7 @@ async def run_assistant(
     city_only = conversation_city_only(message, history)
 
     for _ in range(3):
+        model_started = perf_counter()
         response = await api_client.responses.create(
             model=current.assistant_model,
             # Preserve the fast, non-reasoning behavior of GPT-4o mini.
@@ -383,6 +385,7 @@ async def run_assistant(
             ),
             store=False,
         )
+        LOGGER.info("assistant_timing stage=model pass=%d seconds=%.3f", _, perf_counter() - model_started)
         calls = [
             item
             for item in response.output
