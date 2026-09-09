@@ -1382,3 +1382,8 @@ select,.modal,.modal input,.comparison-shell,.assistant-composer,.secondary-butt
 .deal-dialog { background:var(--surface); color:var(--ink); }
 .sidebar-top .new-conversation { width:auto; margin:4px 0; padding:10px 14px; }
 .workspace.is-expanded .sidebar-top { flex-wrap:wrap; }
+.conversation-header { flex-wrap:wrap; }
+.deal-dialog::backdrop { background:rgba(9,22,46,.48); backdrop-filter:blur(3px); }
+.deal-dialog .primary-button { padding:12px 20px; border:0; border-radius:10px; background:var(--blue); color:white; font:inherit; font-weight:700; cursor:pointer; }
+.deal-dialog .primary-button:hover { filter:brightness(1.08); }
+.deal-dialog input:focus-visible,.deal-dialog textarea:focus-visible,.deal-dialog select:focus-visible { outline:2px solid var(--blue); outline-offset:2px; }
