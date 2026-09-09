@@ -369,6 +369,8 @@ async def run_assistant(
     for _ in range(3):
         response = await api_client.responses.create(
             model=current.assistant_model,
+            # Preserve the fast, non-reasoning behavior of GPT-4o mini.
+            **({"reasoning": {"effort": "none"}} if current.assistant_model == "gpt-5.6-luna" else {}),
             instructions=ASSISTANT_INSTRUCTIONS,
             input=input_items,
             tools=[SEARCH_TOOL, EVALUATE_TOOL, COMPARE_TOOL],
