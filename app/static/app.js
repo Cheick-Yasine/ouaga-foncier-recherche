@@ -11,6 +11,8 @@ let currentUser = null, authMode = 'login', pendingAuthAction = null;
 let thread = null, busy = false, expanded = false, mobileOpen = false, sidebarCollapsed = false, alertDraft = null;
 let toastTimer, checkingAlert = null, activePage = 'home';
 const sourceCache = new Map();
+const pendingRequests = new Map();
+let collapseNext = false;
 const detailsCache = new Map();
 const mobile = window.matchMedia('(max-width: 800px)');
 try { sidebarCollapsed = localStorage.getItem('hakimo:sidebar-collapsed') === 'true'; } catch {}
@@ -38,10 +40,12 @@ function setSidebarState() {
   workspace.classList.toggle('sidebar-collapsed', !visible);
   main.inert = expanded || (mobile.matches && mobileOpen);
   if (expanded) $('#history-section').open = true;
+  const newButton=$('#new-conversation'), newParent=expanded ? sidebarTop : $('.header-tools');
+  if(newButton.parentElement!==newParent)newParent.append(newButton);
   // Le même bouton reste accessible dans chacun des trois modes, sans copie.
   if (visible && historyToggle.parentElement !== sidebarTop) sidebarTop.append(historyToggle);
   else if (!visible && historyToggle.parentElement !== conversationHeader) conversationHeader.prepend(historyToggle);
-  const nextAction = !visible ? 'Afficher le volet historique' : expanded ? 'Masquer l’historique' : 'Afficher l’historique en plein écran';
+  const nextAction = !visible ? 'Afficher le volet historique' : expanded ? 'Afficher l’historique et la discussion' : collapseNext ? 'Masquer l’historique' : 'Afficher l’historique en plein écran';
   historyToggle.setAttribute('aria-label', nextAction); historyToggle.title = nextAction;
   historyToggle.setAttribute('aria-expanded', String(visible));
   if (wasFocused) historyToggle.focus();
@@ -50,8 +54,9 @@ function rememberSidebar() { try { localStorage.setItem('hakimo:sidebar-collapse
 function closeSidebar() { expanded = false; mobileOpen = false; setSidebarState(); if (activePage === 'chat') input.focus(); }
 historyToggle.addEventListener('click', () => {
   if (sidebar.hidden) { sidebarCollapsed = false; mobileOpen = true; expanded = false; }
-  else if (!expanded) { expanded = true; }
-  else { expanded = false; mobileOpen = false; sidebarCollapsed = true; }
+  else if (expanded) { expanded = false; collapseNext = true; sidebarCollapsed = false; mobileOpen = true; }
+  else if (collapseNext) { sidebarCollapsed = true; mobileOpen = false; collapseNext = false; }
+  else { expanded = true; }
   rememberSidebar(); setSidebarState(); historyToggle.focus();
 });
 mobile.addEventListener('change', setSidebarState);
@@ -64,7 +69,7 @@ document.addEventListener('keydown', e => {
     else if (!e.shiftKey && document.activeElement === nodes.at(-1)) { e.preventDefault(); nodes[0]?.focus(); }
   }
 });
-function startConversation() { if (busy) return; persistThread(); thread = newThread(); showPage('chat'); renderConversation(); renderSidebar(); closeSidebar(); }
+function startConversation() { persistThread(); thread = newThread(); input.value=''; showPage('chat'); renderConversation(); renderSidebar(); closeSidebar(); }
 $('#new-conversation').addEventListener('click', startConversation);
 function dateText(date) { const d = new Date(date); return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('fr-FR', {day:'numeric',month:'short'}); }
 function isSaved(id) { return read('saved').some(x => x.id === id); }
@@ -94,26 +99,26 @@ function renderSidebar() {
         row.classList.toggle('is-current',item.id === thread?.id);
         row.append(el('h3','',item.query),el('p','',dateText(item.date)));
         const open = button(item.legacy ? 'Relancer' : 'Reprendre','side-action', () => {
-          if (busy) return; persistThread();
+          persistThread();
           if (item.legacy) { thread = newThread(); period.value = String(item.max_age_days || 30); closeSidebar(); sendMessage(item.query); }
-          else { thread = structuredClone(item); period.value = String(item.max_age_days || 30); showPage('chat'); renderConversation(); renderSidebar(); closeSidebar(); }
-        }); open.disabled = busy; actions.append(open);
+          else { thread = pendingRequests.get(item.id)?.target || structuredClone(item); period.value = String(item.max_age_days || 30); showPage('chat'); renderConversation(); renderSidebar(); closeSidebar(); }
+        }); open.disabled = false; actions.append(open);
       } else if (kind === 'saved') {
         row.append(el('h3','',title(item)),el('p','',number(item.prix_fcfa,' FCFA') + ' · ' + area(item.superficie_m2)));
         actions.append(sourceLink(item, 'side-action'));
       } else {
         row.append(el('h3','',item.name || item.query),el('p','',item.last_checked ? 'Vérifiée le ' + dateText(item.last_checked) : 'À vérifier à votre demande'));
         const check = button('Vérifier','side-action', () => {
-          if (busy) return; $('#alerts-dialog').close(); checkingAlert = item.id || item.query; startConversation(); period.value = String(item.max_age_days || 30); sendMessage(item.query);
-        }); check.disabled = busy; actions.append(check);
+          $('#alerts-dialog').close(); checkingAlert = item.id || item.query; startConversation(); period.value = String(item.max_age_days || 30); sendMessage(item.query);
+        }); check.disabled = false; actions.append(check);
       }
       const remove = button('Retirer','side-action remove', () => {
-        if (busy && kind === 'history') return;
+        if (kind === 'history' && pendingRequests.has(item.id)) return;
         const storage = kind === 'history' ? (item.legacy ? 'history' : 'conversations') : kind;
         write(storage, read(storage).filter(x => item.id ? x.id !== item.id : x.query !== item.query));
         if (kind === 'history' && item.id === thread?.id) { thread = newThread(); renderConversation(); }
         renderSidebar(); updateSaveButtons();
-      }); remove.disabled = busy && kind === 'history'; actions.append(remove); row.append(actions); list.append(row);
+      }); remove.disabled = kind === 'history' && pendingRequests.has(item.id); actions.append(remove); row.append(actions); list.append(row);
     }
   }
   queueMicrotask(refreshSourceLinks);
@@ -281,6 +286,7 @@ function renderSuggestions(entry) {
 }
 function scrollEnd() { if (activePage !== 'chat') return; const node=$('#conversation-scroll'); node.scrollTop=node.scrollHeight; }
 function renderConversation() {
+  setBusy(pendingRequests.has(thread?.id)); syncWaitingPanels();
   messages.replaceChildren(); const items=thread?.messages || []; $('#welcome').hidden=activePage === 'chat' && items.length>0;
   items.forEach(appendMessage); renderSuggestions(items.filter(m=>m.role==='assistant').at(-1)); requestAnimationFrame(scrollEnd); refreshContacts(); refreshSourceLinks();
 }
@@ -296,39 +302,62 @@ async function api(path, options={}) {
   if (!response.ok) { const e=new Error(typeof payload.detail==='string' ? payload.detail : 'Cette demande ne peut pas être traitée. Vérifiez les informations saisies.'); e.status=response.status; throw e; }
   return payload;
 }
-function setBusy(value) { busy=value; submit.disabled=value; period.disabled=value; $('#new-conversation').disabled=value; $('#account-button').disabled=value; $('#logout-button').disabled=value; submit.replaceChildren(document.createTextNode(value ? 'Analyse…' : 'Envoyer ')); if (!value) submit.append(el('span','', '↑')); $('#assistant-messages').setAttribute('aria-busy',String(value)); renderSidebar(); $$('#followup-suggestions button, .prompt-grid button, [data-prompt], [data-action]').forEach(b=>b.disabled=value); }
+function syncWaitingPanels() {
+  for (const [id, request] of pendingRequests) request.waiting.hidden = activePage !== 'chat' || thread?.id !== id;
+}
+function setBusy(value) {
+  busy=value; submit.disabled=value; period.disabled=value;
+  submit.textContent=value ? 'Analyse…' : 'Envoyer ↑';
+  messages.setAttribute('aria-busy',String(value));
+  $$('#followup-suggestions button').forEach(b=>b.disabled=value);
+  renderSidebar();
+}
 async function sendMessage(message) {
-  if (busy || !message || message.trim().length<2) return; message=message.trim();
+  if (pendingRequests.has(thread?.id) || !message || message.trim().length<2) return;
+  message=message.trim();
   if (message.length>6000) { toast('Limitez votre message à 6 000 caractères.'); return; }
-  showPage('chat'); closeSidebar(); thread ||= newThread(); const threadId=thread.id;
-  const previous=thread.messages.filter(m=>!m.error).slice(-12).map(m=>({role:m.role,content:historyContent(m)}));
-  if (!thread.messages.length) thread.query=message.slice(0,110);
-  const userEntry={role:'user',content:message}; thread.messages.push(userEntry); appendMessage(userEntry); $('#welcome').hidden=true; input.value=''; setBusy(true);
+  showPage('chat'); closeSidebar(); thread ||= newThread();
+  const target=thread, threadId=target.id, storageKey=key('conversations'), alertId=checkingAlert;
+  const alertKey=key('alerts'); checkingAlert=null;
+  const age=Number(period.value); target.max_age_days=age;
+  const previous=target.messages.filter(m=>!m.error).slice(-12).map(m=>({role:m.role,content:historyContent(m)}));
+  if (!target.messages.length) target.query=message.slice(0,110);
+  const userEntry={role:'user',content:message}; target.messages.push(userEntry); appendMessage(userEntry);
+  $('#welcome').hidden=true; input.value='';
   const waiting=$('#waiting-template').content.firstElementChild.cloneNode(true);
+  const tip=waiting.querySelector('#waiting-tip');
+  if(tip){tip.id='waiting-tip-'+threadId;waiting.querySelectorAll('[aria-controls]').forEach(n=>n.setAttribute('aria-controls',tip.id));}
   messages.after(waiting);
+  pendingRequests.set(threadId,{target,waiting}); setBusy(true); persistThread();
   let stopWaiting=()=>waiting.remove();
   try {
-    stopWaiting=window.HakimoWaiting.start(waiting);
-    scrollEnd();
-    const payload=await api('/assistant/message',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message,history:previous,max_age_days:Number(period.value)})});
-    if (thread.id!==threadId) return;
+    stopWaiting=window.HakimoWaiting.start(waiting); scrollEnd();
+    const payload=await api('/assistant/message',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message,history:previous,max_age_days:age})});
     const entry={role:'assistant',content:payload.answer,results:(payload.results || []).map(cleanResult),criteria:payload.criteria,analysis:payload.analysis,suggestions:payload.suggestions,mcp_used:payload.mcp_used,mode:payload.mode};
-    thread.messages.push(entry); thread.messages=thread.messages.slice(-40); appendMessage(entry); renderSuggestions(entry); refreshContacts();
-    if (checkingAlert && payload.mcp_used) {
-      const alerts=read('alerts').map(a => {
-        if ((a.id || a.query)!==checkingAlert) return a;
+    target.messages.push(entry); target.messages=target.messages.slice(-40);
+    if (alertId && payload.mcp_used && key('alerts')===alertKey) {
+      write('alerts',read('alerts').map(a=>{
+        if ((a.id || a.query)!==alertId) return a;
         const ids=entry.results.map(r=>r.id), seen=new Set(a.seen_ids || []);
         return {...a,last_checked:new Date().toISOString(),new_count:ids.filter(id=>!seen.has(id)).length,seen_ids:Array.from(new Set([...ids,...seen])).slice(0,500)};
-      }); write('alerts',alerts);
+      }));
     }
   } catch(error) {
-    const entry={role:'assistant',content:error.message || 'La demande a échoué. Vous pouvez réessayer.',error:true}; thread.messages.push(entry);
-    const row=appendMessage(entry); row.querySelector('.chat-content').append(button('Réessayer','secondary-button',() => { input.value=message; input.focus(); }));
-  } finally { stopWaiting(); checkingAlert=null; setBusy(false); persistThread(); scrollEnd(); if(activePage==='chat')input.focus(); }
+    target.messages.push({role:'assistant',content:error.message || 'La demande a échoué. Vous pouvez réessayer.',error:true});
+  } finally {
+    stopWaiting(); pendingRequests.delete(threadId); target.date=new Date().toISOString();
+    try {
+      const saved=JSON.parse(localStorage.getItem(storageKey) || '[]');
+      localStorage.setItem(storageKey,JSON.stringify([target,...saved.filter(t=>t.id!==threadId)].slice(0,20)));
+    } catch { toast('La conversation n’a pas pu être enregistrée dans ce navigateur.'); }
+    if (thread?.id===threadId && key('conversations')===storageKey) renderConversation();
+    else { renderSidebar(); if(key('conversations')===storageKey)toast('Une réponse est prête dans votre historique.'); }
+    setBusy(pendingRequests.has(thread?.id)); syncWaitingPanels();
+  }
 }
 form.addEventListener('submit', e=>{e.preventDefault();sendMessage(input.value);});
 input.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();form.requestSubmit();}});
-$$('[data-prompt]').forEach(b=>b.addEventListener('click',()=>sendMessage(b.dataset.prompt)));
+$$('[data-prompt]').forEach(b=>b.addEventListener('click',()=>{startConversation();sendMessage(b.dataset.prompt);}));
 function createAlert(criteria,results) {
   const query=criteria?.description; if (!query) { toast('Lancez une recherche avant de la surveiller.'); return; }
   requireLogin(()=>{alertDraft={query,max_age_days:criteria.anciennete_maximale_jours || Number(period.value),seen_ids:results.map(r=>r.id)}; $('#alert-name').value=query.slice(0,75); $('#alert-query').textContent=query; $('#alert-dialog').showModal();},'Connectez-vous pour conserver cette alerte.');
@@ -365,7 +394,6 @@ $('#settings-form').addEventListener('submit',async e=>{
 });
 $('#settings-dialog').addEventListener('close',()=>$('#settings-form').reset());
 $('#logout-button').addEventListener('click',async()=>{
-  if(busy)return;
   try { await api('/auth/logout',{method:'POST'}); $('#settings-dialog').close(); currentUser=null;detailsCache.clear();thread=read('conversations')[0] || newThread();period.value=String(thread.max_age_days || 30);renderConversation();updateAccount();toast('Vous êtes déconnecté.'); } catch(error){toast(error.message);}
 });
 $('#auth-switch').addEventListener('click',()=>setAuthMode(authMode==='login'?'register':'login'));
@@ -396,20 +424,19 @@ function showPage(page) {
   $('#platform-intro').hidden=chat; messages.hidden=!chat; $('.composer-dock').hidden=!chat; $('.period-control').hidden=!chat;
   $('#welcome').hidden=chat && Boolean(thread?.messages.length);
   $$('.nav-link[data-page]').forEach(n=>{if(n.dataset.page===activePage)n.setAttribute('aria-current','page');else n.removeAttribute('aria-current');});
+  syncWaitingPanels();
   if (!chat) $('#conversation-scroll').scrollTop=0; else requestAnimationFrame(scrollEnd);
 }
 $$('.nav-link[data-page]').forEach(n=>n.addEventListener('click',()=>{showPage(n.dataset.page);closeSidebar();}));
 $('.brand').addEventListener('click',e=>{e.preventDefault();showPage('home');closeSidebar();});
 $('.skip-link').addEventListener('click',e=>{e.preventDefault();showPage('chat');closeSidebar();input.focus();});
 $$('[data-action]').forEach(n=>n.addEventListener('click',()=>{
-  if (busy) { showPage('chat');closeSidebar();return; }
-  showPage('chat');closeSidebar();
+  startConversation();
   if(n.dataset.action==='analyze') { input.value='Est-ce une bonne affaire ? Voici l’annonce :\n';toast('Collez le texte de la publication après cette phrase.'); }
   else if(n.dataset.action==='document') { input.value='Aide-moi à comprendre le document mentionné dans cette annonce : '; }
   else input.value='';
   input.focus();
 }));
-$('#discover-hakimo').addEventListener('click',()=>{showPage('home');closeSidebar();$('#platform-intro').scrollIntoView({block:'start'});});
 for (const name of ['guides','faq']) $('#open-'+name).addEventListener('click',()=>$('#'+name+'-dialog').showModal());
 $$('[data-resource-chat]').forEach(n=>n.addEventListener('click',()=>{n.closest('dialog').close();showPage('chat');closeSidebar();}));
 let loadingStats=false;
@@ -450,3 +477,17 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')$('#appearance-menu'
 applyAppearance();
 showPage('home');
 init();
+
+$$('[data-deal]').forEach(b=>b.addEventListener('click',()=>{
+  $('#deal-form').reset(); $('#deal-dialog').showModal();
+}));
+$('#deal-form').addEventListener('submit',e=>{
+  e.preventDefault(); const values=new FormData(e.currentTarget);
+  const zone=String(values.get('zone') || '').trim(), details=String(values.get('details') || '').trim();
+  const parts=['Trouve-moi une bonne affaire : '+values.get('property')+' en vente.'];
+  if(zone)parts.push('Zone souhaitée : '+zone+'. '+(values.has('nearby')?'Inclure les zones proches.':'Uniquement dans cette zone.'));
+  if(values.get('budget'))parts.push('Budget maximum '+values.get('budget')+' FCFA.');
+  if(values.get('area'))parts.push('Superficie souhaitée '+values.get('area')+' m².');
+  if(details)parts.push('Mes priorités : '+details+'.');
+  $('#deal-dialog').close(); startConversation(); sendMessage(parts.join(' '));
+});
