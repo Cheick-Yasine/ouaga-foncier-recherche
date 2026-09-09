@@ -23,17 +23,16 @@ RUN pip install --upgrade pip && \
 # Copier le code de l’application
 COPY app/ ./app/
 COPY db/ ./db/
-# (ajoute d’autres dossiers si besoin : scripts/, etc.)
 
-# Créer un utilisateur non-root (bonne pratique sécurité)
+# Créer un utilisateur non-root (sécurité)
 RUN useradd --create-home --shell /bin/bash appuser && \
     chown -R appuser:appuser /app
 USER appuser
 
-# Port exposé par uvicorn
+# Port exposé par uvicorn au sein du conteneur
 EXPOSE 8000
 
-# Healthcheck simple
+# Healthcheck
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD curl -f http://localhost:8000/health || exit 1
 
