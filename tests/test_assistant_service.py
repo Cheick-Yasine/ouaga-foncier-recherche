@@ -47,7 +47,8 @@ def tool_response(arguments):
 
 
 @pytest.mark.anyio
-async def test_assistant_can_greet_without_calling_mcp() -> None:
+@pytest.mark.parametrize("model", ["gpt-4o-mini", "gpt-5.6-luna"])
+async def test_assistant_can_greet_without_calling_mcp(model) -> None:
     client = FakeClient([text_response("Bonjour ! Comment puis-je vous aider ?")])
     called = False
 
@@ -60,7 +61,7 @@ async def test_assistant_can_greet_without_calling_mcp() -> None:
         "Bonjour",
         [],
         max_age_days=30,
-        settings=Settings(openai_api_key="test", assistant_model="gpt-4o-mini"),
+        settings=Settings(openai_api_key="test", assistant_model=model),
         client=client,
         tool_executor=execute,
     )
@@ -73,7 +74,8 @@ async def test_assistant_can_greet_without_calling_mcp() -> None:
 
 
 @pytest.mark.anyio
-async def test_assistant_executes_search_through_mcp_and_returns_results() -> None:
+@pytest.mark.parametrize("model", ["gpt-4o-mini", "gpt-5.6-luna"])
+async def test_assistant_executes_search_through_mcp_and_returns_results(model) -> None:
     client = FakeClient(
         [
             tool_response(
@@ -104,11 +106,14 @@ async def test_assistant_executes_search_through_mcp_and_returns_results() -> No
         "Je cherche à Saaba",
         [ChatMessage("user", "Mon budget maximum est de 6 millions")],
         max_age_days=7,
-        settings=Settings(openai_api_key="test", assistant_model="gpt-4o-mini"),
+        settings=Settings(openai_api_key="test", assistant_model=model),
         client=client,
         tool_executor=execute,
     )
 
+    for request in client.responses.calls:
+        assert request["model"] == model
+        assert request.get("reasoning") == ({"effort": "none"} if model == "gpt-5.6-luna" else None)
     assert outcome.mcp_used is True
     assert outcome.answer == "J’ai trouvé une parcelle adaptée à Saaba."
     assert outcome.results == [result]

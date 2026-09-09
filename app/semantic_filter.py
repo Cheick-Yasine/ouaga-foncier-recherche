@@ -187,6 +187,7 @@ def apply_semantic_filter(
     try:
         response = api_client.responses.parse(
             model=current.llm_model,
+            **({"reasoning": {"effort": "none"}} if current.llm_model == "gpt-5.6-luna" else {}),
             input=[
                 {"role": "system", "content": _instructions()},
                 {
