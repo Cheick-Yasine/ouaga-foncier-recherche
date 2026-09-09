@@ -556,13 +556,21 @@ def rank_candidates(
     limit: int = 20,
 ) -> list[RankedResult]:
     unique_candidates: list[SearchCandidate] = []
+    identifiers: set[str] = set()
+    buckets: dict[tuple, list[SearchCandidate]] = {}
     for candidate in candidates:
-        if any(
-            _same_announcement(candidate, other)
-            for other in unique_candidates
-        ):
+        if candidate.identifier in identifiers:
             continue
+        # Only equal price/area pairs can be duplicates (apart from IDs).
+        # Keep the existing exact predicate inside each bucket.
+        key = (candidate.price_fcfa, candidate.area_m2)
+        comparable = buckets.get(key, ()) if None not in key else ()
+        if any(_same_announcement(candidate, other) for other in comparable):
+            continue
+        identifiers.add(candidate.identifier)
         unique_candidates.append(candidate)
+        if None not in key:
+            buckets.setdefault(key, []).append(candidate)
 
     results = [
         result
