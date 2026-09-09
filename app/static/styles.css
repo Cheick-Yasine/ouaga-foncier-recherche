@@ -1362,3 +1362,23 @@ select,.modal,.modal input,.comparison-shell,.assistant-composer,.secondary-butt
   .intro-copy h2 { font-size:1.2rem; }
   .conversation-main[data-page="chat"] .welcome h1 { font-size:1.65rem; }
 }
+
+/* Navigation accessible pendant les demandes et compte dans l’en-tête. */
+.header-tools { margin-left:auto; display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+.header-tools .account-button { width:auto; min-width:160px; padding:8px 12px; border:1px solid var(--line); border-radius:12px; color:var(--ink); background:var(--surface); }
+.header-tools .account-button strong,.header-tools .account-button small { color:inherit; }
+.header-tools .account-avatar { background:#345de3; color:white; }
+.header-tools .new-conversation { width:auto; margin:0; padding:10px 14px; background:#345de3; color:white; border:0; border-radius:10px; white-space:nowrap; }
+.deal-dialog { width:min(580px,calc(100vw - 32px)); border:1px solid var(--line); border-radius:20px; padding:28px; }
+.deal-dialog .dialog-heading { display:flex; justify-content:space-between; align-items:center; gap:12px; }
+.deal-dialog p { line-height:1.6; }
+.deal-fields { display:grid; grid-template-columns:1fr 1fr; gap:18px; margin:24px 0 18px; }
+.deal-fields label { display:grid; gap:8px; font-weight:600; }
+.deal-fields input,.deal-fields select,.deal-fields textarea { width:100%; box-sizing:border-box; padding:12px; border:1px solid var(--line); border-radius:10px; background:var(--surface); color:inherit; font:inherit; }
+.deal-wide { grid-column:1/-1; }.deal-fields textarea { min-height:92px; resize:vertical; }
+.deal-nearby { display:flex; align-items:center; gap:8px; margin:14px 0 24px; }
+@media(max-width:800px) { .conversation-header { flex-wrap:wrap; } .header-tools { gap:8px; } .header-tools .account-button { min-width:0; } .header-tools .account-button small { display:none; } .header-tools .new-conversation { font-size:12px; } .deal-fields { grid-template-columns:1fr; } }
+
+.deal-dialog { background:var(--surface); color:var(--ink); }
+.sidebar-top .new-conversation { width:auto; margin:4px 0; padding:10px 14px; }
+.workspace.is-expanded .sidebar-top { flex-wrap:wrap; }
