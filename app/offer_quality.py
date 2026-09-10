@@ -56,9 +56,9 @@ def _utility(text: str, pattern: str, structured: bool) -> tuple[str, float]:
         if re.search(r'\b(?:sans|pas de|absence de|aucun|ni)(?:\s+\w+){0,4}\s*$', before) or re.match(r'\s+(?:absente?|indisponible|non disponible|non raccorde)', after):
             return 'absent', 0.0
     windows = [text[max(0,m.start()-22):m.start()].split('|')[-1] + text[m.start():m.end()+45].split('|')[0] for m in matches]
-    if any(re.search(r'\b(?:bientot|prevu|a venir|en cours|projet|en attente)\b', w) for w in windows):
+    if any(re.search(r'\b(?:bientot|prevu|a venir|en cours|projet|en attente|pas encore|non encore)\b', w) for w in windows):
         return 'prevu', 0.0
-    if any(re.search(r'\b(?:proche|proximite|non loin|a cote|a \d+ m)\b', w) for w in windows):
+    if any(re.search(r'\b(?:proche|proximite|non loin|a cote|a \d+ m|dans la zone)\b', w) for w in windows):
         return 'proximite', 0.2
     if any(re.search(r'\b(?:raccorde\w*|branche\w*|compteur\w*|disponible\w*|sur place)\b', w) for w in windows):
         return 'annonce_disponible', 1.0

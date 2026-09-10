@@ -35,6 +35,8 @@ COLUMNS = ('id','source_id','lot_numero','url','date_publication','premiere_coll
 def refresh(connection, apply=False):
     with connection.transaction():
         connection.execute('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ')
+        if not apply:
+            connection.execute('SET TRANSACTION READ ONLY')
         connection.execute("SET LOCAL statement_timeout = '120s'")
         connection.execute("SET LOCAL lock_timeout = '5s'")
         if apply:

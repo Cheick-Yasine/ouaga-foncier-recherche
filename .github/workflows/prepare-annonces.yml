@@ -1,5 +1,8 @@
 name: Préparer les annonces pour HAKIMO
 on:
+  pull_request:
+    branches: [main]
+    paths: ['app/prepared_data.py', 'scripts/prepare_annonces.py', '.github/workflows/prepare-annonces.yml']
   push:
     branches: [main]
     paths: ['app/prepared_data.py', 'scripts/prepare_annonces.py', '.github/workflows/prepare-annonces.yml']
@@ -16,6 +19,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   prepare:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:

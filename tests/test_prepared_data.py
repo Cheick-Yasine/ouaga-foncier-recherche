@@ -59,6 +59,12 @@ def test_does_not_deduplicate_different_publications_with_same_features():
     assert report['decisions'] == {'conserve': 2}
 
 
+def test_utilities_nearby_or_not_arrived_are_not_available_on_site():
+    lots, _ = prepare_publication(source("Terrain en vente à Saaba. Eau disponible dans la zone. Électricité disponible mais pas encore arrivée sur le site."))
+    assert lots[0]['eau_etat'] == 'proximite'
+    assert lots[0]['electricite_etat'] == 'prevu'
+
+
 def test_atomic_refresh_keeps_raw_data_and_preserves_catalogue_on_failure():
     import os
     import psycopg
