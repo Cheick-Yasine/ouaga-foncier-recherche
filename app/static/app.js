@@ -252,11 +252,11 @@ function appendMessage(entry) {
   const row=el('article','chat-row is-'+entry.role+(entry.error?' is-error':'')), content=el('div','chat-content');
   content.append(el('p','chat-role',entry.role==='assistant'?'HAKIMO':'Vous'));
   const results=entry.results || [], analysis=Boolean(entry.analysis), comparison=entry.mode==='comparaison';
-  const simpleSearch=entry.mcp_used && !analysis && !comparison && !entry.error;
+  const simpleSearch=(entry.data_used ?? entry.mcp_used) && !analysis && !comparison && !entry.error;
   const quality=results[0]?.qualite || {};
-  const recommendable=quality.informations_completes ?? (['mentionne','annonce_disponible'].includes(quality.document_etat) && ['mentionne','annonce_disponible'].includes(quality.eau_etat) && ['mentionne','annonce_disponible'].includes(quality.electricite_etat) && quality.proximites?.length>0);
+  const recommendable=results[0]?.recommande_par_gpt ?? quality.informations_completes ?? (['mentionne','annonce_disponible'].includes(quality.document_etat) && ['mentionne','annonce_disponible'].includes(quality.eau_etat) && ['mentionne','annonce_disponible'].includes(quality.electricite_etat) && quality.proximites?.length>0);
   if (entry.content?.trim()) content.append(entry.role==='assistant' ? formattedReply(entry.content) : el('div','chat-bubble',entry.content));
-  if (entry.mcp_used) {
+  if ((entry.data_used ?? entry.mcp_used)) {
     const heading=el('div','results-heading');
     heading.append(el('h2','',results.length ? (comparison?'Comparaison':analysis?'Des offres à considérer':recommendable?'Recommandation':'Offres à compléter') : (analysis?'': 'Aucune annonce correspondante')));
     if (entry.criteria?.description) heading.append(button('Créer une alerte','secondary-button',()=>createAlert(entry.criteria,results)));
@@ -333,9 +333,9 @@ async function sendMessage(message) {
   try {
     stopWaiting=window.HakimoWaiting.start(waiting); scrollEnd();
     const payload=await api('/assistant/message',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message,history:previous,max_age_days:age})});
-    const entry={role:'assistant',content:payload.answer,results:(payload.results || []).map(cleanResult),criteria:payload.criteria,analysis:payload.analysis,suggestions:payload.suggestions,mcp_used:payload.mcp_used,mode:payload.mode};
+    const entry={role:'assistant',content:payload.answer,results:(payload.results || []).map(cleanResult),criteria:payload.criteria,analysis:payload.analysis,suggestions:payload.suggestions,mcp_used:payload.mcp_used,data_used:payload.data_used,mode:payload.mode};
     target.messages.push(entry); target.messages=target.messages.slice(-40);
-    if (alertId && payload.mcp_used && key('alerts')===alertKey) {
+    if (alertId && (payload.data_used ?? payload.mcp_used) && key('alerts')===alertKey) {
       write('alerts',read('alerts').map(a=>{
         if ((a.id || a.query)!==alertId) return a;
         const ids=entry.results.map(r=>r.id), seen=new Set(a.seen_ids || []);

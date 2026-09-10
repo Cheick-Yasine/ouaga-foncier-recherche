@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     app_env: str = "development"
     public_app_url: str = "https://ouaga-foncier-mcp.onrender.com"
     database_url: SecretStr | None = None
+    assistant_database_url: SecretStr | None = None
     max_ad_age_days: int | None = Field(default=None, ge=1, le=365)
     openai_api_key: SecretStr | None = None
     llm_model: str = "gpt-5.6-luna"
@@ -29,7 +30,7 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    @field_validator("database_url")
+    @field_validator("database_url", "assistant_database_url")
     @classmethod
     def validate_database_url(cls, value: SecretStr | None) -> SecretStr | None:
         if value is None:
