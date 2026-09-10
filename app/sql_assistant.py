@@ -5,7 +5,7 @@ import asyncio
 import json
 import logging
 from datetime import datetime, timedelta, timezone
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from time import perf_counter
 from typing import Any
 
@@ -46,7 +46,7 @@ def function(name, description, properties):
 
 SQL_TOOL = function('consulter_annonces_sql',
     'Exécute le SELECT PostgreSQL que tu écris. Aucun classement après SQL. '
-    'Écris SELECT id FROM public.annonces WHERE ... ORDER BY ... LIMIT 100. '
+    'Écris SELECT id FROM public.annonces_preparees WHERE ... ORDER BY ... LIMIT 100. '
     'Les détails des annonces sélectionnées seront joints automatiquement. '
     'Une table sans alias ; pas de jointure, sous-requête, agrégat, cast ou écriture. '
     'Opérations disponibles : AND, OR, NOT, IN, BETWEEN, IS NULL, LIKE, ILIKE, '
@@ -54,8 +54,9 @@ SQL_TOOL = function('consulter_annonces_sql',
     'Colonnes : id, type_bien, type_bien_normalise, quartier_zone, prix_fcfa, '
     'superficie_m2, statut_document, texte_nettoye, resume_court, '
     'date_publication (texte, peut être imprécis), premiere_collecte (timestamp). '
-    'Les équipements et proximités sont dans texte_nettoye ; les colonnes peuvent être absentes ou imparfaites. '
-    'Le prix brut peut être par hectare ou m² : consulte base_prix dans les résultats. '
+    'Colonnes préparées : document_etat, eau_etat, electricite_etat, dans_ouagadougou (booléen). '
+    'Pour Ouagadougou seule : dans_ouagadougou = TRUE. Les proximités sont dans texte_nettoye. '
+    'prix_fcfa est le prix TOTAL préparé du lot ; ne multiplie pas une seconde fois par la superficie. '
     'Pour trier par prix/m² : prix_fcfa / NULLIF(superficie_m2, 0). '
     'Pour les dates utilise des chaînes ISO fournies dans le contexte, sans NOW(). '
     'La limite de 100 concerne cet échantillon, pas la taille du marché.',
@@ -78,7 +79,7 @@ FINAL_TOOL = function('presenter_selection',
 
 INSTRUCTIONS = '''Tu es HAKIMO, le conseiller de HAKILAB IMMOBILIER.
 Tu comprends la demande, écris toi-même le SQL, analyses les données et choisis
-les recommandations. Aucun moteur ne reclasse les résultats après toi.
+les recommandations. Tu consultes uniquement annonces_preparees : ventes retenues dans le périmètre, un lot par ligne. Les valeurs manquantes restent inconnues. Aucun moteur ne reclasse les résultats après toi.
 Agis avec les informations disponibles, sans interroger longuement l'utilisateur.
 Utilise le français simple. Donne ton avis et un conseil concret avant le tableau,
 en 3 ou 4 phrases pour une recherche. Ne répète pas la liste des annonces dans le texte.
@@ -128,7 +129,11 @@ Une salutation ou une explication générale peut être répondue sans outil.
 
 def public_row(row, now):
     candidate = _candidate_from_row(row, now=now)
-    quality = offer_quality(candidate)
+    if row.get('qualite_preparee') is not None:
+        candidate = replace(candidate, price_fcfa=float(row['prix_fcfa']) if row.get('prix_fcfa') is not None else None,
+                            area_m2=float(row['superficie_m2']) if row.get('superficie_m2') is not None else None,
+                            neighborhood=row.get('quartier_zone'), pricing_note=row.get('base_prix'))
+    quality = row.get('qualite_preparee') or offer_quality(candidate)
     return {'id': public_announcement_id(str(row['id'])),
             'title': ' à '.join(v for v in (candidate.property_type, candidate.neighborhood) if v) or 'Annonce immobilière',
             'description': sanitize_external_text(candidate.text),
