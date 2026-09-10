@@ -11,7 +11,7 @@ from typing import Any
 
 from openai import AsyncOpenAI
 
-from app.assistant_service import AssistantNotConfiguredError, ChatMessage
+from app.assistant_service import AssistantNotConfiguredError, ChatMessage, _suggestions
 from app.config import get_settings
 from app.listing_scope import facebook_publication_url
 from app.neighborhood_geo import _locations, neighborhood_relation
@@ -206,6 +206,7 @@ async def run_sql_assistant(message, history, *, max_age_days, settings=None,
                 results = [dict(pool[ref], recommande_par_gpt=(ref == recommendation)) for ref in refs]
                 return SQLOutcome(answer=answer, results=results, model=current.assistant_model,
                                   data_used=queried, criteria={'description': description, 'anciennete_maximale_jours': max_age_days},
+                                  suggestions=_suggestions(results, {}) if queried else [],
                                   analysis={'origine': 'gpt_sql'} if mode == 'analyse' else None, mode=mode)
             if calls_used >= 4:
                 raise ValueError('Le nombre de consultations est atteint. Termine avec presenter_selection.')
