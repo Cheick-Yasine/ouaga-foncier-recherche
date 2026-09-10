@@ -80,3 +80,12 @@ def test_rejected_write_leaves_table_intact(postgres_settings):
     with pytest.raises(SQLReadError):
         query_annonces('DELETE FROM annonces', settings=postgres_settings)
     assert len(query_annonces('SELECT id FROM annonces', settings=postgres_settings)) == 3
+
+
+def test_database_read_only_is_a_second_barrier(postgres_settings, monkeypatch):
+    # Even a hypothetical parser failure cannot write through the transaction.
+    with monkeypatch.context() as patch:
+        patch.setattr('app.sql_reader.validate_select', lambda _: 'DELETE FROM public.annonces')
+        with pytest.raises(SQLReadError):
+            query_annonces('SELECT id FROM annonces', settings=postgres_settings)
+    assert len(query_annonces('SELECT id FROM annonces', settings=postgres_settings)) == 3

@@ -56,6 +56,7 @@ def validate_select(sql: str) -> str:
     projection = query.expressions
     if len(projection) != 1 or not isinstance(projection[0], exp.Column) or projection[0].name != 'id':
         raise SQLReadError('Écris SELECT id FROM public.annonces ; les détails seront joints automatiquement.')
+    tables[0].set('db', exp.to_identifier('public'))
     limit = query.args.get('limit')
     if limit is not None:
         value = limit.expression
@@ -65,7 +66,6 @@ def validate_select(sql: str) -> str:
             raise SQLReadError('LIMIT doit être compris entre 1 et 100.')
     else:
         query = query.limit(100)
-    tables[0].set('db', exp.to_identifier('public'))
     return query.sql(dialect='postgres')
 
 
