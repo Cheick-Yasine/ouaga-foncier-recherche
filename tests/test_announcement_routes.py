@@ -62,14 +62,14 @@ def test_contacts_load_together_without_exposing_unselected_ads(monkeypatch):
     monkeypatch.setattr('app.announcement_routes.get_session_user',lambda _:AuthenticatedUser(id='u',name='Utilisateur'))
     candidates=[SearchCandidate(identifier='a',text='Parcelle',contact='70 12 34 56; 76 54 32 10'),SearchCandidate(identifier='b',text='Autre annonce',contact='77 88 99 00')]
     calls=[]
-    def load(days):
-        calls.append(days)
-        return candidates
-    monkeypatch.setattr('app.announcement_routes.load_recent_candidates',load)
+    def load(refs, *, include_contacts):
+        calls.append((refs, include_contacts))
+        return [{'id': c.identifier, 'contacts_whatsapp': c.contact} for c in candidates if public_announcement_id(c.identifier) in refs]
+    monkeypatch.setattr('app.announcement_routes.read_references',load)
     ref=public_announcement_id('a')
     response=client.post('/annonces/selection',json={'references':[ref]})
     assert response.status_code==200
-    assert calls==[None]
+    assert calls==[([ref], True)]
     assert response.json()==[{'id':ref,'contact':'70 12 34 56','lien_whatsapp':'https://wa.me/22670123456'}]
     assert '77 88 99 00' not in response.text
 

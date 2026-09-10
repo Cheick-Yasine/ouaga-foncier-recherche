@@ -101,14 +101,14 @@ def query_annonces(sql: str, *, settings=None) -> list[dict[str, Any]]:
         raise SQLReadError('La requête a échoué ou dépassé sa durée autorisée. Simplifie-la et vérifie les colonnes.') from None
 
 
-def read_references(references: list[str], *, settings=None) -> list[dict[str, Any]]:
+def read_references(references: list[str], *, settings=None, include_contacts=False) -> list[dict[str, Any]]:
     """Resolve existing opaque references without exposing raw database IDs."""
-    if not isinstance(references, list) or not 1 <= len(references) <= 10 or any(
+    if not isinstance(references, list) or not 1 <= len(references) <= (500 if include_contacts else 10) or any(
         not isinstance(ref, str) or not re.fullmatch(r'[0-9a-f]{24}', ref) for ref in references
     ):
         raise SQLReadError('Fournis entre 1 et 10 références publiques reçues précédemment.')
     current = settings or get_settings()
-    url = current.assistant_database_url or current.database_url
+    url = current.database_url if include_contacts else (current.assistant_database_url or current.database_url)
     if url is None:
         raise SQLReadError('La connexion à la base des annonces est absente.')
     try:
@@ -130,9 +130,10 @@ def read_references(references: list[str], *, settings=None) -> list[dict[str, A
                 ids = [found[ref] for ref in references if ref in found]
                 if not ids:
                     return []
-                rows = connection.execute('''SELECT id::text AS id, url, date_publication,
+                contact_column = ', contacts_whatsapp' if include_contacts else ''
+                rows = connection.execute(f'''SELECT id::text AS id, url, date_publication,
                     premiere_collecte, type_bien, type_bien_normalise, quartier_zone,
-                    superficie_m2, prix_fcfa, statut_document, resume_court, texte_nettoye
+                    superficie_m2, prix_fcfa, statut_document, resume_court, texte_nettoye {contact_column}
                     FROM public.annonces WHERE id::text = ANY(%s)''', (ids,)).fetchall()
                 by_id = {row['id']: row for row in rows}
                 return [by_id[identifier] for identifier in ids if identifier in by_id]

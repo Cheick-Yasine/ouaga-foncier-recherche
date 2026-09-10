@@ -57,7 +57,8 @@ def postgres_settings():
             id text PRIMARY KEY, url text, date_publication text,
             premiere_collecte timestamptz, type_bien text, type_bien_normalise text,
             quartier_zone text, superficie_m2 numeric, prix_fcfa numeric,
-            statut_document text, resume_court text, texte_nettoye text)''')
+            statut_document text, resume_court text, texte_nettoye text,
+            contacts_whatsapp text DEFAULT '70 12 34 56')''')
         for identifier, price, zone in [('a', 5000000, 'Saaba'), ('b', 8000000, 'Saaba'), ('c', 3000000, 'Karpala')]:
             db.execute('''INSERT INTO public.annonces
                 (id, prix_fcfa, superficie_m2, quartier_zone, texte_nettoye, premiere_collecte)
@@ -74,6 +75,9 @@ def test_executes_gpt_select_and_preserves_its_order(postgres_settings):
     assert [r['id'] for r in rows] == ['a']
     refs = [public_announcement_id('c'), public_announcement_id('a')]
     assert [r['id'] for r in read_references(refs, settings=postgres_settings)] == ['c', 'a']
+    assert all('contacts_whatsapp' not in r for r in read_references(refs, settings=postgres_settings))
+    contacts = read_references(refs, settings=postgres_settings, include_contacts=True)
+    assert contacts[0]['contacts_whatsapp'] == '70 12 34 56'
 
 
 def test_rejected_write_leaves_table_intact(postgres_settings):

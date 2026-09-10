@@ -1,5 +1,6 @@
 """Consultation protégée d'une annonce depuis une référence publique."""
 
+import re
 import psycopg
 from urllib.parse import urlsplit
 from fastapi import APIRouter, Cookie, HTTPException
@@ -12,6 +13,7 @@ from app.database import DatabaseNotConfiguredError
 from app.public_references import public_announcement_id
 from app.search_repository import load_recent_candidates
 from app.listing_scope import facebook_publication_url
+from app.sql_reader import read_references, SQLReadError
 
 
 class AnnouncementDetail(BaseModel):
@@ -68,8 +70,15 @@ def announcement_contacts(
     try:
         if get_session_user(session_token) is None:
             raise HTTPException(status_code=401, detail="Connexion requise.")
+        if all(re.fullmatch(r'[0-9a-f]{24}', ref) for ref in selection.references):
+            rows = read_references(selection.references, include_contacts=True)
+            return [AnnouncementContact(
+                id=public_announcement_id(str(row['id'])),
+                contact=first_contact(row.get('contacts_whatsapp')),
+                lien_whatsapp=whatsapp_url(first_contact(row.get('contacts_whatsapp'))),
+            ) for row in rows]
         candidates = load_recent_candidates(None)
-    except (DatabaseNotConfiguredError, psycopg.Error):
+    except (DatabaseNotConfiguredError, psycopg.Error, SQLReadError):
         raise HTTPException(status_code=503, detail="Contacts temporairement indisponibles.") from None
     requested = set(selection.references)
     contacts = []
