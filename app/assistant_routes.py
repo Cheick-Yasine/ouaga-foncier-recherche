@@ -13,9 +13,11 @@ from app.assistant_service import (
     AssistantNotConfiguredError,
     ChatMessage,
     MCPAssistantError,
-    run_assistant,
 )
 
+
+from app.sql_assistant import run_sql_assistant as run_assistant
+from app.sql_reader import SQLReadError
 
 LOGGER = logging.getLogger("uvicorn.error")
 router = APIRouter(prefix="/assistant", tags=["Assistant"])
@@ -35,6 +37,7 @@ class AssistantRequest(BaseModel):
 class AssistantResponse(BaseModel):
     answer: str
     results: list[dict[str, Any]]
+    data_used: bool = False
     mcp_used: bool
     model: str
     criteria: dict[str, Any] = Field(default_factory=dict)
@@ -53,7 +56,7 @@ async def assistant_message(payload: AssistantRequest) -> AssistantResponse:
         )
     except AssistantNotConfiguredError as error:
         raise HTTPException(status_code=503, detail=str(error)) from None
-    except MCPAssistantError as error:
+    except (MCPAssistantError, SQLReadError) as error:
         raise HTTPException(status_code=503, detail=str(error)) from None
     except OpenAIError as error:
         LOGGER.warning("assistant_openai_error type=%s", type(error).__name__)
@@ -66,6 +69,7 @@ async def assistant_message(payload: AssistantRequest) -> AssistantResponse:
         answer=outcome.answer,
         results=outcome.results,
         mcp_used=outcome.mcp_used,
+        data_used=getattr(outcome, "data_used", outcome.mcp_used),
         model=outcome.model,
         criteria=outcome.criteria,
         analysis=outcome.analysis,

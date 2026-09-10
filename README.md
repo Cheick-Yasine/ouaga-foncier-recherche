@@ -25,7 +25,7 @@ L'utilisateur décrit le terrain, la parcelle ou la maison qu'il recherche. La p
 - recherche sémantique prévue : pgvector ;
 - tests : pytest ;
 - automatisation : GitHub Actions ;
-- intégration IA : serveur MCP Python en lecture seule.
+- intégration IA : GPT écrit ses requêtes SQL, exécutées en lecture seule.
 
 ## Installation locale sous Windows
 
@@ -56,52 +56,31 @@ Adresses utiles :
 - santé de l'API : http://127.0.0.1:8000/health
 - test de Neon : http://127.0.0.1:8000/health/database
 
-## Lancer le serveur MCP
+## Assistant GPT → SQL → Neon
 
-```powershell
-uvicorn app.mcp_server:http_app --host 127.0.0.1 --port 8001
-```
+Le site transmet les messages à GPT. GPT écrit les SELECT PostgreSQL, consulte
+les annonces puis choisit la sélection et son ordre. Aucun moteur de similarité
+ni MCP n'intervient dans le parcours `/assistant/message`.
 
-Le point d’entrée local est `http://127.0.0.1:8001/mcp`. Consultez [la documentation MCP](docs/SERVEUR_MCP.md).
-
-## Tester l'assistant conversationnel en local
-
-L'assistant utilise le LLM comme cerveau : il comprend la conversation et décide
-quand une recherche est nécessaire. La recherche est ensuite exécutée par le
-serveur MCP, qui interroge le moteur Ouaga Foncier en lecture seule.
-
-Vérifiez d'abord ces valeurs dans votre fichier `.env` :
-
+Configuration locale :
 ```dotenv
+OPENAI_API_KEY=votre_cle_locale
+ASSISTANT_MODEL=gpt-5.6-luna
 DATABASE_URL=postgresql://...
-OPENAI_API_KEY=sk-...
-ASSISTANT_MODEL=gpt-4o-mini
-MCP_SERVER_URL=http://127.0.0.1:8001/mcp
+# Facultatif : connexion dédiée disposant uniquement du droit SELECT sur annonces
+ASSISTANT_DATABASE_URL=postgresql://...
 ```
 
-Ouvrez un premier terminal PowerShell :
-
-```powershell
-cd ouaga-foncier-recherche
-.\.venv\Scripts\Activate.ps1
-uvicorn app.mcp_server:http_app --host 127.0.0.1 --port 8001
+Un seul serveur suffit :
+```bash
+python -m pip install -r requirements.txt
+python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-Gardez-le ouvert, puis ouvrez un deuxième terminal PowerShell :
-
-```powershell
-cd ouaga-foncier-recherche
-.\.venv\Scripts\Activate.ps1
-uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
-```
-
-Ouvrez ensuite http://127.0.0.1:8000 et cliquez sur **Assistant**.
-Vous pouvez commencer par :
-
-> Je cherche une parcelle à Saaba avec un budget maximum de 6 millions FCFA.
-
-Si la demande est trop vague, l'assistant pose une question. Quand elle est assez
-précise, il appelle automatiquement l'outil MCP `rechercher_annonces`.
+Voir [le contrat SQL et la validation](docs/ASSISTANT_SQL.md).
+Le serveur MCP historique reste disponible pour les intégrations externes ;
+il n'est pas nécessaire au site. Les comptes, favoris et contacts conservent
+leurs routes existantes.
 
 ## Lancer les tests
 
