@@ -21,6 +21,7 @@ COLUMNS = frozenset({
     'id', 'date_publication', 'premiere_collecte', 'type_bien',
     'type_bien_normalise', 'quartier_zone', 'superficie_m2', 'prix_fcfa',
     'statut_document', 'resume_court', 'texte_nettoye',
+    'document_etat', 'eau_etat', 'electricite_etat', 'dans_ouagadougou',
 })
 # Closed grammar: no user functions, joins, subqueries, catalogs or locking clauses.
 NODES = frozenset({
@@ -46,16 +47,16 @@ def validate_select(sql: str) -> str:
         if type(node).__name__ not in NODES:
             raise SQLReadError('Construction SQL non autorisée : ' + type(node).__name__)
     tables = list(query.find_all(exp.Table))
-    if len(tables) != 1 or tables[0].name != 'annonces' or tables[0].db not in ('', 'public') or tables[0].catalog:
-        raise SQLReadError('Seule la table public.annonces est accessible.')
+    if len(tables) != 1 or tables[0].name != 'annonces_preparees' or tables[0].db not in ('', 'public') or tables[0].catalog:
+        raise SQLReadError('Seule la table public.annonces_preparees est accessible.')
     if tables[0].alias:
         raise SQLReadError('Utilise la table sans alias.')
     for column in query.find_all(exp.Column):
-        if column.name not in COLUMNS or column.table not in ('', 'annonces') or column.db or column.catalog:
+        if column.name not in COLUMNS or column.table not in ('', 'annonces_preparees') or column.db or column.catalog:
             raise SQLReadError('Colonne non autorisée. Consulte le schéma fourni.')
     projection = query.expressions
     if len(projection) != 1 or not isinstance(projection[0], exp.Column) or projection[0].name != 'id':
-        raise SQLReadError('Écris SELECT id FROM public.annonces ; les détails seront joints automatiquement.')
+        raise SQLReadError('Écris SELECT id FROM public.annonces_preparees ; les détails seront joints automatiquement.')
     tables[0].set('db', exp.to_identifier('public'))
     limit = query.args.get('limit')
     if limit is not None:
@@ -91,8 +92,8 @@ def query_annonces(sql: str, *, settings=None) -> list[dict[str, Any]]:
                     SELECT id::text AS id, url, date_publication, premiere_collecte,
                            type_bien, type_bien_normalise, quartier_zone,
                            superficie_m2, prix_fcfa, statut_document,
-                           resume_court, texte_nettoye
-                    FROM public.annonces WHERE id::text = ANY(%s)
+                           resume_court, texte_nettoye, qualite_preparee, base_prix
+                    FROM public.annonces_preparees WHERE id::text = ANY(%s)
                 ''', (ids,)).fetchall()
         by_id = {row['id']: row for row in rows}
         return [by_id[identifier] for identifier in ids if identifier in by_id]
@@ -120,7 +121,7 @@ def read_references(references: list[str], *, settings=None, include_contacts=Fa
                 found = {}
                 # Only IDs are scanned, never publication texts or contacts.
                 with connection.cursor(name='hakimo_references') as cursor:
-                    cursor.execute('SELECT id::text AS id FROM public.annonces')
+                    cursor.execute('SELECT id::text AS id FROM public.annonces_preparees')
                     for row in cursor:
                         ref = public_announcement_id(row['id'])
                         if ref in wanted:
@@ -133,8 +134,8 @@ def read_references(references: list[str], *, settings=None, include_contacts=Fa
                 contact_column = ', contacts_whatsapp' if include_contacts else ''
                 rows = connection.execute(f'''SELECT id::text AS id, url, date_publication,
                     premiere_collecte, type_bien, type_bien_normalise, quartier_zone,
-                    superficie_m2, prix_fcfa, statut_document, resume_court, texte_nettoye {contact_column}
-                    FROM public.annonces WHERE id::text = ANY(%s)''', (ids,)).fetchall()
+                    superficie_m2, prix_fcfa, statut_document, resume_court, texte_nettoye, qualite_preparee, base_prix {contact_column}
+                    FROM public.annonces_preparees WHERE id::text = ANY(%s)''', (ids,)).fetchall()
                 by_id = {row['id']: row for row in rows}
                 return [by_id[identifier] for identifier in ids if identifier in by_id]
     except psycopg.Error:

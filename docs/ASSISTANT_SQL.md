@@ -7,12 +7,12 @@ GPT reçoit les annonces et choisit leurs références et leur ordre avec
 `presenter_selection`. Le serveur construit le tableau avec les données
 effectivement reçues ; il refuse uniquement les références inventées.
 Il n'applique aucun filtre métier ni classement par similarité après GPT.
-Le budget, la zone, la vente et le choix final relèvent du prompt de GPT.
+Le catalogue est préparé avant consultation : ventes explicites dans le périmètre local. Le budget et la zone demandée restent des critères SQL choisis par GPT.
 
 ## Périmètre SQL
 La première version permet les recherches de lignes, filtres et tris :
 ```sql
-SELECT id FROM public.annonces
+SELECT id FROM public.annonces_preparees
 WHERE quartier_zone ILIKE '%Saaba%' AND prix_fcfa <= 6000000
 ORDER BY prix_fcfa / NULLIF(superficie_m2, 0)
 LIMIT 100
@@ -44,14 +44,15 @@ CREATE ROLE hakimo_reader LOGIN;
 GRANT USAGE ON SCHEMA public TO hakimo_reader;
 GRANT SELECT (id, url, date_publication, premiere_collecte, type_bien,
     type_bien_normalise, quartier_zone, superficie_m2, prix_fcfa,
-    statut_document, resume_court, texte_nettoye)
-ON public.annonces TO hakimo_reader;
+    statut_document, resume_court, texte_nettoye, qualite_preparee, base_prix,
+    document_etat, eau_etat, electricite_etat, dans_ouagadougou)
+ON public.annonces_preparees TO hakimo_reader;
 ALTER ROLE hakimo_reader SET default_transaction_read_only = on;
 ```
 Définir son mot de passe séparément dans l'administration Neon, puis renseigner
 la connexion côté hébergeur. Ne jamais donner cette connexion à GPT.
 Sans ASSISTANT_DATABASE_URL, DATABASE_URL est utilisé avec les mêmes protections SQL
-et transactionnelles. Aucune migration des annonces n'est nécessaire.
+et transactionnelles. Créer et remplir le catalogue avec `python -m scripts.prepare_annonces --apply` avant de déployer le lecteur. La table brute reste intacte ; voir ANNONCES_PREPAREES.md.
 
 ## Déploiement et compatibilité
 Installer requirements.txt puis démarrer app.main:app. Le Dockerfile existant
