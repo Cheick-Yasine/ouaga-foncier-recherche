@@ -9,9 +9,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/styles.css?v=20260910-sql-1">
+  <link rel="stylesheet" href="/static/styles.css?v=20260912-discovery-1">
   <script src="/static/waiting.js?v=20260906-waiting-1" defer></script>
-  <script src="/static/app.js?v=20260910-sql-1" defer></script>
+  <script src="/static/discovery.js?v=20260912-discovery-1" defer></script>
+  <script src="/static/app.js?v=20260912-discovery-1" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#assistant-input">Aller à la conversation</a>
@@ -61,23 +62,23 @@
       </header>
       <div id="conversation-scroll" class="conversation-scroll">
         <section id="welcome" class="welcome" aria-labelledby="welcome-title">
-          <div class="welcome-heading"><p id="welcome-greeting" class="welcome-greeting">Bonjour et bienvenue</p><h1 id="welcome-title">Trouver la meilleure annonce immobilière <span>en toute confiance.</span></h1><p class="welcome-description">Un projet à Ouagadougou ? HAKIMO vous aide à comparer les prix, comprendre les annonces et choisir les offres qui répondent à vos besoins.</p></div>
+          <div class="welcome-heading"><p id="welcome-greeting" class="welcome-greeting">Bonjour et bienvenue</p><h1 id="welcome-title">Trouver la meilleure annonce immobilière <span>en toute confiance.</span></h1></div>
           <div class="prompt-grid" aria-label="Commencer une conversation">
             <button type="button" data-deal aria-haspopup="dialog"><span class="prompt-icon" aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9Z"/></svg></span><strong>Dénicher une bonne affaire</strong><span>Un bon prix, des documents et des atouts concrets.</span></button>
             <button type="button" id="paste-prompt" data-action="analyze"><span class="prompt-icon" aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M14 2H5v20h14V7ZM14 2v6h5M8 12h8M8 16h5"/></svg></span><strong>Analyser une annonce</strong><span>Collez une publication. Parlons de ses points forts et de ce qui manque.</span></button>
             <button type="button" id="project-prompt" data-action="project"><span class="prompt-icon" aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M21 11a9 9 0 0 1-9 9H4l-3 2 2-6A9 9 0 1 1 21 11Z"/><path d="M7 10h10M7 14h6"/></svg></span><strong>Décrire mon projet</strong><span>Votre quartier, votre budget, vos envies. Construisons votre sélection.</span></button>
           </div>
           <section class="market-overview" aria-labelledby="market-title" aria-busy="true" id="market-overview">
-            <div class="section-heading"><h2 id="market-title">Les annonces du dernier mois</h2><span class="scope-pill">Ouagadougou · Vente</span></div>
-            <div class="stats-grid">
-              <article class="stat-card"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg><span class="stat-label">Annonces sur 30 jours</span><strong id="stat-count" class="stat-value">…</strong><small>Publications avec une date connue</small></article>
-              <article class="stat-card"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 3v18h17M8 16v-4M13 16V7M18 16v-7"/></svg><span class="stat-label">Prix moyen annoncé / m²</span><strong id="stat-price" class="stat-value">…</strong><small id="stat-price-note">Calculé sur les prix et surfaces renseignés</small></article>
-              <article class="stat-card"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/></svg><span class="stat-label">Quartier le plus représenté</span><strong id="stat-neighborhood" class="stat-value stat-place">…</strong><small id="stat-neighborhood-note">Parmi les quartiers renseignés</small></article>
+            <div class="section-heading"><div><h2 id="market-title">Le marché, semaine après semaine</h2><p class="subtle">4 semaines terminées · Ouagadougou · Ventes</p></div><label class="chart-filter">Afficher<select id="weekly-property"><option value="parcelle">Parcelles</option><option value="terrain">Terrains</option><option value="maison">Maisons</option><option value="tous">Tous les biens</option></select></label></div>
+            <div class="weekly-grid">
+              <article class="weekly-card"><span class="chart-kicker">Les nouvelles annonces</span><h3>Combien d’offres chaque semaine ?</h3><div id="weekly-count-chart"></div></article>
+              <article class="weekly-card"><span class="chart-kicker">Les prix demandés</span><h3>Quel prix moyen pour 1 m² ?</h3><div id="weekly-price-chart"></div></article>
             </div>
+            <p class="chart-explainer">Les courbes portent sur les annonces collectées. Les prix varient aussi selon les biens proposés ; ils ne mesurent pas à eux seuls une hausse ou une baisse du marché.</p>
             <div class="stats-caption"><p id="stats-status" role="status">Chargement des chiffres de la plateforme…</p><button id="retry-stats" class="text-button" type="button" hidden>Réessayer</button></div>
           </section>
         </section>
-        <section id="platform-intro" class="platform-intro" aria-labelledby="platform-title"><div class="intro-copy"><span class="intro-kicker">Votre assistant immobilier</span><h2 id="platform-title">De la première question<br>à une sélection qui vous ressemble.</h2><p>Échangez simplement avec HAKIMO. Il explique ses choix, souligne les informations à vérifier et vous donne accès à la publication d’origine.</p><button id="start-project" class="secondary-button" type="button" data-action="project">Parlons de votre projet</button></div><ol class="platform-steps"><li><span>01</span><div><strong>Exprimez votre besoin</strong><p>Une phrase suffit pour commencer.</p></div></li><li><span>02</span><div><strong>Comparez avec des repères concrets</strong><p>Prix au m², documents, accès, eau et électricité.</p></div></li><li><span>03</span><div><strong>Gardez les offres qui vous intéressent</strong><p>Retrouvez vos favoris et relancez vos alertes.</p></div></li></ol></section>
+
         <div id="assistant-messages" class="assistant-messages" role="log" aria-label="Conversation" aria-live="polite" aria-relevant="additions"></div>
       </div>
       <div class="composer-dock" hidden>
@@ -163,9 +164,9 @@
 <form id="deal-form"><div class="dialog-heading"><h2 id="deal-title">Dénicher une bonne affaire</h2><button type="button" data-close="deal-dialog" class="icon-button" aria-label="Fermer">×</button></div>
 <p>Indiquez ce qui compte pour vous. HAKIMO vous aidera à comparer les offres.</p>
 <div class="deal-fields"><label>Type de bien<select name="property"><option value="parcelle">Parcelle</option><option value="terrain">Terrain</option><option value="maison">Maison</option></select></label>
-<label>Quartier ou zone<input name="zone" placeholder="Ex. Karpala, Saaba…" maxlength="100"></label>
-<label>Budget maximum (FCFA)<input name="budget" type="number" min="1" step="1" placeholder="Votre budget"></label>
-<label>Superficie souhaitée (m²)<input name="area" type="number" min="1" step="1" placeholder="Ex. 300"></label>
+<label>Quartier ou zone<input id="deal-zone" name="zone" list="neighborhood-options" autocomplete="off" placeholder="Commencez à écrire un quartier…" maxlength="100"><datalist id="neighborhood-options"></datalist><small id="zone-status" class="field-note" role="status"></small></label>
+<div class="deal-wide price-controls"><label>Comment rechercher le prix ?<select name="price_mode"><option value="target">Autour de mon montant</option><option value="maximum">Sans dépasser mon montant</option></select></label><label>Montant en FCFA<input id="deal-budget" name="budget" type="number" min="1" step="1" placeholder="Ex. 50 000 000"><small id="budget-label" class="field-note" role="status"></small></label><div class="budget-presets" aria-label="Montants courants"><button type="button" data-budget="5000000">5 millions</button><button type="button" data-budget="10000000">10 millions</button><button type="button" data-budget="25000000">25 millions</button><button type="button" data-budget="50000000">50 millions</button><button type="button" data-budget="100000000">100 millions</button></div><p class="field-note">Les offres proches du montant passent en premier. Un plafond ne sera jamais dépassé.</p></div>
+<label>Choisir une superficie<select id="deal-area-range" name="area_range"><option value="">Sans préférence</option><option value="1:199">Moins de 200 m²</option><option value="200:299">200 à 299 m²</option><option value="300:499">300 à 499 m²</option><option value="500:999">500 à 999 m²</option><option value="1000:4999">1 000 à 4 999 m²</option><option value="5000:9999">5 000 à 9 999 m²</option><option value="10000:">10 000 m² et plus</option></select></label><label>Ou saisir une surface précise (m²)<input id="deal-area" name="area" type="number" min="1" step="1" placeholder="Ex. 350"><small id="area-category" class="field-note" role="status"></small></label>
 <label class="deal-wide">Documents, équipements et proximités<textarea name="details" maxlength="1000" placeholder="Ex. attestation disponible, eau, électricité, école à proximité…"></textarea></label></div>
 <label class="deal-nearby"><input name="nearby" type="checkbox"> Inclure les zones proches</label>
 <button type="submit" class="primary-button">Trouver des offres</button></form></dialog>

@@ -1387,3 +1387,31 @@ select,.modal,.modal input,.comparison-shell,.assistant-composer,.secondary-butt
 .deal-dialog .primary-button { padding:12px 20px; border:0; border-radius:10px; background:var(--blue); color:white; font:inherit; font-weight:700; cursor:pointer; }
 .deal-dialog .primary-button:hover { filter:brightness(1.08); }
 .deal-dialog input:focus-visible,.deal-dialog textarea:focus-visible,.deal-dialog select:focus-visible { outline:2px solid var(--blue); outline-offset:2px; }
+
+/* Weekly market overview and guided search. */
+.weekly-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;margin-top:22px}
+.weekly-card{min-width:0;background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:24px;box-shadow:0 8px 28px #10264b05}
+.chart-kicker{font-size:12px;font-weight:700;color:var(--blue);letter-spacing:.03em}
+.weekly-card h3{font-size:18px;margin:8px 0 18px;color:var(--ink)}
+.weekly-card svg{display:block;width:100%;height:auto;overflow:visible}
+.chart-gridline{stroke:var(--line);stroke-dasharray:3 5}
+.chart-axis{fill:var(--muted);font-size:11px}
+.chart-line{stroke:var(--blue);fill:none;stroke-width:3;stroke-linejoin:round;stroke-linecap:round}
+.chart-point{fill:var(--surface);stroke:var(--blue);stroke-width:3}
+.chart-weeks{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}
+.chart-week{display:flex;flex-direction:column;gap:7px;align-items:center;border:1px solid transparent;background:transparent;border-radius:9px;padding:9px 3px;color:var(--muted);font:inherit;font-size:10px;cursor:pointer}
+.chart-week strong{color:var(--ink);font-size:12px}
+.chart-week:hover,.chart-week[aria-pressed=true]{background:var(--blue-soft);border-color:var(--blue)}
+.chart-detail,.chart-explainer{font-size:12px;color:var(--muted);line-height:1.6}
+.chart-detail{min-height:38px;margin:16px 0 0}.chart-explainer{margin:16px 0 0}
+.chart-empty{padding:32px 0;color:var(--muted);text-align:center}
+.chart-filter{display:flex;align-items:center;gap:9px;font-size:12px;color:var(--muted)}
+.chart-filter select{padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);font:inherit}
+.field-note{display:block;font-size:12px;font-weight:400;color:var(--muted);line-height:1.5;min-height:18px;margin-top:5px}
+.price-controls{padding:18px;border-radius:14px;background:var(--surface-2);display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.price-controls>p,.budget-presets{grid-column:1/-1;margin:0}
+.budget-presets{display:flex;flex-wrap:wrap;gap:7px}
+.budget-presets button{border:1px solid var(--line);background:var(--surface);color:var(--blue);border-radius:20px;padding:7px 12px;font:inherit;font-size:12px;cursor:pointer}
+.budget-presets button:hover{border-color:var(--blue);background:var(--blue-soft)}
+@media(max-width:1050px){.weekly-grid{grid-template-columns:1fr}.weekly-card{padding:20px}}
+@media(max-width:600px){.market-overview .section-heading{align-items:flex-start;gap:12px;flex-direction:column}.price-controls{grid-template-columns:1fr}.chart-week{font-size:9px}.chart-week strong{font-size:11px}.weekly-card{padding:16px}}

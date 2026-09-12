@@ -12,6 +12,37 @@ from app.listing_scope import city_only_request, within_ouagadougou, sale_eligib
 from app.neighborhoods import detect_neighborhoods, detect_out_of_scope_locality
 
 
+def conversation_numeric_request(message: str, history: Sequence[Any], field: str):
+    """Retient les critères de l'acheteur, jamais ceux d'une annonce collée."""
+    for source in [message, *(item.content for item in reversed(history) if item.role == 'user')]:
+        own = re.split(r"(?i)(?:voici\s+l[’'](?:annonce|publication)|(?:annonce|publication)\s*(?:à analyser)?)\s*:", source, maxsplit=1)[0]
+        if field == 'prix' and re.search(r'\bsans (?:budget|plafond|limite)|\b(?:retire|enleve|supprime|oublie).{0,20}(?:budget|prix|plafond)', normalize_text(own)):
+            return None
+        if field == 'superficie' and re.search(r'\b(?:peu importe|sans contrainte de|oublie la) superficie', normalize_text(own)):
+            return None
+        parsed = parse_search_description(own)
+        if (parsed.price_fcfa if field == 'prix' else parsed.area_m2) is not None:
+            return parsed
+    return None
+
+
+def target_price_description(description: str, price: float) -> str:
+    rewritten = budget_description(description, price)
+    rewritten = re.sub(r'(?i)\bbudget\s+maximum', 'Prix souhaité', rewritten)
+    rewritten = re.sub(r'(?i)\b(?:maximum|maximal|au plus|ne pas dépasser|ne depasse pas)\b', '', rewritten)
+    return f'Prix souhaité {price:.2f} FCFA. ' + rewritten
+
+
+def area_description(description: str, criteria) -> str:
+    description = re.sub(r'(?i)superficie\s+(?:(?:souhaitée?|minimum|au moins)\s+)?(?:entre\s+)?[\d .,]+(?:\s+et\s+[\d .,]+)?\s*m[²2]', '', description)
+    description = re.sub(r'(?i)\b\d[\d .,]*\s*(?:m[²2]|hectares?|ha)\b', '', description)
+    if criteria.area_max_m2 is not None:
+        return description + f'. Superficie entre {criteria.area_min_m2:.2f} et {criteria.area_max_m2:.2f} m².'
+    if criteria.area_min_m2 is not None:
+        return description + f'. Superficie minimum {criteria.area_min_m2:.2f} m².'
+    return description + f'. Superficie souhaitée {criteria.area_m2:.2f} m².'
+
+
 def conversation_city_only(message: str, history: Sequence[Any]) -> bool:
     for source in [message, *(item.content for item in reversed(history) if item.role == 'user')]:
         own_text = re.split(r"(?i)(?:voici\s+l[’'](?:annonce|publication)|(?:annonce|publication)\s*(?:à analyser)?)\s*:", source, maxsplit=1)[0]

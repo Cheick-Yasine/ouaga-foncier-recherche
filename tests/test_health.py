@@ -37,7 +37,7 @@ def test_root_serves_conversational_interface() -> None:
     assert 'id="alerts-list"' not in sidebar
     assert 'HAKIMO' in response.text
     assert 'id="theme-mode"' in response.text
-    for identifier in ('nav-home', 'nav-chat', 'open-settings', 'settings-form', 'stat-count', 'stat-price', 'stat-neighborhood'):
+    for identifier in ('nav-home', 'nav-chat', 'open-settings', 'settings-form', 'weekly-count-chart', 'weekly-price-chart', 'weekly-property', 'deal-area-range', 'neighborhood-options'):
         assert f'id="{identifier}"' in response.text
     assert 'Détecter une arnaque' not in response.text
     assert 'Enregistrements' not in response.text

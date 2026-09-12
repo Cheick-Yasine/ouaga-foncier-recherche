@@ -446,7 +446,7 @@ def test_missing_price_is_excluded_when_budget_is_requested() -> None:
     assert score_candidate(criteria, candidate) is None
 
 
-def test_good_deal_does_not_reward_spending_more_budget() -> None:
+def test_good_deal_prefers_prices_near_requested_budget() -> None:
     criteria = parse_search_description(
         "Avec un budget de 10 000 000 donne-moi les annonces de bon deal"
     )
@@ -468,7 +468,7 @@ def test_good_deal_does_not_reward_spending_more_budget() -> None:
         ],
     )
 
-    assert results[0].candidate.identifier == "cheap"
+    assert results[0].candidate.identifier == "expensive"
     assert "Informations limitées" in results[0].explanations[-1]
 
 
