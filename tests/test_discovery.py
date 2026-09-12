@@ -39,6 +39,8 @@ def test_surface_range_filters_both_edges_and_preserves_independent_budget():
     assert parse_search_description(description).area_min_m2 == 300
     request=parse_search_description('Superficie minimum 10000 m². Terrain prix 50 millions FCFA')
     assert request.area_min_m2 == 10000 and request.area_max_m2 is None
+    exact=parse_search_description('Superficie souhaitée 350 m²')
+    assert parse_search_description(area_description('Parcelle de 200 m² à Karpala',exact)).area_m2 == 350
 
 
 def test_four_complete_weeks_use_publication_boundaries_and_null_prices():

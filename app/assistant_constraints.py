@@ -35,6 +35,7 @@ def target_price_description(description: str, price: float) -> str:
 
 def area_description(description: str, criteria) -> str:
     description = re.sub(r'(?i)superficie\s+(?:(?:souhaitée?|minimum|au moins)\s+)?(?:entre\s+)?[\d .,]+(?:\s+et\s+[\d .,]+)?\s*m[²2]', '', description)
+    description = re.sub(r'(?i)\b\d[\d .,]*\s*(?:m[²2]|hectares?|ha)\b', '', description)
     if criteria.area_max_m2 is not None:
         return description + f'. Superficie entre {criteria.area_min_m2:.2f} et {criteria.area_max_m2:.2f} m².'
     if criteria.area_min_m2 is not None:
