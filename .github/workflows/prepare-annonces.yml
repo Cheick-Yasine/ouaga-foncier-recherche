@@ -4,7 +4,7 @@ on:
     branches: [main]
     paths: ['app/prepared_data.py', 'scripts/prepare_annonces.py', '.github/workflows/prepare-annonces.yml']
   push:
-    branches: [main]
+    branches: [main, feature/annonces-preparees]
     paths: ['app/prepared_data.py', 'scripts/prepare_annonces.py', '.github/workflows/prepare-annonces.yml']
   workflow_dispatch:
     inputs:
@@ -36,7 +36,7 @@ jobs:
       - name: Rapport avant modification
         run: python -m scripts.prepare_annonces --output reports/simulation.json
       - name: Actualiser les tables préparées
-        if: github.event_name == 'workflow_dispatch' && inputs.apply_changes
+        if: (github.event_name == 'workflow_dispatch' && inputs.apply_changes) || (github.event_name == 'push' && github.ref == 'refs/heads/feature/annonces-preparees')
         run: python -m scripts.prepare_annonces --apply --output reports/application.json
       - uses: actions/upload-artifact@v4
         if: always()
