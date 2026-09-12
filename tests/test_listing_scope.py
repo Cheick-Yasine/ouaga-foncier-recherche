@@ -20,6 +20,9 @@ class ListingScopeTests(unittest.TestCase):
             'Je cherche une parcelle à Karpala',
             'Parcelle déjà vendue à Karpala',
             'Terrain pas en vente',
+            'Terrain non loti à Saaba en vente',
+            'Parcelles non-loties à Karpala',
+            'Maison sur terrain pas loti',
         ):
             with self.subTest(text=text): self.assertFalse(sale_eligible(text))
         self.assertTrue(sale_eligible('Parcelle à vendre à Karpala, pas de location.'))

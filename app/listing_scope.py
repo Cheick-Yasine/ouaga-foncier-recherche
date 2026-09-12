@@ -24,6 +24,7 @@ def sale_eligible(text: str) -> bool:
     # « Pas de location » exprime au contraire une vente seule.
     normalized = re.sub(r"\b(?:pas de|sans|non disponible (?:a|en)) location\b", "", normalized)
     excluded = (
+        r"\b(?:non loti[es]*|pas loti[es]*)\b",
         r"\b(?:a louer|en location|mise? en location|location|loyer|caution|bail|loue[er]?)\b",
         r"\b(?:par|le|au) mois\b|\bmensuel(?:le)?\b|\b(?:fcfa|cfa) mois\b",
         r"\b(?:deja vendu[es]*|vendu[es]*|plus disponible|pas (?:a vendre|en vente)|retire[es]* de la vente)\b",

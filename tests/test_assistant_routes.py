@@ -35,6 +35,7 @@ def test_assistant_message_returns_answer_and_public_results(monkeypatch) -> Non
     assert response.status_code == 200
     payload = response.json()
     assert payload["mcp_used"] is True
+    assert payload["data_used"] is True
     assert payload["results"][0]["id"] == "publique-1"
 
 
@@ -47,3 +48,8 @@ def test_assistant_rejects_unsupported_period() -> None:
         },
     )
     assert response.status_code == 422
+
+
+def test_route_uses_mcp_service():
+    from app.assistant_service import run_assistant
+    assert assistant_routes.run_assistant is run_assistant

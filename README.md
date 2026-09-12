@@ -25,7 +25,7 @@ L'utilisateur décrit le terrain, la parcelle ou la maison qu'il recherche. La p
 - recherche sémantique prévue : pgvector ;
 - tests : pytest ;
 - automatisation : GitHub Actions ;
-- intégration IA : GPT écrit ses requêtes SQL, exécutées en lecture seule.
+- intégration IA : GPT utilise les outils MCP de recherche et d’analyse.
 
 ## Installation locale sous Windows
 
@@ -56,31 +56,37 @@ Adresses utiles :
 - santé de l'API : http://127.0.0.1:8000/health
 - test de Neon : http://127.0.0.1:8000/health/database
 
-## Assistant GPT → SQL → Neon
+## Assistant GPT → MCP → Neon
 
-Le site transmet les messages à GPT. GPT écrit les SELECT PostgreSQL, consulte
-les annonces puis choisit la sélection et son ordre. Aucun moteur de similarité
-ni MCP n'intervient dans le parcours `/assistant/message`.
+L’assistant appelle les outils MCP. Le moteur existant normalise les quartiers
+à partir du référentiel, filtre les annonces puis classe les résultats.
+GPT formule ses conseils à partir de ces résultats. Le SQL généré par GPT
+et le catalogue préparé séparé ne sont plus utilisés par la conversation.
+
+Les ventes de maisons, parcelles et terrains dans le périmètre sont conservées.
+Les locations, biens annoncés non lotis et annonces sans prix ET sans superficie
+sont exclus. Une seule valeur manquante ne suffit pas à exclure une annonce.
 
 Configuration locale :
 ```dotenv
 OPENAI_API_KEY=votre_cle_locale
 ASSISTANT_MODEL=gpt-5.6-luna
 DATABASE_URL=postgresql://...
-# Facultatif : connexion dédiée disposant uniquement du droit SELECT sur annonces
-ASSISTANT_DATABASE_URL=postgresql://...
+MCP_SERVER_URL=http://127.0.0.1:8001/mcp
 ```
 
-Un seul serveur suffit :
+Lancer le MCP et le site dans deux terminaux :
 ```bash
-python -m pip install -r requirements.txt
+python -m uvicorn app.mcp_server:http_app --host 127.0.0.1 --port 8001
+```
+```bash
 python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-Voir [le contrat SQL et la validation](docs/ASSISTANT_SQL.md).
-Le serveur MCP historique reste disponible pour les intégrations externes ;
-il n'est pas nécessaire au site. Les comptes, favoris et contacts conservent
-leurs routes existantes.
+Sur Render, `app.combined:http_app` héberge déjà le site et le MCP.
+Les tables préparées et le code SQL sont conservés pour référence, sans supprimer
+les données. Leur documentation décrit l’architecture précédente.
+L’interface, les comptes et les favoris restent en place.
 
 ## Lancer les tests
 
