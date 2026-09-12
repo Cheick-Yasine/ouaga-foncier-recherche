@@ -15,7 +15,7 @@ from mcp.client.streamable_http import streamable_http_client
 from openai import AsyncOpenAI
 
 from app.config import Settings, get_settings
-from app.assistant_constraints import conversation_budget, budget_description, respect_search_budget, conversation_city_only, respect_search_scope
+from app.assistant_constraints import conversation_budget, budget_description, respect_search_budget, conversation_city_only, respect_search_scope, conversation_numeric_request, target_price_description, area_description
 from app.semantic_filter import sanitize_external_text
 
 
@@ -325,6 +325,8 @@ def _original_publication(message: str, history: Sequence[ChatMessage], proposed
             return sanitize_external_text(proposed.strip(), limit=6000)
     raise MCPAssistantError("Collez le texte original de l’annonce pour que je puisse l’analyser.")
 
+ASSISTANT_INSTRUCTIONS += "\nMontant demandé : privilégie les offres proches de ce montant. Un maximum reste un plafond strict. Pour une cible sans maximum, ne la transforme pas en plafond. Si les offres sont éloignées de plus de 20 %, indique cet écart simplement (par exemple 27 millions pour une demande de 50 millions) ; ne prétends pas qu’elles sont proches. Respecte les intervalles de superficie transmis par le formulaire.\n"
+
 
 async def run_assistant(
     message: str,
@@ -363,7 +365,9 @@ async def run_assistant(
     latest_analysis: dict[str, Any] | None = None
     latest_mode = "recherche"
     mcp_used = False
-    user_budget = conversation_budget(message, history)
+    price_request = conversation_numeric_request(message, history, 'prix')
+    area_request = conversation_numeric_request(message, history, 'superficie')
+    user_budget = price_request.price_fcfa if price_request and price_request.price_is_maximum else None
     city_only = conversation_city_only(message, history)
 
     for _ in range(3):
@@ -426,6 +430,11 @@ async def run_assistant(
                     arguments["publication"] = _original_publication(message, history, arguments.get("publication", ""))
                 elif call.name == "rechercher_annonces" and user_budget is not None:
                     arguments["description"] = budget_description(arguments.get("description", ""), user_budget)
+                if call.name == "rechercher_annonces":
+                    if price_request and not price_request.price_is_maximum:
+                        arguments["description"] = target_price_description(arguments.get("description", ""), price_request.price_fcfa)
+                    if area_request:
+                        arguments["description"] = area_description(arguments.get("description", ""), area_request)
                 if call.name in {"rechercher_annonces", "evaluer_annonce"} and city_only:
                     arguments["description"] = arguments.get("description", "") + ". Zone limitée à Ouagadougou uniquement."
                 arguments.update(

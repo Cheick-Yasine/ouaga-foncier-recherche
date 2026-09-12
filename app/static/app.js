@@ -421,7 +421,7 @@ function showPage(page) {
   activePage = page === 'chat' ? 'chat' : 'home'; main.dataset.page=activePage;
   const chat=activePage==='chat';
   $('#page-label').textContent=chat?'Parlez-nous de votre projet immobilier':'Accueil';
-  $('#platform-intro').hidden=chat; messages.hidden=!chat; $('.composer-dock').hidden=!chat; $('.period-control').hidden=!chat;
+  messages.hidden=!chat; $('.composer-dock').hidden=!chat; $('.period-control').hidden=!chat;
   $('#welcome').hidden=chat && Boolean(thread?.messages.length);
   $$('.nav-link[data-page]').forEach(n=>{if(n.dataset.page===activePage)n.setAttribute('aria-current','page');else n.removeAttribute('aria-current');});
   syncWaitingPanels();
@@ -445,16 +445,10 @@ async function loadMarketStats() {
   $('#stats-status').textContent='Chargement des chiffres de la plateforme…';
   try {
     const stats=await api('/market/stats');
-    $('#stat-count').textContent=number(stats.annonces_30_jours);
-    $('#stat-price').textContent=stats.prix_m2_moyen_fcfa==null?'Non calculable':number(stats.prix_m2_moyen_fcfa,' FCFA');
-    $('#stat-price-note').textContent=stats.annonces_avec_prix_m2 ? 'Sur '+number(stats.annonces_avec_prix_m2)+' annonces avec prix et surface' : 'Aucun prix au m² renseigné';
-    $('#stat-neighborhood').textContent=stats.quartier_le_plus_represente || 'Non renseigné';
-    $('#stat-neighborhood-note').textContent=stats.quartier_le_plus_represente ? number(stats.annonces_quartier_principal)+' annonces dans ce quartier' : 'Aucun quartier renseigné sur la période';
-    const from=new Date(stats.depuis), to=new Date(stats.jusqu_a), options={day:'numeric',month:'short'};
-    $('#stats-status').textContent='Du '+from.toLocaleDateString('fr-FR',options)+' au '+to.toLocaleDateString('fr-FR',options)+' · Terrains, parcelles et maisons · Dates de publication connues';
+    window.HakimoDiscovery.setStats(stats);
+    $('#stats-status').textContent='';
   } catch {
-    for(const id of ['stat-count','stat-price','stat-neighborhood']) $('#'+id).textContent='Indisponible';
-    $('#stat-price-note').textContent='';$('#stat-neighborhood-note').textContent='';
+    window.HakimoDiscovery.clearStats();
     $('#stats-status').textContent='Les chiffres ne sont pas disponibles pour le moment.';$('#retry-stats').hidden=false;
   } finally { loadingStats=false; $('#market-overview').setAttribute('aria-busy','false'); }
 }
@@ -479,15 +473,16 @@ showPage('home');
 init();
 
 $$('[data-deal]').forEach(b=>b.addEventListener('click',()=>{
-  $('#deal-form').reset(); $('#deal-dialog').showModal();
+  $('#deal-form').reset(); window.HakimoDiscovery.resetForm(); $('#deal-dialog').showModal();
 }));
 $('#deal-form').addEventListener('submit',e=>{
   e.preventDefault(); const values=new FormData(e.currentTarget);
   const zone=String(values.get('zone') || '').trim(), details=String(values.get('details') || '').trim();
   const parts=['Trouve-moi une bonne affaire : '+values.get('property')+' en vente.'];
   if(zone)parts.push('Zone souhaitée : '+zone+'. '+(values.has('nearby')?'Inclure les zones proches.':'Uniquement dans cette zone.'));
-  if(values.get('budget'))parts.push('Budget maximum '+values.get('budget')+' FCFA.');
+  if(values.get('budget'))parts.push((values.get('price_mode')==='maximum'?'Budget maximum ':'Prix souhaité autour de ')+values.get('budget')+' FCFA.');
   if(values.get('area'))parts.push('Superficie souhaitée '+values.get('area')+' m².');
+  else if(values.get('area_range')) { const [min,max]=String(values.get('area_range')).split(':'); parts.push(max?'Superficie entre '+min+' et '+max+' m².':'Superficie minimum '+min+' m².'); }
   if(details)parts.push('Mes priorités : '+details+'.');
   $('#deal-dialog').close(); startConversation(); sendMessage(parts.join(' '));
 });

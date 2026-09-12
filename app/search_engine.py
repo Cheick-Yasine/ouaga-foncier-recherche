@@ -79,6 +79,8 @@ class SearchCriteria:
     required_fields: frozenset[str] = field(default_factory=frozenset)
     max_age_days: int | None = None
     city_only: bool = False
+    area_min_m2: float | None = None
+    area_max_m2: float | None = None
 
 
 @dataclass(frozen=True)
@@ -124,6 +126,8 @@ def parse_search_description(description: str) -> SearchCriteria:
     numeric_text = re.sub(r"(?<=\d)[.,](?=\d)", "decimalmark", numeric_text)
     numeric_text = re.sub(r"(?i)(millions?|milliards?)(?=\d)", r"\1 ", numeric_text)
     normalized = normalize_text(numeric_text).replace("decimalmark", ".")
+    area_range = re.search(r'\bsuperficie entre (\d+(?:\.\d+)?) et (\d+(?:\.\d+)?) m2\b', normalized)
+    area_floor = re.search(r'\bsuperficie (?:minimum|au moins) (\d+(?:\.\d+)?) m2\b', normalized)
     area_match = _AREA_PATTERN.search(normalized)
     hectare_match = _HECTARE_PATTERN.search(normalized)
     if area_match:
@@ -133,7 +137,18 @@ def parse_search_description(description: str) -> SearchCriteria:
     else:
         area = None
 
-    text_without_area = _AREA_PATTERN.sub(" ", normalized)
+    area_min = float(area_range[1]) if area_range else float(area_floor[1]) if area_floor else None
+    area_max = float(area_range[2]) if area_range else None
+    if area_range:
+        area = (area_min + area_max) / 2
+    elif area_floor:
+        area = area_min
+
+    text_without_area = normalized
+    if area_range or area_floor:
+        matched = area_range or area_floor
+        text_without_area = text_without_area[:matched.start()] + ' ' + text_without_area[matched.end():]
+    text_without_area = _AREA_PATTERN.sub(" ", text_without_area)
     text_without_area = _HECTARE_PATTERN.sub(" ", text_without_area)
     price_match = _PRICE_PATTERN.search(text_without_area)
     budget_match = _BUDGET_PATTERN.search(text_without_area)
@@ -191,6 +206,8 @@ def parse_search_description(description: str) -> SearchCriteria:
         price_fcfa=price,
         price_is_maximum=price_is_maximum,
         area_m2=area,
+        area_min_m2=area_min,
+        area_max_m2=area_max,
         proximity=None if proximity == "non_precisee" else proximity,
         viability=None if viability == "non_precisee" else viability,
         document_status=None if document == "non_precise" else document,
@@ -281,6 +298,13 @@ def score_candidate(
 
     if not sale_eligible(candidate.text):
         return None
+    if criteria.area_min_m2 is not None or criteria.area_max_m2 is not None:
+        if candidate.area_m2 is None:
+            return None
+        if criteria.area_min_m2 is not None and candidate.area_m2 < criteria.area_min_m2:
+            return None
+        if criteria.area_max_m2 is not None and candidate.area_m2 > criteria.area_max_m2:
+            return None
     if criteria.city_only and not within_ouagadougou(candidate.text, candidate.neighborhood):
         return None
     if (
@@ -492,16 +516,21 @@ def _price_match_priority(
     criteria: SearchCriteria,
     result: RankedResult,
 ) -> float:
-    """Un prix demandé sans notion de budget est une cible, pas un plafond."""
+    """Rapproche du montant demandé ; le plafond reste filtré avant le tri."""
 
     candidate_price = result.candidate.price_fcfa
     if (
         criteria.price_fcfa is None
-        or criteria.price_is_maximum
         or candidate_price is None
     ):
-        return 0.0
-    return numeric_similarity(criteria.price_fcfa, candidate_price)
+        return -1.0 if criteria.price_fcfa is not None else 0.0
+    match = numeric_similarity(criteria.price_fcfa, candidate_price)
+    # Dans les 20 % sous un plafond, départager par surface et qualité.
+    # Une offre à 27 M ne devance plus automatiquement une offre à 48 M
+    # lorsque l'acheteur indique 50 M.
+    if criteria.price_is_maximum and candidate_price >= criteria.price_fcfa * 0.8:
+        return 1.0
+    return match
 
 
 def _is_good_deal_request(criteria: SearchCriteria) -> bool:
