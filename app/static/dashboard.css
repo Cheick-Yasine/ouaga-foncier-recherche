@@ -19,11 +19,16 @@
   align-items:flex-start;
   justify-content:space-between;
   gap:1rem;
-  margin-bottom:12px;
+  margin-bottom:18px;
 }
 
 .neighborhood-heading h3 {
-  margin-bottom:0;
+  margin:4px 0 4px;
+}
+
+.chart-subtitle {
+  color:var(--muted);
+  font-size:12px;
 }
 
 .trend-period-switch {
@@ -53,6 +58,55 @@
   background:var(--surface);
   color:var(--blue);
   box-shadow:0 1px 5px #10264b12;
+}
+
+.neighborhood-summary {
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:10px;
+  margin:4px 0 18px;
+}
+
+.neighborhood-kpi {
+  display:grid;
+  gap:2px;
+  min-width:0;
+  padding:12px 14px;
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:var(--surface-2);
+}
+
+.neighborhood-kpi .neighborhood-rank,
+.neighborhood-kpi > span {
+  color:var(--blue);
+  font-size:10px;
+  font-weight:800;
+  text-transform:uppercase;
+  letter-spacing:.05em;
+}
+
+.neighborhood-kpi strong {
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  font-size:13px;
+  color:var(--ink);
+}
+
+.neighborhood-kpi b {
+  font-size:17px;
+  color:var(--ink);
+}
+
+.neighborhood-kpi small {
+  color:var(--muted);
+  font-size:10px;
+}
+
+.neighborhood-kpi-focus {
+  background:var(--blue-soft);
+  border-color:#b9c8fb;
 }
 
 .neighborhood-chart svg {
@@ -89,20 +143,20 @@
   display:flex;
   flex-wrap:wrap;
   gap:8px 14px;
-  margin-top:8px;
+  margin-top:6px;
 }
 
 .neighborhood-legend-item {
   display:flex;
   align-items:center;
   gap:6px;
-  font-size:12px;
+  font-size:11px;
   color:var(--muted);
 }
 
 .neighborhood-legend-item strong {
   color:var(--ink);
-  font-size:12px;
+  font-size:11px;
 }
 
 .neighborhood-swatch {
@@ -121,6 +175,23 @@
   font-size:10px;
 }
 
+.chart-insight {
+  margin-top:14px;
+  padding:10px 12px;
+  border-left:3px solid var(--blue);
+  border-radius:0 8px 8px 0;
+  background:var(--blue-soft);
+  color:var(--ink);
+  font-size:12px;
+  line-height:1.65;
+}
+
+@media (max-width:900px) {
+  .neighborhood-summary {
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+}
+
 @media (max-width:700px) {
   .neighborhood-heading {
     flex-direction:column;
@@ -130,5 +201,8 @@
   }
   .trend-period {
     flex:1;
+  }
+  .neighborhood-summary {
+    grid-template-columns:1fr;
   }
 }
