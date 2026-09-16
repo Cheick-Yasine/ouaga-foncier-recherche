@@ -13,19 +13,21 @@ router = APIRouter(prefix='/market', tags=['Accueil'])
 @router.get('/stats')
 def market_stats() -> dict:
     try:
-        # La limite du pool de recherche ne doit pas tronquer les totaux. Les
-        # dates publiées sont filtrées avant analyse, indépendamment de la collecte.
-        return summarize_market(load_recent_candidates(None, pool_limit=None, publication_days=60))
+        # Une seule lecture Neon alimente les trois graphiques de l'accueil.
+        # 95 jours couvrent toujours le trimestre calendaire courant complet.
+        candidates = load_recent_candidates(None, pool_limit=None, publication_days=95)
+        result = summarize_market(candidates)
+        result['tendances_quartiers'] = neighborhood_trends(candidates)
+        return result
     except (DatabaseNotConfiguredError, psycopg.Error):
         raise HTTPException(status_code=503, detail='Les chiffres ne sont pas disponibles pour le moment.') from None
 
 
 @router.get('/neighborhood-trends')
 def market_neighborhood_trends() -> dict:
+    """Route conservée pour compatibilité avec les anciennes interfaces."""
     try:
-        # Un trimestre calendaire peut couvrir un peu plus de 90 jours. On charge
-        # 120 jours afin de toujours disposer de la période courante complète.
-        return neighborhood_trends(load_recent_candidates(None, pool_limit=None, publication_days=120))
+        return neighborhood_trends(load_recent_candidates(None, pool_limit=None, publication_days=95))
     except (DatabaseNotConfiguredError, psycopg.Error):
         raise HTTPException(status_code=503, detail='Les tendances par quartier ne sont pas disponibles pour le moment.') from None
 
