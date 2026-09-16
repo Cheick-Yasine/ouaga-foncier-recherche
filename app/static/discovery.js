@@ -6,7 +6,6 @@
   const fmt = new Intl.NumberFormat('fr-FR', {maximumFractionDigits: 0});
   const fold = value => value.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
 
-  // L'accent de l'application reste bleu. L'utilisateur garde uniquement le choix du thème.
   try {
     const saved = JSON.parse(localStorage.getItem('hakimo:appearance') || '{}');
     saved.accent = 'blue';
@@ -22,7 +21,7 @@
 
   const css = document.createElement('link');
   css.rel = 'stylesheet';
-  css.href = '/static/dashboard.css?v=20260916-points-1';
+  css.href = '/static/dashboard.css?v=20260916-smooth-1';
   document.head.append(css);
 
   function areaRange(value) {
@@ -50,6 +49,26 @@
   }
   function longDate(value) {
     return new Date(value+'T12:00:00Z').toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric',timeZone:'UTC'});
+  }
+
+  // Catmull-Rom -> courbes de Bézier cubiques. Les données restent inchangées :
+  // seul le tracé visuel est lissé entre les observations.
+  function smoothPath(points, tension=0.7) {
+    if (!points.length) return '';
+    if (points.length === 1) return `M ${points[0][0]} ${points[0][1]}`;
+    let d=`M ${points[0][0]} ${points[0][1]}`;
+    for (let i=0;i<points.length-1;i++) {
+      const p0=points[i-1] || points[i];
+      const p1=points[i];
+      const p2=points[i+1];
+      const p3=points[i+2] || p2;
+      const cp1x=p1[0]+(p2[0]-p0[0])*tension/6;
+      const cp1y=p1[1]+(p2[1]-p0[1])*tension/6;
+      const cp2x=p2[0]-(p3[0]-p1[0])*tension/6;
+      const cp2y=p2[1]-(p3[1]-p1[1])*tension/6;
+      d+=` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p2[0]} ${p2[1]}`;
+    }
+    return d;
   }
 
   const marketGrid = $('.weekly-grid');
@@ -82,26 +101,27 @@
     const price = metric === 'prix_m2';
     const finite = values.filter(v => Number.isFinite(v));
     const maximum = Math.max(...finite, 1);
-    const svg = svgElement('svg',{viewBox:'0 0 520 180',role:'img','aria-label':price?'Évolution du prix moyen annoncé par mètre carré. Valeurs sous la courbe.':'Nombre d’annonces publiées par semaine. Valeurs sous la courbe.'});
+    const svg = svgElement('svg',{viewBox:'0 0 520 180',role:'img','aria-label':price?'Évolution du prix moyen annoncé par mètre carré.':'Nombre d’annonces publiées par semaine.'});
     for (const ratio of [0,0.5,1]) {
       const y = 142-ratio*115;
       svg.append(svgElement('line',{x1:62,x2:500,y1:y,y2:y,class:'chart-gridline'}));
       const label = svgElement('text',{x:55,y:y+4,'text-anchor':'end',class:'chart-axis'});
       label.textContent=fmt.format(maximum*ratio); svg.append(label);
     }
-    let points = [];
-    const flush = () => {if(points.length>1)svg.append(svgElement('polyline',{points:points.join(' '),class:'chart-line'}));points=[];};
-    values.forEach((value,i) => {
-      const x = 80+i*(400/Math.max(weeks.length-1,1));
-      if (!Number.isFinite(value)) {flush();return;}
-      points.push(x+','+(142-value/maximum*115));
+
+    let segment=[];
+    const flush=()=>{
+      if(segment.length>1) svg.append(svgElement('path',{d:smoothPath(segment),class:'chart-line smooth-chart-line'}));
+      segment=[];
+    };
+    values.forEach((value,i)=>{
+      if(!Number.isFinite(value)){flush();return;}
+      const x=80+i*(400/Math.max(weeks.length-1,1));
+      const y=142-value/maximum*115;
+      segment.push([x,y]);
     });
     flush();
-    values.forEach((value,i) => {
-      if (!Number.isFinite(value)) return;
-      const circle=svgElement('circle',{cx:80+i*(400/Math.max(weeks.length-1,1)),cy:142-value/maximum*115,r:5.5,class:'chart-point market-chart-point'});
-      const label=svgElement('title',{});label.textContent=shortDate(weeks[i].debut)+' : '+fmt.format(value)+(price?' FCFA/m²':' annonces');circle.append(label);svg.append(circle);
-    });
+
     container.append(svg);
     const dates=element('div','chart-weeks');
     const detail=element('p','chart-detail',price?'Prix demandés, en FCFA par m².':'Une annonce est comptée selon sa date de publication.');
@@ -136,7 +156,7 @@
     }
     const days = neighborhoods[0].points.map(point => point.date);
     const maximum = Math.max(1,...neighborhoods.flatMap(item => item.points.map(point => point.annonces)));
-    const svg = svgElement('svg',{viewBox:'0 0 900 310',role:'img','aria-label':'Évolution quotidienne du nombre d’annonces dans les cinq quartiers les plus représentés.'});
+    const svg = svgElement('svg',{viewBox:'0 0 900 310',role:'img','aria-label':'Évolution lissée du nombre d’annonces dans les cinq quartiers les plus représentés.'});
     for (const ratio of [0,0.25,0.5,0.75,1]) {
       const y = 242-ratio*190;
       svg.append(svgElement('line',{x1:66,x2:874,y1:y,y2:y,class:'chart-gridline'}));
@@ -146,12 +166,8 @@
     const xFor = index => 76+index*(788/Math.max(days.length-1,1));
     const yFor = value => 242-(value/maximum*190);
     neighborhoods.forEach((item,seriesIndex) => {
-      const points=item.points.map((point,index)=>xFor(index)+','+yFor(point.annonces));
-      if (points.length>1) svg.append(svgElement('polyline',{points:points.join(' '),class:'neighborhood-line neighborhood-line-'+seriesIndex}));
-      item.points.forEach((point,index)=>{
-        const circle=svgElement('circle',{cx:xFor(index),cy:yFor(point.annonces),r:4.2,class:'neighborhood-point neighborhood-point-'+seriesIndex});
-        const title=svgElement('title',{});title.textContent=item.nom+' · '+longDate(point.date)+' · '+fmt.format(point.annonces)+' annonce'+(point.annonces>1?'s':'');circle.append(title);svg.append(circle);
-      });
+      const coords=item.points.map((point,index)=>[xFor(index),yFor(point.annonces)]);
+      if(coords.length>1) svg.append(svgElement('path',{d:smoothPath(coords,0.62),class:'neighborhood-line neighborhood-line-'+seriesIndex}));
     });
     const labelStep=Math.max(1,Math.ceil(days.length/8));
     days.forEach((date,index)=>{
@@ -166,7 +182,7 @@
       entry.append(element('span','neighborhood-swatch neighborhood-swatch-'+index),element('span','',item.nom),element('strong','',fmt.format(item.total)));
       legend.append(entry);
     });
-    const detail=element('p','chart-detail','Du '+longDate(period.debut)+' au '+longDate(period.fin)+' · chaque point correspond à une observation de la période.');
+    const detail=element('p','chart-detail','Du '+longDate(period.debut)+' au '+longDate(period.fin)+' · courbes lissées à partir des observations de la période.');
     container.append(legend,detail);
   }
 
