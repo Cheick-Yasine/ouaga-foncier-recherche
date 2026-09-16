@@ -10,25 +10,6 @@
   gap:.55rem;
 }
 
-/* Tous les graphiques conservent des points visibles sur les observations. */
-.market-chart-point,
-.neighborhood-point {
-  cursor:pointer;
-  transition:r .12s ease, stroke-width .12s ease, fill .12s ease;
-}
-
-.market-chart-point {
-  fill:var(--surface);
-  stroke:var(--blue);
-  stroke-width:2.4;
-}
-
-.market-chart-point:hover {
-  r:7px;
-  stroke-width:3;
-  fill:var(--blue-soft);
-}
-
 .neighborhood-card {
   margin-top:20px;
 }
@@ -142,25 +123,22 @@
   stroke-linecap:round;
 }
 
-.neighborhood-line-0 { stroke:#345de3; }
-.neighborhood-line-1 { stroke:#287bb5; }
-.neighborhood-line-2 { stroke:#5d6bc7; }
-.neighborhood-line-3 { stroke:#178f8b; }
-.neighborhood-line-4 { stroke:#7c5fc7; }
+/* Palette volontairement contrastée : chaque quartier doit être identifiable d'un coup d'œil. */
+.neighborhood-line-0 { stroke:#2563eb; }
+.neighborhood-line-1 { stroke:#d97706; }
+.neighborhood-line-2 { stroke:#059669; }
+.neighborhood-line-3 { stroke:#db2777; }
+.neighborhood-line-4 { stroke:#7c3aed; }
 
 .neighborhood-point {
   stroke-width:2.2;
   fill:var(--surface);
 }
-.neighborhood-point:hover {
-  r:6px;
-  stroke-width:3;
-}
-.neighborhood-point-0 { stroke:#345de3; }
-.neighborhood-point-1 { stroke:#287bb5; }
-.neighborhood-point-2 { stroke:#5d6bc7; }
-.neighborhood-point-3 { stroke:#178f8b; }
-.neighborhood-point-4 { stroke:#7c5fc7; }
+.neighborhood-point-0 { stroke:#2563eb; }
+.neighborhood-point-1 { stroke:#d97706; }
+.neighborhood-point-2 { stroke:#059669; }
+.neighborhood-point-3 { stroke:#db2777; }
+.neighborhood-point-4 { stroke:#7c3aed; }
 
 .neighborhood-legend {
   display:flex;
@@ -188,11 +166,11 @@
   border-radius:99px;
   flex:none;
 }
-.neighborhood-swatch-0 { background:#345de3; }
-.neighborhood-swatch-1 { background:#287bb5; }
-.neighborhood-swatch-2 { background:#5d6bc7; }
-.neighborhood-swatch-3 { background:#178f8b; }
-.neighborhood-swatch-4 { background:#7c5fc7; }
+.neighborhood-swatch-0 { background:#2563eb; }
+.neighborhood-swatch-1 { background:#d97706; }
+.neighborhood-swatch-2 { background:#059669; }
+.neighborhood-swatch-3 { background:#db2777; }
+.neighborhood-swatch-4 { background:#7c3aed; }
 
 .neighborhood-date {
   font-size:10px;
