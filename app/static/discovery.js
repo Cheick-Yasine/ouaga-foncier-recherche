@@ -22,7 +22,7 @@
 
   const css = document.createElement('link');
   css.rel = 'stylesheet';
-  css.href = '/static/dashboard.css?v=20260916-1';
+  css.href = '/static/dashboard.css?v=20260916-2';
   document.head.append(css);
 
   function areaRange(value) {
@@ -73,7 +73,7 @@
   neighborhoodCard.append(neighborhoodHeader,neighborhoodChart);
   marketGrid?.insertAdjacentElement('afterend',neighborhoodCard);
 
-  let market = null, trends = null, trendPeriod = 'hebdo', trendLoading = null;
+  let market = null, trends = null, trendPeriod = 'hebdo';
 
   function drawChart(container, weeks, kind, metric) {
     container.replaceChildren();
@@ -179,15 +179,6 @@
     drawNeighborhoodChart();
   }
 
-  async function loadNeighborhoodTrends() {
-    if (trends) { drawNeighborhoodChart(); return; }
-    if (trendLoading) return trendLoading;
-    trendLoading=fetch('/market/neighborhood-trends').then(response=>{if(!response.ok)throw Error();return response.json();}).then(data=>{trends=data;drawNeighborhoodChart();}).catch(()=>{
-      const container=$('#neighborhood-trend-chart');container?.replaceChildren(element('p','chart-empty','Les tendances par quartier ne sont pas disponibles pour le moment.'));
-    }).finally(()=>{trendLoading=null;});
-    return trendLoading;
-  }
-
   $('#weekly-property').addEventListener('change',renderStats);
   periodSwitch.querySelectorAll('button').forEach(button=>button.addEventListener('click',()=>{trendPeriod=button.dataset.period;drawNeighborhoodChart();}));
 
@@ -220,5 +211,5 @@
     return loading;
   }
   zone.addEventListener('focus',loadNeighborhoods);zone.addEventListener('input',filterNeighborhoods);
-  window.HakimoDiscovery={areaRange,setStats(stats){market=stats;renderStats();loadNeighborhoodTrends();},clearStats(){market=null;trends=null;for(const id of ['weekly-count-chart','weekly-price-chart','neighborhood-trend-chart'])$('#'+id)?.replaceChildren(element('p','chart-empty','Données indisponibles.'));},resetForm(){for(const id of ['area-category','budget-label','zone-status'])$('#'+id).textContent='';filterNeighborhoods();}};
+  window.HakimoDiscovery={areaRange,setStats(stats){market=stats;trends=stats?.tendances_quartiers || null;renderStats();},clearStats(){market=null;trends=null;for(const id of ['weekly-count-chart','weekly-price-chart','neighborhood-trend-chart'])$('#'+id)?.replaceChildren(element('p','chart-empty','Données indisponibles.'));},resetForm(){for(const id of ['area-category','budget-label','zone-status'])$('#'+id).textContent='';filterNeighborhoods();}};
 })();
