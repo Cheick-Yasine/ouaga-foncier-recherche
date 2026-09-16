@@ -6,12 +6,11 @@
   const fmt = new Intl.NumberFormat('fr-FR', {maximumFractionDigits: 0});
   const fold = value => value.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
 
-  // L'accent de l'application reste bleu. L'utilisateur garde uniquement le choix du thème.
   try {
     const saved = JSON.parse(localStorage.getItem('hakimo:appearance') || '{}');
     saved.accent = 'blue';
     localStorage.setItem('hakimo:appearance', JSON.stringify(saved));
-  } catch { /* Le thème fonctionne même sans stockage local. */ }
+  } catch {}
   document.documentElement.dataset.accent = 'blue';
   const colorChoices = $('.color-choices');
   if (colorChoices) {
@@ -22,7 +21,7 @@
 
   const css = document.createElement('link');
   css.rel = 'stylesheet';
-  css.href = '/static/dashboard.css?v=20260916-2';
+  css.href = '/static/dashboard.css?v=20260916-3';
   document.head.append(css);
 
   function areaRange(value) {
@@ -56,7 +55,11 @@
   const neighborhoodCard = element('article','weekly-card neighborhood-card');
   const neighborhoodHeader = element('div','neighborhood-heading');
   const neighborhoodCopy = element('div');
-  neighborhoodCopy.append(element('span','chart-kicker','Les quartiers les plus représentés'), element('h3','','Évolution quotidienne des 5 quartiers en tête'));
+  neighborhoodCopy.append(
+    element('span','chart-kicker','Les quartiers les plus représentés'),
+    element('h3','','Où se concentre réellement l’offre ?'),
+    element('p','chart-subtitle','Comparez le volume et la dynamique des quartiers les plus actifs.')
+  );
   const periodSwitch = element('div','trend-period-switch');
   periodSwitch.setAttribute('role','group');
   periodSwitch.setAttribute('aria-label','Période du classement des quartiers');
@@ -82,7 +85,7 @@
     const price = metric === 'prix_m2';
     const finite = values.filter(v => Number.isFinite(v));
     const maximum = Math.max(...finite, 1);
-    const svg = svgElement('svg',{viewBox:'0 0 520 180',role:'img','aria-label':price?'Évolution du prix moyen annoncé par mètre carré. Valeurs sous la courbe.':'Nombre d’annonces publiées par semaine. Valeurs sous la courbe.'});
+    const svg = svgElement('svg',{viewBox:'0 0 520 180',role:'img','aria-label':price?'Évolution du prix moyen annoncé par mètre carré.':'Nombre d’annonces publiées par semaine.'});
     for (const ratio of [0,0.5,1]) {
       const y = 142-ratio*115;
       svg.append(svgElement('line',{x1:62,x2:500,y1:y,y2:y,class:'chart-gridline'}));
@@ -105,7 +108,6 @@
     container.append(svg);
     const dates=element('div','chart-weeks');
     const detail=element('p','chart-detail',price?'Prix demandés, en FCFA par m².':'Une annonce est comptée selon sa date de publication.');
-    detail.setAttribute('aria-live','polite');
     weeks.forEach((week,i) => {
       const button=element('button','chart-week'); button.type='button';
       button.append(element('span','',shortDate(week.debut)+' – '+shortDate(week.fin)),element('strong','',values[i]===null?'Non renseigné':fmt.format(values[i])+(price?' FCFA':' annonces')));
@@ -118,7 +120,45 @@
       dates.append(button);
     });
     container.append(dates,detail);
-    if (!finite.length) detail.textContent='Aucun prix au m² calculable sur ces semaines.';
+  }
+
+  function cumulative(points) {
+    let total=0;
+    return points.map(point=>({date:point.date,annonces:(total+=point.annonces)}));
+  }
+
+  function rolling7(points) {
+    return points.map((point,index)=>({
+      date:point.date,
+      annonces:points.slice(Math.max(0,index-6),index+1).reduce((sum,p)=>sum+p.annonces,0)
+    }));
+  }
+
+  function weeklyBuckets(points) {
+    const buckets=[];
+    for(let start=0;start<points.length;start+=7){
+      const group=points.slice(start,start+7);
+      if(!group.length) continue;
+      buckets.push({date:group[0].date,fin:group.at(-1).date,annonces:group.reduce((sum,p)=>sum+p.annonces,0)});
+    }
+    return buckets;
+  }
+
+  function transformedSeries(neighborhoods) {
+    if (trendPeriod === 'hebdo') return neighborhoods.map(item=>({...item,series:cumulative(item.points)}));
+    if (trendPeriod === 'mensuel') return neighborhoods.map(item=>({...item,series:rolling7(item.points)}));
+    return neighborhoods.map(item=>({...item,series:weeklyBuckets(item.points)}));
+  }
+
+  function insightText(periodData, neighborhoods) {
+    const leader=neighborhoods[0];
+    const top5=neighborhoods.reduce((sum,item)=>sum+item.total,0);
+    const total=periodData?.total_annonces || top5;
+    const share=total ? Math.round(top5/total*100) : 0;
+    const active=neighborhoods.filter(item=>item.jours_actifs>1).length;
+    return leader
+      ? `${leader.nom} concentre le plus d’offres (${fmt.format(leader.total)}). Les 5 premiers quartiers représentent ${share}% des annonces de la période. ${active} quartier${active>1?'s':''} sur 5 ont publié à plusieurs dates.`
+      : '';
   }
 
   function drawNeighborhoodChart() {
@@ -127,48 +167,71 @@
     container.replaceChildren();
     periodSwitch.querySelectorAll('button').forEach(button => button.setAttribute('aria-pressed',String(button.dataset.period === trendPeriod)));
     if (!trends) { container.append(element('p','chart-empty','Chargement des quartiers…')); return; }
+
     const kind = $('#weekly-property').value;
     const period = trends.periodes?.[trendPeriod];
-    const neighborhoods = period?.types?.[kind]?.quartiers || [];
+    const periodData = period?.types?.[kind];
+    const neighborhoods = periodData?.quartiers || [];
     if (!neighborhoods.length) {
       container.append(element('p','chart-empty','Pas assez d’annonces avec un quartier identifié sur cette période.'));
       return;
     }
-    const days = neighborhoods[0].points.map(point => point.date);
-    const maximum = Math.max(1,...neighborhoods.flatMap(item => item.points.map(point => point.annonces)));
-    const svg = svgElement('svg',{viewBox:'0 0 900 310',role:'img','aria-label':'Évolution quotidienne du nombre d’annonces dans les cinq quartiers les plus représentés.'});
-    for (const ratio of [0,0.25,0.5,0.75,1]) {
-      const y = 242-ratio*190;
+
+    const summary=element('div','neighborhood-summary');
+    neighborhoods.slice(0,3).forEach((item,index)=>{
+      const card=element('div','neighborhood-kpi');
+      card.append(element('span','neighborhood-rank','#'+(index+1)),element('strong','',item.nom),element('b','',fmt.format(item.total)+' annonces'),element('small','',fmt.format(item.part_pct)+'% du marché observé'));
+      summary.append(card);
+    });
+    const concentration=element('div','neighborhood-kpi neighborhood-kpi-focus');
+    const top5=neighborhoods.reduce((sum,item)=>sum+item.total,0);
+    const share=periodData?.total_annonces?Math.round(top5/periodData.total_annonces*100):100;
+    concentration.append(element('span','','Top 5'),element('strong','','Concentration'),element('b','',share+'%'),element('small','','des annonces de la période'));
+    summary.append(concentration);
+    container.append(summary);
+
+    const series=transformedSeries(neighborhoods);
+    const xValues=series[0].series.map(point=>point.date);
+    const maximum=Math.max(1,...series.flatMap(item=>item.series.map(point=>point.annonces)));
+    const svg=svgElement('svg',{viewBox:'0 0 900 300',role:'img','aria-label':'Comparaison de la dynamique des cinq quartiers les plus actifs.'});
+    for(const ratio of [0,0.25,0.5,0.75,1]){
+      const y=232-ratio*180;
       svg.append(svgElement('line',{x1:66,x2:874,y1:y,y2:y,class:'chart-gridline'}));
-      const label=svgElement('text',{x:58,y:y+4,'text-anchor':'end',class:'chart-axis'});
-      label.textContent=fmt.format(maximum*ratio);svg.append(label);
+      const label=svgElement('text',{x:58,y:y+4,'text-anchor':'end',class:'chart-axis'});label.textContent=fmt.format(maximum*ratio);svg.append(label);
     }
-    const xFor = index => 76+index*(788/Math.max(days.length-1,1));
-    const yFor = value => 242-(value/maximum*190);
-    neighborhoods.forEach((item,seriesIndex) => {
-      const points=item.points.map((point,index)=>xFor(index)+','+yFor(point.annonces));
-      if (points.length>1) svg.append(svgElement('polyline',{points:points.join(' '),class:'neighborhood-line neighborhood-line-'+seriesIndex}));
-      item.points.forEach((point,index)=>{
-        if (!point.annonces && days.length>35) return;
-        const circle=svgElement('circle',{cx:xFor(index),cy:yFor(point.annonces),r:days.length>35?2.5:3.5,class:'neighborhood-point neighborhood-point-'+seriesIndex});
-        const title=svgElement('title',{});title.textContent=item.nom+' · '+longDate(point.date)+' · '+fmt.format(point.annonces)+' annonce'+(point.annonces>1?'s':'');circle.append(title);svg.append(circle);
+    const xFor=index=>76+index*(788/Math.max(xValues.length-1,1));
+    const yFor=value=>232-(value/maximum*180);
+    series.forEach((item,seriesIndex)=>{
+      const points=item.series.map((point,index)=>xFor(index)+','+yFor(point.annonces));
+      if(points.length>1) svg.append(svgElement('polyline',{points:points.join(' '),class:'neighborhood-line neighborhood-line-'+seriesIndex}));
+      item.series.forEach((point,index)=>{
+        const circle=svgElement('circle',{cx:xFor(index),cy:yFor(point.annonces),r:3.5,class:'neighborhood-point neighborhood-point-'+seriesIndex});
+        const title=svgElement('title',{});
+        const periodLabel=trendPeriod==='trimestriel' && point.fin ? shortDate(point.date)+' – '+shortDate(point.fin) : longDate(point.date);
+        title.textContent=item.nom+' · '+periodLabel+' · '+fmt.format(point.annonces)+' annonce'+(point.annonces>1?'s':'');
+        circle.append(title);svg.append(circle);
       });
     });
-    const labelStep=Math.max(1,Math.ceil(days.length/8));
-    days.forEach((date,index)=>{
-      if (index%labelStep!==0 && index!==days.length-1) return;
-      const label=svgElement('text',{x:xFor(index),y:272,'text-anchor':'middle',class:'chart-axis neighborhood-date'});
-      label.textContent=shortDate(date);svg.append(label);
+    const labelStep=Math.max(1,Math.ceil(xValues.length/7));
+    xValues.forEach((date,index)=>{
+      if(index%labelStep!==0 && index!==xValues.length-1)return;
+      const label=svgElement('text',{x:xFor(index),y:262,'text-anchor':'middle',class:'chart-axis neighborhood-date'});label.textContent=shortDate(date);svg.append(label);
     });
     container.append(svg);
+
     const legend=element('div','neighborhood-legend');
     neighborhoods.forEach((item,index)=>{
       const entry=element('div','neighborhood-legend-item');
-      entry.append(element('span','neighborhood-swatch neighborhood-swatch-'+index),element('span','',item.nom),element('strong','',fmt.format(item.total)));
+      entry.append(element('span','neighborhood-swatch neighborhood-swatch-'+index),element('span','',item.nom),element('strong','',fmt.format(item.total)+' · '+fmt.format(item.part_pct)+'%'));
       legend.append(entry);
     });
-    const detail=element('p','chart-detail','Du '+longDate(period.debut)+' au '+longDate(period.fin)+' · classement sur la période, évolution affichée jour par jour.');
-    container.append(legend,detail);
+    container.append(legend);
+
+    const modeLabel = trendPeriod==='hebdo' ? 'cumul quotidien de la semaine' : trendPeriod==='mensuel' ? 'activité glissante sur 7 jours' : 'volume par semaine du trimestre';
+    container.append(
+      element('p','chart-insight',insightText(periodData,neighborhoods)),
+      element('p','chart-detail','Lecture : '+modeLabel+' · '+longDate(period.debut)+' au '+longDate(period.fin)+'.')
+    );
   }
 
   function renderStats() {
