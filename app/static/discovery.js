@@ -22,7 +22,7 @@
 
   const css = document.createElement('link');
   css.rel = 'stylesheet';
-  css.href = '/static/dashboard.css?v=20260916-recovery-1';
+  css.href = '/static/dashboard.css?v=20260916-points-1';
   document.head.append(css);
 
   function areaRange(value) {
@@ -99,7 +99,7 @@
     flush();
     values.forEach((value,i) => {
       if (!Number.isFinite(value)) return;
-      const circle=svgElement('circle',{cx:80+i*(400/Math.max(weeks.length-1,1)),cy:142-value/maximum*115,r:5,class:'chart-point'});
+      const circle=svgElement('circle',{cx:80+i*(400/Math.max(weeks.length-1,1)),cy:142-value/maximum*115,r:5.5,class:'chart-point market-chart-point'});
       const label=svgElement('title',{});label.textContent=shortDate(weeks[i].debut)+' : '+fmt.format(value)+(price?' FCFA/m²':' annonces');circle.append(label);svg.append(circle);
     });
     container.append(svg);
@@ -149,8 +149,7 @@
       const points=item.points.map((point,index)=>xFor(index)+','+yFor(point.annonces));
       if (points.length>1) svg.append(svgElement('polyline',{points:points.join(' '),class:'neighborhood-line neighborhood-line-'+seriesIndex}));
       item.points.forEach((point,index)=>{
-        if (!point.annonces && days.length>35) return;
-        const circle=svgElement('circle',{cx:xFor(index),cy:yFor(point.annonces),r:days.length>35?2.5:3.5,class:'neighborhood-point neighborhood-point-'+seriesIndex});
+        const circle=svgElement('circle',{cx:xFor(index),cy:yFor(point.annonces),r:4.2,class:'neighborhood-point neighborhood-point-'+seriesIndex});
         const title=svgElement('title',{});title.textContent=item.nom+' · '+longDate(point.date)+' · '+fmt.format(point.annonces)+' annonce'+(point.annonces>1?'s':'');circle.append(title);svg.append(circle);
       });
     });
@@ -167,7 +166,7 @@
       entry.append(element('span','neighborhood-swatch neighborhood-swatch-'+index),element('span','',item.nom),element('strong','',fmt.format(item.total)));
       legend.append(entry);
     });
-    const detail=element('p','chart-detail','Du '+longDate(period.debut)+' au '+longDate(period.fin)+' · classement sur la période, évolution affichée jour par jour.');
+    const detail=element('p','chart-detail','Du '+longDate(period.debut)+' au '+longDate(period.fin)+' · chaque point correspond à une observation de la période.');
     container.append(legend,detail);
   }
 
