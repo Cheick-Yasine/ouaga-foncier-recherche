@@ -70,12 +70,7 @@ def weekly_market(candidates, start):
 
 
 def neighborhood_trends(candidates: Iterable[SearchCandidate], *, now: datetime | None = None) -> dict:
-    """Top 5 quartiers des périodes calendaires courantes.
-
-    Le backend conserve les points quotidiens bruts et les totaux. L'interface
-    choisit ensuite une lecture adaptée à chaque horizon : cumul sur la semaine,
-    activité glissante sur le mois et agrégation hebdomadaire sur le trimestre.
-    """
+    """Top 5 quartiers des périodes calendaires courantes."""
     current = now or datetime.now(timezone.utc)
     current = current.astimezone(timezone.utc)
     week_start = (current - timedelta(days=current.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
@@ -99,6 +94,7 @@ def neighborhood_trends(candidates: Iterable[SearchCandidate], *, now: datetime 
         pool.append(candidate)
 
     return {
+        'granularite': 'jour',
         'granularite_source': 'jour',
         'date_utilisee': 'date_publication',
         'periodes': {
