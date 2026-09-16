@@ -70,10 +70,11 @@ def weekly_market(candidates, start):
 
 
 def neighborhood_trends(candidates: Iterable[SearchCandidate], *, now: datetime | None = None) -> dict:
-    """Top 5 quartiers de la période courante, avec évolution quotidienne.
+    """Top 5 quartiers des périodes calendaires courantes.
 
-    Les périodes sont la semaine, le mois et le trimestre calendaires en cours.
-    Le classement est recalculé pour chaque type de bien et chaque période.
+    Le backend conserve les points quotidiens bruts et les totaux. L'interface
+    choisit ensuite une lecture adaptée à chaque horizon : cumul sur la semaine,
+    activité glissante sur le mois et agrégation hebdomadaire sur le trimestre.
     """
     current = now or datetime.now(timezone.utc)
     current = current.astimezone(timezone.utc)
@@ -98,7 +99,7 @@ def neighborhood_trends(candidates: Iterable[SearchCandidate], *, now: datetime 
         pool.append(candidate)
 
     return {
-        'granularite': 'jour',
+        'granularite_source': 'jour',
         'date_utilisee': 'date_publication',
         'periodes': {
             'hebdo': _neighborhood_period(pool, week_start, current),
@@ -123,10 +124,13 @@ def _neighborhood_period(candidates: list[SearchCandidate], start: datetime, cur
         names = sorted(totals, key=lambda name: (-totals[name], neighborhood_key(name)))[:5]
         daily = Counter((publication_time(c.publication_label).date().isoformat(), c.neighborhood) for c in selected)
         by_type[kind] = {
+            'total_annonces': len(selected),
             'quartiers': [
                 {
                     'nom': name,
                     'total': totals[name],
+                    'part_pct': round((totals[name] / len(selected)) * 100, 1) if selected else 0.0,
+                    'jours_actifs': sum(1 for date in days if daily[(date, name)] > 0),
                     'points': [{'date': date, 'annonces': daily[(date, name)]} for date in days],
                 }
                 for name in names
