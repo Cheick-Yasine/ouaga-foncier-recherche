@@ -22,7 +22,7 @@
 
   const css = document.createElement('link');
   css.rel = 'stylesheet';
-  css.href = '/static/dashboard.css?v=20260916-three-views-1';
+  css.href = '/static/dashboard.css?v=20260916-five-views-1';
   document.head.append(css);
 
   function areaRange(value) {
@@ -97,6 +97,7 @@
   marketGrid?.insertAdjacentElement('afterend',neighborhoodCard);
 
   const alternativeGrid = element('div','neighborhood-alternatives');
+
   const rankingCard = element('article','weekly-card neighborhood-alt-card');
   const rankingCopy = element('div','neighborhood-alt-heading');
   rankingCopy.append(
@@ -120,7 +121,32 @@
   heatChart.id = 'neighborhood-heatmap-chart';
   heatChart.append(element('p','chart-empty','Chargement de l’intensité…'));
   heatCard.append(heatCopy,heatChart);
-  alternativeGrid.append(rankingCard,heatCard);
+
+  const shareCard = element('article','weekly-card neighborhood-alt-card');
+  const shareCopy = element('div','neighborhood-alt-heading');
+  shareCopy.append(
+    element('span','chart-kicker','Vue 4 · Répartition'),
+    element('h3','','Quelle part du marché prend chaque quartier ?'),
+    element('p','chart-subtitle','Un anneau compare le poids des 5 quartiers en tête au reste des quartiers observés.')
+  );
+  const shareChart = element('div','neighborhood-share');
+  shareChart.id = 'neighborhood-share-chart';
+  shareChart.append(element('p','chart-empty','Chargement de la répartition…'));
+  shareCard.append(shareCopy,shareChart);
+
+  const regularityCard = element('article','weekly-card neighborhood-alt-card');
+  const regularityCopy = element('div','neighborhood-alt-heading');
+  regularityCopy.append(
+    element('span','chart-kicker','Vue 5 · Régularité'),
+    element('h3','','Quels quartiers publient le plus régulièrement ?'),
+    element('p','chart-subtitle','La fréquence de présence montre combien de jours chaque quartier a réellement eu des annonces.')
+  );
+  const regularityChart = element('div','neighborhood-regularity');
+  regularityChart.id = 'neighborhood-regularity-chart';
+  regularityChart.append(element('p','chart-empty','Chargement de la régularité…'));
+  regularityCard.append(regularityCopy,regularityChart);
+
+  alternativeGrid.append(rankingCard,heatCard,shareCard,regularityCard);
   neighborhoodCard.insertAdjacentElement('afterend',alternativeGrid);
 
   let market = null, trends = null, trendPeriod = 'hebdo', trendLoading = null;
@@ -177,7 +203,8 @@
     if (!trends) return null;
     const kind = $('#weekly-property').value;
     const period = trends.periodes?.[trendPeriod];
-    return {kind,period,neighborhoods:period?.types?.[kind]?.quartiers || []};
+    const periodData = period?.types?.[kind] || null;
+    return {kind,period,periodData,neighborhoods:periodData?.quartiers || []};
   }
 
   function syncPeriodButtons() {
@@ -284,10 +311,78 @@
     container.append(svg,element('p','chart-detail','Intensité quotidienne du '+longDate(period.debut)+' au '+longDate(period.fin)+' · une case plus marquée signifie davantage d’annonces ce jour-là.'));
   }
 
+  function drawNeighborhoodShare() {
+    const container = $('#neighborhood-share-chart');
+    if (!container) return;
+    container.replaceChildren();
+    const data = currentNeighborhoodData();
+    if (!data) {container.append(element('p','chart-empty','Chargement de la répartition…'));return;}
+    const {period,periodData,neighborhoods} = data;
+    if (!neighborhoods.length) {container.append(element('p','chart-empty','Pas assez de données pour afficher la répartition.'));return;}
+
+    const topTotal=neighborhoods.reduce((sum,item)=>sum+item.total,0);
+    const total=Math.max(periodData?.total_annonces || topTotal,topTotal);
+    const other=Math.max(0,total-topTotal);
+    const segments=neighborhoods.map((item,index)=>({name:item.nom,value:item.total,color:seriesColors[index]}));
+    if(other>0)segments.push({name:'Autres quartiers',value:other,color:'#94a3b8'});
+
+    const svg=svgElement('svg',{viewBox:'0 0 500 270',role:'img','aria-label':'Répartition des annonces entre les cinq quartiers principaux et les autres quartiers.'});
+    const cx=145,cy=132,r=82,stroke=30,circumference=2*Math.PI*r;
+    svg.append(svgElement('circle',{cx,cy,r,fill:'none',stroke:'var(--surface-2)','stroke-width':stroke}));
+    let offset=0;
+    segments.forEach(segment=>{
+      const length=total ? segment.value/total*circumference : 0;
+      const circle=svgElement('circle',{cx,cy,r,fill:'none',stroke:segment.color,'stroke-width':stroke,'stroke-dasharray':`${length} ${Math.max(0,circumference-length)}`,'stroke-dashoffset':-offset,transform:`rotate(-90 ${cx} ${cy})`,class:'share-segment'});
+      const title=svgElement('title',{});title.textContent=segment.name+' · '+fmt.format(segment.value)+' annonces · '+fmt.format(total?segment.value/total*100:0)+'%';circle.append(title);svg.append(circle);offset+=length;
+    });
+    const topShare=total ? Math.round(topTotal/total*100) : 0;
+    const centerValue=svgElement('text',{x:cx,y:cy-2,'text-anchor':'middle',class:'share-center-value'});centerValue.textContent=topShare+'%';svg.append(centerValue);
+    const centerLabel=svgElement('text',{x:cx,y:cy+20,'text-anchor':'middle',class:'share-center-label'});centerLabel.textContent='dans le Top 5';svg.append(centerLabel);
+
+    const legend=element('div','share-legend');
+    segments.forEach(segment=>{
+      const row=element('div','share-legend-row');
+      const swatch=element('span','share-swatch');swatch.style.background=segment.color;
+      const pct=total?segment.value/total*100:0;
+      row.append(swatch,element('span','share-name',segment.name),element('strong','',fmt.format(segment.value)),element('span','share-pct',fmt.format(pct)+'%'));
+      legend.append(row);
+    });
+    const wrap=element('div','share-layout');wrap.append(svg,legend);
+    container.append(wrap,element('p','chart-detail','Répartition du '+longDate(period.debut)+' au '+longDate(period.fin)+' · cette vue montre la concentration du marché observé.'));
+  }
+
+  function drawNeighborhoodRegularity() {
+    const container = $('#neighborhood-regularity-chart');
+    if (!container) return;
+    container.replaceChildren();
+    const data = currentNeighborhoodData();
+    if (!data) {container.append(element('p','chart-empty','Chargement de la régularité…'));return;}
+    const {period,neighborhoods} = data;
+    if (!neighborhoods.length) {container.append(element('p','chart-empty','Pas assez de données pour mesurer la régularité.'));return;}
+    const totalDays=Math.max(1,neighborhoods[0].points.length);
+    const grid=element('div','regularity-grid');
+    neighborhoods.forEach((item,index)=>{
+      const active=Number.isFinite(item.jours_actifs) ? item.jours_actifs : item.points.filter(point=>point.annonces>0).length;
+      const pct=Math.round(active/totalDays*100);
+      const card=element('div','regularity-gauge');
+      const svg=svgElement('svg',{viewBox:'0 0 100 100',role:'img','aria-label':item.nom+' actif '+active+' jours sur '+totalDays});
+      const r=36,c=2*Math.PI*r,used=pct/100*c;
+      svg.append(svgElement('circle',{cx:50,cy:50,r,fill:'none',stroke:'var(--surface-2)','stroke-width':10}));
+      const progress=svgElement('circle',{cx:50,cy:50,r,fill:'none',stroke:seriesColors[index],'stroke-width':10,'stroke-linecap':'round','stroke-dasharray':`${used} ${Math.max(0,c-used)}`,transform:'rotate(-90 50 50)',class:'regularity-ring'});
+      const title=svgElement('title',{});title.textContent=item.nom+' · '+active+' jours actifs sur '+totalDays;progress.append(title);svg.append(progress);
+      const value=svgElement('text',{x:50,y:55,'text-anchor':'middle',class:'regularity-value'});value.textContent=pct+'%';svg.append(value);
+      card.append(svg,element('strong','',item.nom),element('span','',active+' jour'+(active>1?'s':'')+' actif'+(active>1?'s':'')+' / '+totalDays));
+      grid.append(card);
+    });
+    container.append(grid,element('p','chart-detail','Régularité du '+longDate(period.debut)+' au '+longDate(period.fin)+' · 100% signifie que le quartier a eu au moins une annonce chaque jour de la période.'));
+  }
+
   function drawNeighborhoodViews() {
     drawNeighborhoodChart();
     drawNeighborhoodRanking();
     drawNeighborhoodHeatmap();
+    drawNeighborhoodShare();
+    drawNeighborhoodRegularity();
   }
 
   function renderStats() {
@@ -302,7 +397,7 @@
     if (trends) { drawNeighborhoodViews(); return; }
     if (trendLoading) return trendLoading;
     trendLoading=fetch('/market/neighborhood-trends').then(response=>{if(!response.ok)throw Error();return response.json();}).then(data=>{trends=data;drawNeighborhoodViews();}).catch(()=>{
-      for(const id of ['neighborhood-trend-chart','neighborhood-ranking-chart','neighborhood-heatmap-chart']){
+      for(const id of ['neighborhood-trend-chart','neighborhood-ranking-chart','neighborhood-heatmap-chart','neighborhood-share-chart','neighborhood-regularity-chart']){
         const container=$('#'+id);container?.replaceChildren(element('p','chart-empty','Les données par quartier ne sont pas disponibles pour le moment.'));
       }
     }).finally(()=>{trendLoading=null;});
@@ -341,5 +436,5 @@
     return loading;
   }
   zone.addEventListener('focus',loadNeighborhoods);zone.addEventListener('input',filterNeighborhoods);
-  window.HakimoDiscovery={areaRange,setStats(stats){market=stats;renderStats();loadNeighborhoodTrends();},clearStats(){market=null;trends=null;for(const id of ['weekly-count-chart','weekly-price-chart','neighborhood-trend-chart','neighborhood-ranking-chart','neighborhood-heatmap-chart'])$('#'+id)?.replaceChildren(element('p','chart-empty','Données indisponibles.'));},resetForm(){for(const id of ['area-category','budget-label','zone-status'])$('#'+id).textContent='';filterNeighborhoods();}};
+  window.HakimoDiscovery={areaRange,setStats(stats){market=stats;renderStats();loadNeighborhoodTrends();},clearStats(){market=null;trends=null;for(const id of ['weekly-count-chart','weekly-price-chart','neighborhood-trend-chart','neighborhood-ranking-chart','neighborhood-heatmap-chart','neighborhood-share-chart','neighborhood-regularity-chart'])$('#'+id)?.replaceChildren(element('p','chart-empty','Données indisponibles.'));},resetForm(){for(const id of ['area-category','budget-label','zone-status'])$('#'+id).textContent='';filterNeighborhoods();}};
 })();
