@@ -67,3 +67,74 @@ def weekly_market(candidates, start):
             by_type[kind] = {'annonces': len(selected), 'prix_m2': round(fmean(prices), 2) if prices else None, 'prix_renseignes': len(prices)}
         weeks.append({'debut': begin.date().isoformat(), 'fin': (end-timedelta(days=1)).date().isoformat(), 'types': by_type})
     return weeks
+
+
+def neighborhood_trends(candidates: Iterable[SearchCandidate], *, now: datetime | None = None) -> dict:
+    """Top 5 quartiers de la période courante, avec évolution quotidienne.
+
+    Les périodes sont la semaine, le mois et le trimestre calendaires en cours.
+    Le classement est recalculé pour chaque type de bien et chaque période.
+    """
+    current = now or datetime.now(timezone.utc)
+    current = current.astimezone(timezone.utc)
+    week_start = (current - timedelta(days=current.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
+    month_start = current.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    quarter_month = ((current.month - 1) // 3) * 3 + 1
+    quarter_start = current.replace(month=quarter_month, day=1, hour=0, minute=0, second=0, microsecond=0)
+
+    pool, seen = [], set()
+    for candidate in candidates:
+        published = publication_time(candidate.publication_label)
+        if published is None or not quarter_start <= published <= current:
+            continue
+        if not sale_eligible(candidate.text) or not within_ouagadougou(candidate.text, candidate.neighborhood):
+            continue
+        if not candidate.neighborhood or candidate.neighborhood in CITY_LEVEL_AREAS:
+            continue
+        identity = candidate.url or candidate.identifier
+        if identity in seen:
+            continue
+        seen.add(identity)
+        pool.append(candidate)
+
+    return {
+        'granularite': 'jour',
+        'date_utilisee': 'date_publication',
+        'periodes': {
+            'hebdo': _neighborhood_period(pool, week_start, current),
+            'mensuel': _neighborhood_period(pool, month_start, current),
+            'trimestriel': _neighborhood_period(pool, quarter_start, current),
+        },
+    }
+
+
+def _neighborhood_period(candidates: list[SearchCandidate], start: datetime, current: datetime) -> dict:
+    rows = [c for c in candidates if start <= publication_time(c.publication_label) <= current]
+    days = []
+    day = start.date()
+    while day <= current.date():
+        days.append(day.isoformat())
+        day += timedelta(days=1)
+
+    by_type = {}
+    for kind in ('tous', 'parcelle', 'terrain', 'maison'):
+        selected = rows if kind == 'tous' else [c for c in rows if c.property_type == kind]
+        totals = Counter(c.neighborhood for c in selected)
+        names = sorted(totals, key=lambda name: (-totals[name], neighborhood_key(name)))[:5]
+        daily = Counter((publication_time(c.publication_label).date().isoformat(), c.neighborhood) for c in selected)
+        by_type[kind] = {
+            'quartiers': [
+                {
+                    'nom': name,
+                    'total': totals[name],
+                    'points': [{'date': date, 'annonces': daily[(date, name)]} for date in days],
+                }
+                for name in names
+            ]
+        }
+
+    return {
+        'debut': start.date().isoformat(),
+        'fin': current.date().isoformat(),
+        'types': by_type,
+    }
