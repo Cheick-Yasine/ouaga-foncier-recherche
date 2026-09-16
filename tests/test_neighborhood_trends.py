@@ -73,7 +73,7 @@ def test_neighborhood_trends_endpoint_loads_enough_history(monkeypatch):
     response = client.get('/market/neighborhood-trends')
 
     assert response.status_code == 200
-    assert calls == [(None, None, 120)]
+    assert calls == [(None, None, 95)]
     payload = response.json()
     assert payload['granularite'] == 'jour'
     assert set(payload['periodes']) == {'hebdo', 'mensuel', 'trimestriel'}
