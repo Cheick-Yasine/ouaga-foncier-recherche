@@ -10,6 +10,25 @@
   gap:.55rem;
 }
 
+/* Tous les graphiques conservent des points visibles sur les observations. */
+.market-chart-point,
+.neighborhood-point {
+  cursor:pointer;
+  transition:r .12s ease, stroke-width .12s ease, fill .12s ease;
+}
+
+.market-chart-point {
+  fill:var(--surface);
+  stroke:var(--blue);
+  stroke-width:2.4;
+}
+
+.market-chart-point:hover {
+  r:7px;
+  stroke-width:3;
+  fill:var(--blue-soft);
+}
+
 .neighborhood-card {
   margin-top:20px;
 }
@@ -130,8 +149,12 @@
 .neighborhood-line-4 { stroke:#7c5fc7; }
 
 .neighborhood-point {
-  stroke-width:2;
+  stroke-width:2.2;
   fill:var(--surface);
+}
+.neighborhood-point:hover {
+  r:6px;
+  stroke-width:3;
 }
 .neighborhood-point-0 { stroke:#345de3; }
 .neighborhood-point-1 { stroke:#287bb5; }
