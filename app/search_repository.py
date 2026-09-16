@@ -50,8 +50,6 @@ def _candidate_cache_key(
     return database_key, max_age_days, pool_limit, publication_days
 
 
-
-
 def _optional_text(value: Any) -> str | None:
     if value is None:
         return None
@@ -200,7 +198,13 @@ def load_recent_candidates(
     pool_limit: int | None = 2_000,
     publication_days: int | None = None,
 ) -> list[SearchCandidate]:
-    """Charge les annonces admissibles sans modifier Neon."""
+    """Charge les annonces admissibles sans modifier Neon.
+
+    Quand ``publication_days`` est fourni, le filtre ISO est appliqué d'abord
+    dans PostgreSQL. On garde ensuite la validation Python afin d'écarter les
+    dates invalides. Cela évite de transférer et analyser tout l'historique pour
+    les graphiques de l'accueil.
+    """
 
     current_settings = settings or get_settings()
     if current_settings.database_url is None:
@@ -230,17 +234,30 @@ def load_recent_candidates(
     with psycopg.connect(
         database_url,
         row_factory=dict_row,
+        connect_timeout=10,
     ) as connection:
         with connection.transaction():
             connection.execute("SET TRANSACTION READ ONLY")
+            connection.execute("SET LOCAL statement_timeout = '20s'")
             age_clause = (
                 "premiere_collecte >= CURRENT_TIMESTAMP - "
                 "(%s * INTERVAL '1 day') AND "
                 if max_age_days is not None
                 else ""
             )
+            publication_clause = (
+                "AND BTRIM(COALESCE(date_publication, '')) ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}' "
+                "AND LEFT(BTRIM(date_publication), 10) >= TO_CHAR(CURRENT_DATE - %s, 'YYYY-MM-DD') "
+                "AND LEFT(BTRIM(date_publication), 10) <= TO_CHAR(CURRENT_DATE, 'YYYY-MM-DD') "
+                if publication_days is not None
+                else ""
+            )
             limit_clause = "LIMIT %s" if pool_limit is not None else ""
-            parameters = ((max_age_days,) if max_age_days is not None else ()) + ((pool_limit,) if pool_limit is not None else ())
+            parameters = (
+                ((max_age_days,) if max_age_days is not None else ())
+                + ((publication_days,) if publication_days is not None else ())
+                + ((pool_limit,) if pool_limit is not None else ())
+            )
             rows = connection.execute(
                 f"""
                 SELECT
@@ -265,14 +282,15 @@ def load_recent_candidates(
                       NULLIF(LOWER(TRIM(type_bien)), ''),
                       ''
                   ) <> 'villa'
+                  {publication_clause}
                 ORDER BY premiere_collecte DESC NULLS LAST, id
                 {limit_clause}
                 """,
                 parameters,
             ).fetchall()
 
-    # Écarter les dates absentes, anciennes ou futures avant l'analyse du texte.
-    # Aucun LIMIT : les statistiques restent complètes sur leur période.
+    # Validation finale côté Python : elle protège contre les chaînes qui ont
+    # le préfixe YYYY-MM-DD mais ne représentent pas une vraie date ISO.
     if publication_days is not None:
         start = current_time - timedelta(days=publication_days)
         rows = [row for row in rows
