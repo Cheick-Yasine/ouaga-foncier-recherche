@@ -1,4 +1,3 @@
-from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 
 from fastapi.testclient import TestClient
@@ -26,7 +25,6 @@ def candidate(identifier, now, *, neighborhood='Karpala', property_type='parcell
 def test_top_five_is_recomputed_by_period_and_property_type():
     now = datetime(2026, 9, 16, 12, tzinfo=timezone.utc)
     rows = []
-    # Cette semaine : Saaba domine les parcelles, Karpala les maisons.
     for index in range(4):
         rows.append(candidate(f'saaba-{index}', now, neighborhood='Saaba', days_ago=index % 3))
     for index in range(3):
@@ -39,6 +37,7 @@ def test_top_five_is_recomputed_by_period_and_property_type():
     parcels = weekly['types']['parcelle']['quartiers']
     houses = weekly['types']['maison']['quartiers']
 
+    assert weekly['granularite'] == 'jour'
     assert parcels[0]['nom'] == 'Saaba'
     assert parcels[0]['total'] == 4
     assert houses[0]['nom'] == 'Karpala'
@@ -47,17 +46,26 @@ def test_top_five_is_recomputed_by_period_and_property_type():
     assert sum(point['annonces'] for point in parcels[0]['points']) == 4
 
 
-def test_month_and_quarter_keep_daily_granularity():
+def test_month_is_weekly_and_quarter_is_monthly():
     now = datetime(2026, 9, 16, 12, tzinfo=timezone.utc)
-    row = candidate('a', now, neighborhood='Saaba', days_ago=10)
-    data = neighborhood_trends([row], now=now)
+    rows = [
+        candidate('sept', now, neighborhood='Saaba', days_ago=10),
+        candidate('aug', now, neighborhood='Saaba', days_ago=35),
+        candidate('jul', now, neighborhood='Saaba', days_ago=70),
+    ]
+    data = neighborhood_trends(rows, now=now)
 
-    monthly = data['periodes']['mensuel']['types']['tous']['quartiers'][0]
-    quarterly = data['periodes']['trimestriel']['types']['tous']['quartiers'][0]
-    assert len(monthly['points']) == 16
-    assert len(quarterly['points']) == 78  # 1er juillet -> 16 septembre inclus
-    assert sum(p['annonces'] for p in monthly['points']) == 1
-    assert sum(p['annonces'] for p in quarterly['points']) == 1
+    monthly = data['periodes']['mensuel']
+    quarterly = data['periodes']['trimestriel']
+    assert monthly['granularite'] == 'semaine'
+    assert quarterly['granularite'] == 'mois'
+
+    monthly_points = monthly['types']['tous']['quartiers'][0]['points']
+    quarterly_points = quarterly['types']['tous']['quartiers'][0]['points']
+    assert len(monthly_points) == 3  # 1-7, 8-14, 15-16 septembre
+    assert len(quarterly_points) == 3  # juillet, août, septembre
+    assert sum(p['annonces'] for p in monthly_points) == 1
+    assert sum(p['annonces'] for p in quarterly_points) == 3
 
 
 def test_neighborhood_trends_endpoint_loads_enough_history(monkeypatch):
@@ -75,5 +83,7 @@ def test_neighborhood_trends_endpoint_loads_enough_history(monkeypatch):
     assert response.status_code == 200
     assert calls == [(None, None, 95)]
     payload = response.json()
-    assert payload['granularite'] == 'jour'
     assert set(payload['periodes']) == {'hebdo', 'mensuel', 'trimestriel'}
+    assert payload['periodes']['hebdo']['granularite'] == 'jour'
+    assert payload['periodes']['mensuel']['granularite'] == 'semaine'
+    assert payload['periodes']['trimestriel']['granularite'] == 'mois'
