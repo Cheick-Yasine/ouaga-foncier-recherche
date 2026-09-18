@@ -2,7 +2,7 @@ from datetime import datetime, timedelta, timezone
 from dataclasses import replace
 import unittest
 
-from app.market_stats import summarize_market
+from app.market_stats import publication_time, summarize_market
 from app.search_engine import SearchCandidate
 
 
@@ -12,6 +12,14 @@ class MarketStatsTests(unittest.TestCase):
     def candidate(self, identifier, **changes):
         base = SearchCandidate(identifier, 'Parcelle en vente à Karpala', neighborhood='Karpala', property_type='parcelle', price_fcfa=3_000_000, area_m2=300, publication_label=(self.now-timedelta(days=5)).isoformat())
         return replace(base, **changes)
+
+
+    def test_unix_publication_timestamps_are_supported(self):
+        seconds = publication_time('1789738217')
+        milliseconds = publication_time('1789738217000')
+        expected = datetime(2026, 9, 18, 13, 30, 17, tzinfo=timezone.utc)
+        self.assertEqual(seconds, expected)
+        self.assertEqual(milliseconds, expected)
 
     def test_mean_counts_and_top_quarter_share_same_eligible_pool(self):
         rows = [self.candidate('a'), self.candidate('b', price_fcfa=6_000_000), self.candidate('no-price', price_fcfa=None)]
