@@ -92,3 +92,157 @@ def weekly_market(candidates, start):
             by_type[kind] = {'annonces': len(selected), 'prix_m2': round(fmean(prices), 2) if prices else None, 'prix_renseignes': len(prices)}
         weeks.append({'debut': begin.date().isoformat(), 'fin': (end-timedelta(days=1)).date().isoformat(), 'types': by_type})
     return weeks
+
+
+def _main_activity_cluster(
+    candidates: list[SearchCandidate],
+    *,
+    gap_days: int = 60,
+) -> tuple[list[SearchCandidate], int]:
+    """Retient la concentration temporelle principale de la base."""
+    if not candidates:
+        return [], 0
+
+    ordered = sorted(
+        candidates,
+        key=lambda candidate: publication_time(candidate.publication_label),
+    )
+    clusters: list[list[SearchCandidate]] = [[]]
+    previous = None
+
+    for candidate in ordered:
+        published = publication_time(candidate.publication_label)
+        if (
+            clusters[-1]
+            and previous is not None
+            and published is not None
+            and (published.date() - previous.date()).days > gap_days
+        ):
+            clusters.append([])
+        clusters[-1].append(candidate)
+        previous = published
+
+    largest = max(len(cluster) for cluster in clusters)
+    meaningful = [
+        cluster
+        for cluster in clusters
+        if len(cluster) >= max(5, round(largest * 0.25))
+    ]
+    selected = max(
+        meaningful or clusters,
+        key=lambda cluster: (
+            len(cluster),
+            publication_time(cluster[-1].publication_label),
+        ),
+    )
+    return selected, len(candidates) - len(selected)
+
+
+def neighborhood_trends(
+    candidates: Iterable[SearchCandidate],
+    *,
+    now: datetime | None = None,
+) -> dict:
+    """Top 5 quartiers calculé après détection de la période utile de la base."""
+    current = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
+    pool, seen = [], set()
+
+    for candidate in candidates:
+        published = publication_time(candidate.publication_label)
+        if published is None or published > current:
+            continue
+        if not sale_eligible(candidate.text) or not market_scope_eligible(
+                candidate.text,
+                candidate.neighborhood,
+            ):
+            continue
+        if not candidate.neighborhood or candidate.neighborhood in CITY_LEVEL_AREAS:
+            continue
+
+        identity = candidate.url or candidate.identifier
+        if identity in seen:
+            continue
+        seen.add(identity)
+        pool.append(candidate)
+
+    pool, ignored_isolated = _main_activity_cluster(pool)
+    if not pool:
+        return {
+            'date_utilisee': 'date_publication',
+            'granularite_source': 'jour',
+            'debut': None,
+            'fin': None,
+            'annonces_isolees_ignorees': 0,
+            'types': {
+                kind: {'total_annonces': 0, 'quartiers': []}
+                for kind in ('tous', 'parcelle', 'terrain', 'maison')
+            },
+        }
+
+    published_dates = [
+        publication_time(candidate.publication_label)
+        for candidate in pool
+    ]
+    start = min(published_dates).replace(
+        hour=0, minute=0, second=0, microsecond=0
+    )
+    latest = max(published_dates).replace(
+        hour=0, minute=0, second=0, microsecond=0
+    )
+
+    days: list[str] = []
+    day = start.date()
+    while day <= latest.date():
+        days.append(day.isoformat())
+        day += timedelta(days=1)
+
+    by_type = {}
+    for kind in ('tous', 'parcelle', 'terrain', 'maison'):
+        selected = pool if kind == 'tous' else [
+            candidate
+            for candidate in pool
+            if candidate.property_type == kind
+        ]
+        totals = Counter(candidate.neighborhood for candidate in selected)
+        names = sorted(
+            totals,
+            key=lambda name: (-totals[name], neighborhood_key(name)),
+        )[:5]
+        daily = Counter(
+            (
+                publication_time(candidate.publication_label).date().isoformat(),
+                candidate.neighborhood,
+            )
+            for candidate in selected
+        )
+
+        by_type[kind] = {
+            'total_annonces': len(selected),
+            'quartiers': [
+                {
+                    'nom': name,
+                    'total': totals[name],
+                    'part_pct': round(
+                        (totals[name] / len(selected)) * 100,
+                        1,
+                    ) if selected else 0.0,
+                    'points': [
+                        {
+                            'date': date,
+                            'annonces': daily[(date, name)],
+                        }
+                        for date in days
+                    ],
+                }
+                for name in names
+            ],
+        }
+
+    return {
+        'date_utilisee': 'date_publication',
+        'granularite_source': 'jour',
+        'debut': start.date().isoformat(),
+        'fin': latest.date().isoformat(),
+        'annonces_isolees_ignorees': ignored_isolated,
+        'types': by_type,
+    }
