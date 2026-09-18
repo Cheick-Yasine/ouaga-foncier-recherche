@@ -6,6 +6,7 @@ import unittest
 from app.assistant_constraints import conversation_city_only, respect_search_scope
 from app.listing_scope import (
     facebook_publication_url,
+    market_scope_eligible,
     sale_eligible,
     within_ouagadougou,
     within_ouagadougou_and_surroundings,
@@ -60,6 +61,26 @@ class ListingScopeTests(unittest.TestCase):
                         name,
                     )
                 )
+
+    def test_dashboard_scope_keeps_unresolved_variants_but_rejects_known_outside(self):
+        self.assertTrue(
+            market_scope_eligible(
+                'Parcelle en vente à Dayoubsi',
+                'Dayoubsi',
+            )
+        )
+        self.assertFalse(
+            market_scope_eligible(
+                'Parcelle en vente à Bobo-Dioulasso',
+                'Bobo-Dioulasso',
+            )
+        )
+        self.assertFalse(
+            market_scope_eligible(
+                'Parcelle en vente à Bobo',
+                'Bobo',
+            )
+        )
 
     def test_hard_exclusions_precede_price_and_completeness(self):
         urban = SearchCandidate('urban', 'Parcelle en vente à Karpala', neighborhood='Karpala', property_type='parcelle', price_fcfa=8_000_000, area_m2=300)
