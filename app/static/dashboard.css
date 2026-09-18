@@ -1,0 +1,141 @@
+/* Dashboard overrides: blue accent, simple account header, interactive neighborhood charts. */
+#welcome-greeting,
+#account-caption,
+.account-button > span:last-child {
+  display:none !important;
+}
+
+.conversation-header .account-button {
+  justify-content:flex-start;
+  gap:.55rem;
+}
+
+.neighborhood-card {
+  margin-top:20px;
+  min-width:0;
+}
+
+.neighborhood-heading {
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(260px,360px);
+  align-items:start;
+  gap:28px;
+  margin-bottom:14px;
+}
+
+.neighborhood-heading h3,
+.neighborhood-alt-heading h3 {
+  margin:4px 0 4px;
+}
+
+.chart-subtitle {
+  color:var(--muted);
+  font-size:12px;
+  line-height:1.55;
+}
+
+.trend-range-control {
+  min-width:0;
+  padding:12px 14px 10px;
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:var(--surface-2);
+}
+
+.trend-range-top {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:12px;
+  margin-bottom:7px;
+  color:var(--muted);
+  font-size:11px;
+  font-weight:700;
+}
+
+.trend-range-value {
+  color:var(--blue);
+  font-size:13px;
+}
+
+.trend-range-control input[type="range"] {
+  width:100%;
+  accent-color:var(--blue);
+  cursor:pointer;
+}
+
+.trend-range-labels {
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  margin-top:3px;
+  color:var(--muted);
+  font-size:10px;
+}
+
+.trend-range-labels span:nth-child(2) {
+  text-align:center;
+}
+
+.trend-range-labels span:last-child {
+  text-align:right;
+}
+
+.trend-range-caption {
+  margin:7px 0 0;
+  color:var(--ink);
+  font-size:10px;
+  line-height:1.45;
+}
+
+.plotly-chart {
+  width:100%;
+  min-height:330px;
+}
+
+.plotly-ranking {
+  min-height:300px;
+}
+
+.plot-click-detail {
+  margin:8px 0 0;
+  padding:9px 11px;
+  border-left:3px solid var(--blue);
+  border-radius:0 8px 8px 0;
+  background:var(--blue-soft);
+  color:var(--ink);
+  font-size:11px;
+  line-height:1.55;
+}
+
+.ranking-card {
+  margin-top:20px;
+}
+
+.neighborhood-alt-heading {
+  margin-bottom:8px;
+}
+
+.js-plotly-plot .plotly .modebar {
+  right:4px !important;
+}
+
+@media (max-width:900px) {
+  .neighborhood-heading {
+    grid-template-columns:1fr;
+    gap:14px;
+  }
+
+  .trend-range-control {
+    max-width:none;
+  }
+}
+
+@media (max-width:600px) {
+  .plotly-chart {
+    min-height:300px;
+  }
+
+  .neighborhood-card {
+    overflow:hidden;
+  }
+}
