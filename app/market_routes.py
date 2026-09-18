@@ -29,7 +29,7 @@ def market_neighborhood_trends() -> dict:
     try:
         # Chargement indépendant : une lenteur ici ne bloque plus tout l'accueil.
         return neighborhood_trends(
-            load_neighborhood_candidates(publication_days=95)
+            load_neighborhood_candidates()
         )
     except (DatabaseNotConfiguredError, psycopg.Error):
         raise HTTPException(
