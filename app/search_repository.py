@@ -317,3 +317,132 @@ def load_recent_candidates(
             )
 
     return prepared
+
+_neighborhood_cache: dict[
+    tuple[str, int], tuple[float, tuple[SearchCandidate, ...]]
+] = {}
+
+
+def load_neighborhood_candidates(
+    settings: Settings | None = None,
+    *,
+    now: datetime | None = None,
+    publication_days: int = 95,
+) -> list[SearchCandidate]:
+    """Charge uniquement les champs nécessaires aux graphiques de quartiers.
+
+    Cette lecture évite les extractions prix/document/proximité du moteur de
+    recherche, inutiles pour les graphiques. Le premier chargement des tendances
+    reste ainsi indépendant et beaucoup plus léger.
+    """
+
+    current_settings = settings or get_settings()
+    if current_settings.database_url is None:
+        raise DatabaseNotConfiguredError(
+            "DATABASE_URL n'est pas configurée dans l'environnement."
+        )
+
+    current_time = now or datetime.now(timezone.utc)
+    database_url = current_settings.database_url.get_secret_value()
+    cache_enabled = settings is None and now is None
+    cache_key = (
+        hashlib.sha256(database_url.encode("utf-8")).hexdigest(),
+        publication_days,
+    )
+
+    if cache_enabled:
+        with _candidate_cache_lock:
+            cached = _neighborhood_cache.get(cache_key)
+            if (
+                cached is not None
+                and monotonic() - cached[0] < _CANDIDATE_CACHE_TTL_SECONDS
+            ):
+                return list(cached[1])
+
+    with psycopg.connect(
+        database_url,
+        row_factory=dict_row,
+        connect_timeout=10,
+    ) as connection:
+        with connection.transaction():
+            connection.execute("SET TRANSACTION READ ONLY")
+            connection.execute("SET LOCAL statement_timeout = '20s'")
+            rows = connection.execute(
+                """
+                SELECT
+                    id::text AS id,
+                    url,
+                    date_publication,
+                    type_bien,
+                    type_bien_normalise,
+                    quartier_zone,
+                    resume_court,
+                    texte_nettoye
+                FROM public.annonces
+                WHERE NOT (prix_fcfa IS NULL AND superficie_m2 IS NULL)
+                  AND COALESCE(
+                      NULLIF(LOWER(TRIM(type_bien_normalise)), ''),
+                      NULLIF(LOWER(TRIM(type_bien)), ''),
+                      ''
+                  ) <> 'villa'
+                  AND BTRIM(COALESCE(date_publication, ''))
+                      ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}'
+                  AND LEFT(BTRIM(date_publication), 10)
+                      >= TO_CHAR(CURRENT_DATE - %s, 'YYYY-MM-DD')
+                  AND LEFT(BTRIM(date_publication), 10)
+                      <= TO_CHAR(CURRENT_DATE, 'YYYY-MM-DD')
+                ORDER BY date_publication DESC, id
+                """,
+                (publication_days,),
+            ).fetchall()
+
+    start = current_time - timedelta(days=publication_days)
+    prepared: list[SearchCandidate] = []
+    for row in rows:
+        published = publication_time(_optional_text(row.get("date_publication")))
+        if published is None or not start <= published <= current_time:
+            continue
+
+        text = (
+            _optional_text(row.get("texte_nettoye"))
+            or _optional_text(row.get("resume_court"))
+            or ""
+        )
+        neighborhood = resolve_neighborhood(
+            text,
+            _optional_text(row.get("quartier_zone")),
+        )
+        if not neighborhood.in_scope:
+            continue
+
+        property_type = normalize_property_type(
+            _optional_text(row.get("type_bien_normalise"))
+            or _optional_text(row.get("type_bien")),
+            text,
+        )
+        if property_type not in _ALLOWED_PROPERTY_TYPES:
+            continue
+        if not sale_eligible(text):
+            continue
+
+        prepared.append(
+            SearchCandidate(
+                identifier=str(row["id"]),
+                text=text,
+                property_type=property_type,
+                neighborhood=neighborhood.canonical,
+                url=_optional_text(row.get("url")),
+                publication_label=_optional_text(row.get("date_publication")),
+            )
+        )
+
+    if cache_enabled:
+        with _candidate_cache_lock:
+            if len(_neighborhood_cache) >= 4:
+                _neighborhood_cache.clear()
+            _neighborhood_cache[cache_key] = (
+                monotonic(),
+                tuple(prepared),
+            )
+
+    return prepared
