@@ -31,6 +31,9 @@ _candidate_cache: dict[
     tuple[float, tuple[SearchCandidate, ...]],
 ] = {}
 _candidate_cache_lock = Lock()
+_neighborhood_cache: dict[
+    str, tuple[float, tuple[SearchCandidate, ...]]
+] = {}
 
 
 def clear_candidate_cache() -> None:
@@ -38,6 +41,7 @@ def clear_candidate_cache() -> None:
 
     with _candidate_cache_lock:
         _candidate_cache.clear()
+        _neighborhood_cache.clear()
 
 
 def _candidate_cache_key(
@@ -389,6 +393,123 @@ def load_recent_candidates(
             if len(_candidate_cache) >= 8:
                 _candidate_cache.clear()
             _candidate_cache[cache_key] = (
+                monotonic(),
+                tuple(prepared),
+            )
+
+    return prepared
+
+
+def load_neighborhood_candidates(
+    settings: Settings | None = None,
+    *,
+    now: datetime | None = None,
+) -> list[SearchCandidate]:
+    """Charge tout l'historique utile aux graphiques de quartiers.
+
+    Le chargement reste léger : seuls les champs nécessaires au quartier,
+    au type de bien et à la date sont lus. Les formats de date acceptés sont
+    ceux pris en charge par publication_time (ISO et timestamps Unix).
+    """
+
+    current_settings = settings or get_settings()
+    if current_settings.database_url is None:
+        raise DatabaseNotConfiguredError(
+            "DATABASE_URL n'est pas configurée dans l'environnement."
+        )
+
+    current_time = now or datetime.now(timezone.utc)
+    database_url = current_settings.database_url.get_secret_value()
+    cache_enabled = settings is None and now is None
+    cache_key = hashlib.sha256(database_url.encode("utf-8")).hexdigest()
+
+    if cache_enabled:
+        with _candidate_cache_lock:
+            cached = _neighborhood_cache.get(cache_key)
+            if (
+                cached is not None
+                and monotonic() - cached[0] < _CANDIDATE_CACHE_TTL_SECONDS
+            ):
+                return list(cached[1])
+
+    with psycopg.connect(
+        database_url,
+        row_factory=dict_row,
+        connect_timeout=10,
+    ) as connection:
+        with connection.transaction():
+            connection.execute("SET TRANSACTION READ ONLY")
+            connection.execute("SET LOCAL statement_timeout = '30s'")
+            rows = connection.execute(
+                """
+                SELECT
+                    id::text AS id,
+                    url,
+                    date_publication,
+                    type_bien,
+                    type_bien_normalise,
+                    quartier_zone,
+                    resume_court,
+                    texte_nettoye
+                FROM public.annonces
+                WHERE NOT (prix_fcfa IS NULL AND superficie_m2 IS NULL)
+                  AND COALESCE(
+                      NULLIF(LOWER(TRIM(type_bien_normalise)), ''),
+                      NULLIF(LOWER(TRIM(type_bien)), ''),
+                      ''
+                  ) <> 'villa'
+                ORDER BY premiere_collecte ASC NULLS LAST, id
+                """
+            ).fetchall()
+
+    prepared: list[SearchCandidate] = []
+    for row in rows:
+        published = publication_time(
+            _optional_text(row.get("date_publication"))
+        )
+        if published is None or published > current_time:
+            continue
+
+        text = (
+            _optional_text(row.get("texte_nettoye"))
+            or _optional_text(row.get("resume_court"))
+            or ""
+        )
+        raw_neighborhood = _optional_text(row.get("quartier_zone"))
+        neighborhood = resolve_neighborhood(text, raw_neighborhood)
+        canonical_neighborhood = (
+            neighborhood.canonical
+            if neighborhood.in_scope
+            else raw_neighborhood
+        )
+        if canonical_neighborhood is None:
+            continue
+
+        property_type = normalize_property_type(
+            _optional_text(row.get("type_bien_normalise"))
+            or _optional_text(row.get("type_bien")),
+            text,
+        )
+        if property_type not in _ALLOWED_PROPERTY_TYPES:
+            continue
+        if not sale_eligible(text):
+            continue
+
+        prepared.append(
+            SearchCandidate(
+                identifier=str(row["id"]),
+                text=text,
+                property_type=property_type,
+                neighborhood=canonical_neighborhood,
+                url=_optional_text(row.get("url")),
+                publication_label=_optional_text(row.get("date_publication")),
+            )
+        )
+
+    if cache_enabled:
+        with _candidate_cache_lock:
+            _neighborhood_cache.clear()
+            _neighborhood_cache[cache_key] = (
                 monotonic(),
                 tuple(prepared),
             )
