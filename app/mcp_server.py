@@ -36,6 +36,7 @@ mcp = FastMCP(
             "ouaga-foncier-mcp.onrender.com",
             "localhost:*",
             "127.0.0.1:*",
+            "mcp:*",
         ],
         allowed_origins=[
             "https://chatgpt.com",

@@ -1,6 +1,7 @@
 """Configuration centralisée et sécurisée de l'application."""
 
 from functools import lru_cache
+from urllib.parse import urlparse
 
 from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -54,10 +55,22 @@ class Settings(BaseSettings):
     @field_validator("mcp_server_url")
     @classmethod
     def validate_mcp_server_url(cls, value: str) -> str:
-        normalized = value.strip()
-        if not normalized.startswith(("https://", "http://localhost", "http://127.0.0.1")):
-            raise ValueError("MCP_SERVER_URL doit être une URL HTTPS ou locale.")
-        return normalized
+        normalized = value.strip().rstrip("/")
+        parsed = urlparse(normalized)
+
+        if parsed.scheme == "https" and parsed.netloc:
+            return normalized
+
+        if parsed.scheme == "http" and parsed.hostname in {
+            "localhost",
+            "127.0.0.1",
+            "mcp",
+        }:
+            return normalized
+
+        raise ValueError(
+            "MCP_SERVER_URL doit être HTTPS, locale ou utiliser le service Docker mcp."
+        )
 
 
 @lru_cache
