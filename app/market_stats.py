@@ -7,7 +7,7 @@ import re
 from statistics import fmean
 from typing import Iterable
 
-from app.listing_scope import sale_eligible, within_ouagadougou
+from app.listing_scope import sale_eligible, within_ouagadougou_and_surroundings
 from app.neighborhoods import CITY_LEVEL_AREAS, neighborhood_key
 from app.search_engine import SearchCandidate, price_per_square_metre
 
@@ -50,7 +50,13 @@ def summarize_market(candidates: Iterable[SearchCandidate], *, now: datetime | N
         published = publication_time(candidate.publication_label)
         if published is None or not min(start, week_start) <= published <= current:
             continue
-        if not sale_eligible(candidate.text) or not within_ouagadougou(candidate.text, candidate.neighborhood):
+        if (
+            not sale_eligible(candidate.text)
+            or not within_ouagadougou_and_surroundings(
+                candidate.text,
+                candidate.neighborhood,
+            )
+        ):
             continue
         identity = candidate.url or candidate.identifier
         if identity in seen:
@@ -69,7 +75,7 @@ def summarize_market(candidates: Iterable[SearchCandidate], *, now: datetime | N
         'quartier_le_plus_represente': top[0] if top else None,
         'annonces_quartier_principal': neighborhoods[top[0]] if top else 0,
         'depuis': start.isoformat(), 'jusqu_a': current.isoformat(),
-        'perimetre': 'Ouagadougou', 'date_utilisee': 'date_publication',
+        'perimetre': 'Ouagadougou et environs', 'date_utilisee': 'date_publication',
         'semaines': weekly_market(pool, week_start),
     }
 
