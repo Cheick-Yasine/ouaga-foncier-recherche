@@ -69,16 +69,56 @@ def weekly_market(candidates, start):
     return weeks
 
 
+def _main_activity_cluster(
+    candidates: list[SearchCandidate],
+    *,
+    gap_days: int = 60,
+) -> tuple[list[SearchCandidate], int]:
+    """Retient la concentration temporelle principale de la base."""
+    if not candidates:
+        return [], 0
+
+    ordered = sorted(
+        candidates,
+        key=lambda candidate: publication_time(candidate.publication_label),
+    )
+    clusters: list[list[SearchCandidate]] = [[]]
+    previous = None
+
+    for candidate in ordered:
+        published = publication_time(candidate.publication_label)
+        if (
+            clusters[-1]
+            and previous is not None
+            and published is not None
+            and (published.date() - previous.date()).days > gap_days
+        ):
+            clusters.append([])
+        clusters[-1].append(candidate)
+        previous = published
+
+    largest = max(len(cluster) for cluster in clusters)
+    meaningful = [
+        cluster
+        for cluster in clusters
+        if len(cluster) >= max(5, round(largest * 0.25))
+    ]
+    selected = max(
+        meaningful or clusters,
+        key=lambda cluster: (
+            len(cluster),
+            publication_time(cluster[-1].publication_label),
+        ),
+    )
+    return selected, len(candidates) - len(selected)
+
+
 def neighborhood_trends(
     candidates: Iterable[SearchCandidate],
     *,
     now: datetime | None = None,
 ) -> dict:
-    """Top 5 quartiers calculé sur toute la base, avec source quotidienne.
-
-    Le curseur de l'interface ne limite plus l'historique. Il choisit uniquement
-    la taille des regroupements (1 à 90 jours) à partir de cette série complète.
-    """
+    """Top 5 quartiers calculé après détection de la période utile de la base."""
     current = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
     pool, seen = [], set()
 
@@ -99,12 +139,14 @@ def neighborhood_trends(
         seen.add(identity)
         pool.append(candidate)
 
+    pool, ignored_isolated = _main_activity_cluster(pool)
     if not pool:
         return {
             'date_utilisee': 'date_publication',
             'granularite_source': 'jour',
             'debut': None,
             'fin': None,
+            'annonces_isolees_ignorees': 0,
             'types': {
                 kind: {'total_annonces': 0, 'quartiers': []}
                 for kind in ('tous', 'parcelle', 'terrain', 'maison')
@@ -175,5 +217,6 @@ def neighborhood_trends(
         'granularite_source': 'jour',
         'debut': start.date().isoformat(),
         'fin': latest.date().isoformat(),
+        'annonces_isolees_ignorees': ignored_isolated,
         'types': by_type,
     }
