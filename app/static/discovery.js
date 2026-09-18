@@ -604,7 +604,13 @@
   rangeInput.addEventListener('input',()=>{
     bucketDays=Math.max(1,Math.min(90,Number(rangeInput.value) || 1));
     updateRangeText();
-    if(trends) scheduleNeighborhoodDraw();
+    if(trends){
+      if(drawFrame) cancelAnimationFrame(drawFrame);
+      drawFrame=requestAnimationFrame(()=>{
+        drawFrame=null;
+        drawNeighborhoodTrend();
+      });
+    }
   });
 
   const observer=new MutationObserver(()=>{
