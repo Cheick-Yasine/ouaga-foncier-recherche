@@ -70,20 +70,30 @@ def weekly_market(candidates, start):
 
 
 def neighborhood_trends(candidates: Iterable[SearchCandidate], *, now: datetime | None = None) -> dict:
-    """Top 5 quartiers des périodes calendaires courantes."""
-    current = now or datetime.now(timezone.utc)
-    current = current.astimezone(timezone.utc)
-    week_start = (current - timedelta(days=current.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
+    """Top 5 quartiers avec une granularité adaptée à l'horizon choisi.
+
+    - semaine en cours : évolution jour par jour ;
+    - mois en cours : évolution semaine par semaine ;
+    - trimestre en cours : évolution mois par mois.
+    """
+    current = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
+    week_start = (current - timedelta(days=current.weekday())).replace(
+        hour=0, minute=0, second=0, microsecond=0
+    )
     month_start = current.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     quarter_month = ((current.month - 1) // 3) * 3 + 1
-    quarter_start = current.replace(month=quarter_month, day=1, hour=0, minute=0, second=0, microsecond=0)
+    quarter_start = current.replace(
+        month=quarter_month, day=1, hour=0, minute=0, second=0, microsecond=0
+    )
 
     pool, seen = [], set()
     for candidate in candidates:
         published = publication_time(candidate.publication_label)
         if published is None or not quarter_start <= published <= current:
             continue
-        if not sale_eligible(candidate.text) or not within_ouagadougou(candidate.text, candidate.neighborhood):
+        if not sale_eligible(candidate.text) or not within_ouagadougou(
+            candidate.text, candidate.neighborhood
+        ):
             continue
         if not candidate.neighborhood or candidate.neighborhood in CITY_LEVEL_AREAS:
             continue
@@ -94,47 +104,116 @@ def neighborhood_trends(candidates: Iterable[SearchCandidate], *, now: datetime 
         pool.append(candidate)
 
     return {
-        'granularite': 'jour',
-        'granularite_source': 'jour',
         'date_utilisee': 'date_publication',
         'periodes': {
-            'hebdo': _neighborhood_period(pool, week_start, current),
-            'mensuel': _neighborhood_period(pool, month_start, current),
-            'trimestriel': _neighborhood_period(pool, quarter_start, current),
+            'hebdo': _neighborhood_period(pool, week_start, current, 'jour'),
+            'mensuel': _neighborhood_period(pool, month_start, current, 'semaine'),
+            'trimestriel': _neighborhood_period(pool, quarter_start, current, 'mois'),
         },
     }
 
 
-def _neighborhood_period(candidates: list[SearchCandidate], start: datetime, current: datetime) -> dict:
-    rows = [c for c in candidates if start <= publication_time(c.publication_label) <= current]
-    days = []
-    day = start.date()
-    while day <= current.date():
-        days.append(day.isoformat())
-        day += timedelta(days=1)
+def _period_buckets(
+    start: datetime,
+    current: datetime,
+    granularity: str,
+) -> list[tuple[datetime, datetime]]:
+    buckets: list[tuple[datetime, datetime]] = []
+
+    if granularity == 'jour':
+        begin = start
+        while begin.date() <= current.date():
+            end = begin + timedelta(days=1)
+            buckets.append((begin, end))
+            begin = end
+        return buckets
+
+    if granularity == 'semaine':
+        begin = start
+        while begin <= current:
+            end = begin + timedelta(days=7)
+            buckets.append((begin, end))
+            begin = end
+        return buckets
+
+    if granularity == 'mois':
+        begin = start
+        while begin <= current:
+            if begin.month == 12:
+                end = begin.replace(
+                    year=begin.year + 1, month=1, day=1,
+                    hour=0, minute=0, second=0, microsecond=0,
+                )
+            else:
+                end = begin.replace(
+                    month=begin.month + 1, day=1,
+                    hour=0, minute=0, second=0, microsecond=0,
+                )
+            buckets.append((begin, end))
+            begin = end
+        return buckets
+
+    raise ValueError(f'Granularité inconnue: {granularity}')
+
+
+def _neighborhood_period(
+    candidates: list[SearchCandidate],
+    start: datetime,
+    current: datetime,
+    granularity: str,
+) -> dict:
+    rows = [
+        c for c in candidates
+        if start <= publication_time(c.publication_label) <= current
+    ]
+    buckets = _period_buckets(start, current, granularity)
 
     by_type = {}
     for kind in ('tous', 'parcelle', 'terrain', 'maison'):
-        selected = rows if kind == 'tous' else [c for c in rows if c.property_type == kind]
+        selected = rows if kind == 'tous' else [
+            c for c in rows if c.property_type == kind
+        ]
         totals = Counter(c.neighborhood for c in selected)
-        names = sorted(totals, key=lambda name: (-totals[name], neighborhood_key(name)))[:5]
-        daily = Counter((publication_time(c.publication_label).date().isoformat(), c.neighborhood) for c in selected)
+        names = sorted(
+            totals,
+            key=lambda name: (-totals[name], neighborhood_key(name)),
+        )[:5]
+
         by_type[kind] = {
             'total_annonces': len(selected),
             'quartiers': [
                 {
                     'nom': name,
                     'total': totals[name],
-                    'part_pct': round((totals[name] / len(selected)) * 100, 1) if selected else 0.0,
-                    'jours_actifs': sum(1 for date in days if daily[(date, name)] > 0),
-                    'points': [{'date': date, 'annonces': daily[(date, name)]} for date in days],
+                    'part_pct': round(
+                        (totals[name] / len(selected)) * 100, 1
+                    ) if selected else 0.0,
+                    'points': [
+                        {
+                            'debut': begin.date().isoformat(),
+                            'fin': min(
+                                end - timedelta(microseconds=1),
+                                current,
+                            ).date().isoformat(),
+                            'annonces': sum(
+                                1
+                                for candidate in selected
+                                if candidate.neighborhood == name
+                                and begin <= publication_time(
+                                    candidate.publication_label
+                                ) < end
+                            ),
+                        }
+                        for begin, end in buckets
+                    ],
                 }
                 for name in names
-            ]
+            ],
         }
 
     return {
         'debut': start.date().isoformat(),
         'fin': current.date().isoformat(),
+        'granularite': granularity,
         'types': by_type,
     }
