@@ -75,20 +75,27 @@ def within_ouagadougou_and_surroundings(
     text: str,
     neighborhood: str | None,
 ) -> bool:
-    """Périmètre large des statistiques : Ouagadougou et environs.
+    """Accepte les zones résolues de Ouagadougou et des environs retenus."""
+    if detect_out_of_scope_locality(text) or detect_out_of_scope_locality(neighborhood):
+        return False
+    return resolve_neighborhood(text, neighborhood).in_scope
 
-    Contrairement à la recherche utilisateur, les statistiques ne doivent pas
-    perdre une annonce seulement parce que son quartier contient une variante
-    non normalisée (ex. « SAABA SELOGHIN », « cité relais de Komsilga »).
-    On rejette les localités explicitement connues hors périmètre et on garde
-    les autres annonces issues de la base validée.
+
+def market_scope_eligible(
+    text: str,
+    neighborhood: str | None,
+) -> bool:
+    """Périmètre agrégé du tableau de bord.
+
+    Les statistiques partent déjà de la table d'annonces validées. Elles ne
+    doivent donc pas supprimer une ligne seulement parce que son quartier est
+    écrit avec une variante non encore normalisée. Les localités explicitement
+    connues hors périmètre restent exclues.
     """
     if detect_out_of_scope_locality(text) or detect_out_of_scope_locality(neighborhood):
         return False
 
     key = neighborhood_key(neighborhood)
-    # Variante courte fréquente qui ne correspond pas au libellé canonique
-    # « Bobo-Dioulasso » mais reste hors périmètre.
     if key == "bobo" or key.startswith("bobo "):
         return False
 
