@@ -73,15 +73,15 @@ def test_neighborhood_trends_endpoint_loads_enough_history(monkeypatch):
     row = candidate('a', now, neighborhood='Saaba')
     calls = []
 
-    def load(days, *, pool_limit, publication_days):
-        calls.append((days, pool_limit, publication_days))
+    def load(*, publication_days):
+        calls.append(publication_days)
         return [row]
 
-    monkeypatch.setattr('app.market_routes.load_recent_candidates', load)
+    monkeypatch.setattr('app.market_routes.load_neighborhood_candidates', load)
     response = client.get('/market/neighborhood-trends')
 
     assert response.status_code == 200
-    assert calls == [(None, None, 95)]
+    assert calls == [95]
     payload = response.json()
     assert set(payload['periodes']) == {'hebdo', 'mensuel', 'trimestriel'}
     assert payload['periodes']['hebdo']['granularite'] == 'jour'
