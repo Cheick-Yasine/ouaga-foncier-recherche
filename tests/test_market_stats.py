@@ -25,6 +25,7 @@ class MarketStatsTests(unittest.TestCase):
         rows = [self.candidate('a'), self.candidate('b', price_fcfa=6_000_000), self.candidate('no-price', price_fcfa=None)]
         rows += [
             self.candidate('surroundings', text='Terrain à Saaba', neighborhood='Saaba'),
+            self.candidate('variant', text='Parcelle en vente à Dayoubsi', neighborhood='Dayoubsi'),
             self.candidate('outside', text='Terrain à Bobo-Dioulasso', neighborhood='Bobo-Dioulasso'),
             self.candidate('rent', text='Parcelle en location à Karpala'),
             self.candidate('future', publication_label=(self.now+timedelta(days=1)).isoformat()),
@@ -32,9 +33,9 @@ class MarketStatsTests(unittest.TestCase):
             self.candidate('unknown-date', publication_label='Il y a 2 h'),
         ]
         stats = summarize_market(rows, now=self.now)
-        self.assertEqual(stats['annonces_30_jours'], 4)
+        self.assertEqual(stats['annonces_30_jours'], 5)
         self.assertEqual(stats['prix_m2_moyen_fcfa'], 15_000)
-        self.assertEqual(stats['annonces_avec_prix_m2'], 3)
+        self.assertEqual(stats['annonces_avec_prix_m2'], 4)
         self.assertEqual(stats['quartier_le_plus_represente'], 'Karpala')
         self.assertEqual(stats['annonces_quartier_principal'], 3)
         self.assertEqual(stats['perimetre'], 'Ouagadougou et environs')
