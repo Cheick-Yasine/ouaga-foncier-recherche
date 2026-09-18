@@ -7,7 +7,7 @@ import re
 from statistics import fmean
 from typing import Iterable
 
-from app.listing_scope import sale_eligible, within_ouagadougou_and_surroundings
+from app.listing_scope import market_scope_eligible, sale_eligible
 from app.neighborhoods import CITY_LEVEL_AREAS, neighborhood_key
 from app.search_engine import SearchCandidate, price_per_square_metre
 
@@ -52,7 +52,7 @@ def summarize_market(candidates: Iterable[SearchCandidate], *, now: datetime | N
             continue
         if (
             not sale_eligible(candidate.text)
-            or not within_ouagadougou_and_surroundings(
+            or not market_scope_eligible(
                 candidate.text,
                 candidate.neighborhood,
             )
