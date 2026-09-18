@@ -426,6 +426,9 @@
     }
     if(!plotlyReady(container)) return;
 
+    // Retire le message de chargement avant que Plotly crée son rendu.
+    container.replaceChildren();
+
     const aggregated=neighborhoods.map(item=>({
       item,
       points:aggregateDailyPoints(item.points,bucketDays)
@@ -511,6 +514,9 @@
       return;
     }
     if(!plotlyReady(container)) return;
+
+    // Retire le message de chargement avant que Plotly crée son rendu.
+    container.replaceChildren();
 
     const theme=plotTheme();
     const total=Math.max(typeData?.total_annonces || 0,1);
