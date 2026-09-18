@@ -29,74 +29,59 @@ def candidate(
     )
 
 
-def test_top_five_uses_the_full_database_history():
+def test_isolated_old_dates_are_trimmed_from_the_main_activity_window():
     now = datetime(2026, 9, 18, 12, tzinfo=timezone.utc)
-    rows = []
-
-    # Saaba domine grâce à des annonces anciennes (> 90 jours) :
-    # elles doivent désormais compter dans le Top 5.
-    for index in range(6):
+    rows = [
+        candidate('old-1', now, neighborhood='Balkuy', days_ago=1000),
+        candidate('old-2', now, neighborhood='Balkuy', days_ago=999),
+    ]
+    for index in range(12):
         rows.append(
             candidate(
-                f'saaba-old-{index}',
+                f'recent-{index}',
                 now,
                 neighborhood='Saaba',
-                days_ago=180 + index,
-            )
-        )
-    for index in range(4):
-        rows.append(
-            candidate(
-                f'karpala-recent-{index}',
-                now,
-                neighborhood='Karpala',
                 days_ago=index,
             )
         )
-    for index, name in enumerate(
-        ['Balkuy', 'Bassinko', 'Kamboinsin', 'Tampouy', 'Zagtouli']
-    ):
+
+    data = neighborhood_trends(rows, now=now)
+
+    assert data['debut'] == (now - timedelta(days=11)).date().isoformat()
+    assert data['fin'] == now.date().isoformat()
+    assert data['annonces_isolees_ignorees'] == 2
+    assert data['types']['parcelle']['quartiers'][0]['nom'] == 'Saaba'
+
+
+def test_top_five_and_property_types_use_the_retained_main_window():
+    now = datetime(2026, 9, 18, 12, tzinfo=timezone.utc)
+    rows = []
+    for index in range(8):
         rows.append(
             candidate(
-                f'other-{index}',
+                f'saaba-{index}',
                 now,
-                neighborhood=name,
-                days_ago=30 + index,
+                neighborhood='Saaba',
+                property_type='parcelle',
+                days_ago=index,
+            )
+        )
+    for index in range(5):
+        rows.append(
+            candidate(
+                f'karpala-{index}',
+                now,
+                neighborhood='Karpala',
+                property_type='maison',
+                days_ago=index,
             )
         )
 
     data = neighborhood_trends(rows, now=now)
-    parcels = data['types']['parcelle']['quartiers']
 
     assert data['granularite_source'] == 'jour'
-    assert parcels[0]['nom'] == 'Saaba'
-    assert parcels[0]['total'] == 6
-    assert len(data['types']['tous']['quartiers']) == 5
-
-    # La série quotidienne couvre bien l'historique complet, pas 90 jours.
-    assert data['debut'] <= (now - timedelta(days=185)).date().isoformat()
-    assert data['fin'] == now.date().isoformat()
-    assert sum(point['annonces'] for point in parcels[0]['points']) == 6
-
-
-def test_property_type_filter_keeps_its_own_full_history_top_five():
-    now = datetime(2026, 9, 18, 12, tzinfo=timezone.utc)
-    rows = [
-        candidate('p1', now, neighborhood='Saaba', property_type='parcelle', days_ago=200),
-        candidate('p2', now, neighborhood='Saaba', property_type='parcelle', days_ago=100),
-        candidate('m1', now, neighborhood='Karpala', property_type='maison', days_ago=150),
-        candidate('m2', now, neighborhood='Karpala', property_type='maison', days_ago=20),
-        candidate('m3', now, neighborhood='Karpala', property_type='maison', days_ago=2),
-    ]
-
-    data = neighborhood_trends(rows, now=now)
-
-    parcels = data['types']['parcelle']['quartiers']
-    houses = data['types']['maison']['quartiers']
-    assert parcels[0]['nom'] == 'Saaba'
-    assert parcels[0]['total'] == 2
-    assert houses[0]['nom'] == 'Karpala'
-    assert houses[0]['total'] == 3
+    assert data['types']['parcelle']['quartiers'][0]['nom'] == 'Saaba'
+    assert data['types']['maison']['quartiers'][0]['nom'] == 'Karpala'
 
 
 def test_neighborhood_trends_endpoint_loads_full_history(monkeypatch):
