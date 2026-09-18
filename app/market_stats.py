@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from collections import Counter
 from datetime import datetime, timedelta, timezone
+import re
 from statistics import fmean
 from typing import Iterable
 
@@ -12,10 +13,28 @@ from app.search_engine import SearchCandidate, price_per_square_metre
 
 
 def publication_time(value: str | None) -> datetime | None:
+    """Normalise une date ISO ou un timestamp Unix Facebook/Apify."""
     if not value:
         return None
+
+    text = value.strip()
+
+    # Certains exports Apify stockent la date Facebook comme timestamp Unix
+    # en secondes (10 chiffres) ou en millisecondes (13 chiffres).
+    if re.fullmatch(r"\d{10}", text):
+        try:
+            return datetime.fromtimestamp(int(text), tz=timezone.utc)
+        except (OverflowError, OSError, ValueError):
+            return None
+
+    if re.fullmatch(r"\d{13}", text):
+        try:
+            return datetime.fromtimestamp(int(text) / 1000, tz=timezone.utc)
+        except (OverflowError, OSError, ValueError):
+            return None
+
     try:
-        parsed = datetime.fromisoformat(value.strip().replace('Z', '+00:00'))
+        parsed = datetime.fromisoformat(text.replace('Z', '+00:00'))
     except ValueError:
         return None
     return parsed.replace(tzinfo=timezone.utc) if parsed.tzinfo is None else parsed
