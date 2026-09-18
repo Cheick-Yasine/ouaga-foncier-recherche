@@ -70,6 +70,23 @@ def within_ouagadougou(text: str, neighborhood: str | None) -> bool:
     return _city_places().get(neighborhood_key(resolution.canonical), False)
 
 
+
+def within_ouagadougou_and_surroundings(
+    text: str,
+    neighborhood: str | None,
+) -> bool:
+    """Accepte Ouagadougou et les zones périphériques du référentiel métier.
+
+    Cette règle conserve les communes et secteurs périphériques déjà reconnus
+    par le référentiel (Saaba, Koubri, Komsilga, Pabré, Loumbila, Gampela,
+    Bassinko, Kouba, etc.) tout en rejetant les localités explicitement hors
+    périmètre et les zones inconnues.
+    """
+    if detect_out_of_scope_locality(text) or detect_out_of_scope_locality(neighborhood):
+        return False
+    return resolve_neighborhood(text, neighborhood).in_scope
+
+
 def facebook_publication_url(raw: str | None) -> str | None:
     """Lien source Facebook uniquement, jamais une redirection de l'application."""
     if not raw or any(ord(c) < 32 for c in raw):
