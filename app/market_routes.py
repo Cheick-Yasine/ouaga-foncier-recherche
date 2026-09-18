@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException
 
 from app.database import DatabaseNotConfiguredError
 from app.market_stats import neighborhood_trends, summarize_market
-from app.search_repository import load_recent_candidates
+from app.search_repository import load_neighborhood_candidates, load_recent_candidates
 from app.neighborhoods import KNOWN_NEIGHBORHOOD_ALIASES, neighborhood_key
 
 router = APIRouter(prefix='/market', tags=['Accueil'])
@@ -29,7 +29,7 @@ def market_neighborhood_trends() -> dict:
     try:
         # Chargement indépendant : une lenteur ici ne bloque plus tout l'accueil.
         return neighborhood_trends(
-            load_recent_candidates(None, pool_limit=None, publication_days=95)
+            load_neighborhood_candidates(publication_days=95)
         )
     except (DatabaseNotConfiguredError, psycopg.Error):
         raise HTTPException(
