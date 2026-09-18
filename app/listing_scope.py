@@ -75,16 +75,24 @@ def within_ouagadougou_and_surroundings(
     text: str,
     neighborhood: str | None,
 ) -> bool:
-    """Accepte Ouagadougou et les zones périphériques du référentiel métier.
+    """Périmètre large des statistiques : Ouagadougou et environs.
 
-    Cette règle conserve les communes et secteurs périphériques déjà reconnus
-    par le référentiel (Saaba, Koubri, Komsilga, Pabré, Loumbila, Gampela,
-    Bassinko, Kouba, etc.) tout en rejetant les localités explicitement hors
-    périmètre et les zones inconnues.
+    Contrairement à la recherche utilisateur, les statistiques ne doivent pas
+    perdre une annonce seulement parce que son quartier contient une variante
+    non normalisée (ex. « SAABA SELOGHIN », « cité relais de Komsilga »).
+    On rejette les localités explicitement connues hors périmètre et on garde
+    les autres annonces issues de la base validée.
     """
     if detect_out_of_scope_locality(text) or detect_out_of_scope_locality(neighborhood):
         return False
-    return resolve_neighborhood(text, neighborhood).in_scope
+
+    key = neighborhood_key(neighborhood)
+    # Variante courte fréquente qui ne correspond pas au libellé canonique
+    # « Bobo-Dioulasso » mais reste hors périmètre.
+    if key == "bobo" or key.startswith("bobo "):
+        return False
+
+    return True
 
 
 def facebook_publication_url(raw: str | None) -> str | None:
