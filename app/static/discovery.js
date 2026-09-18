@@ -7,11 +7,7 @@
   const fmt = new Intl.NumberFormat('fr-FR', {maximumFractionDigits: 0});
   const fold = value => value.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
   const seriesColors = ['#2563eb','#d97706','#059669','#db2777','#7c3aed'];
-  const periods = [
-    {key:'hebdo', days:7, title:'7 jours', caption:'Semaine en cours · évolution jour par jour'},
-    {key:'mensuel', days:30, title:'30 jours', caption:'Mois en cours · évolution semaine par semaine'},
-    {key:'trimestriel', days:90, title:'90 jours', caption:'Trimestre en cours · évolution mois par mois'}
-  ];
+  const DAY_MS = 86_400_000;
 
   try {
     const saved = JSON.parse(localStorage.getItem('hakimo:appearance') || '{}');
@@ -29,7 +25,7 @@
 
   const css = document.createElement('link');
   css.rel = 'stylesheet';
-  css.href = '/static/dashboard.css?v=20260918-plotly-1';
+  css.href = '/static/dashboard.css?v=20260918-full-history-1';
   document.head.append(css);
 
   function areaRange(value) {
@@ -57,7 +53,11 @@
   }
 
   function dateObj(value) {
-    return new Date(value+'T12:00:00Z');
+    return new Date(value+'T00:00:00Z');
+  }
+
+  function isoDate(date) {
+    return date.toISOString().slice(0,10);
   }
 
   function shortDate(value) {
@@ -68,18 +68,145 @@
     return dateObj(value).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric',timeZone:'UTC'});
   }
 
-  function pointLabel(point, granularity) {
-    const start = dateObj(point.debut);
-    const end = dateObj(point.fin);
-    if (granularity === 'jour') {
-      return start.toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short',timeZone:'UTC'});
+  function compactDate(value) {
+    return dateObj(value).toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'2-digit',timeZone:'UTC'});
+  }
+
+  function mondayOnOrBefore(date) {
+    const copy = new Date(date.getTime());
+    const shift = (copy.getUTCDay()+6)%7;
+    copy.setUTCDate(copy.getUTCDate()-shift);
+    return copy;
+  }
+
+  function addMonths(date, count) {
+    return new Date(Date.UTC(date.getUTCFullYear(),date.getUTCMonth()+count,1));
+  }
+
+  function intervalLabel(start, end) {
+    if (start === end) return longDate(start);
+    return longDate(start)+' au '+longDate(end);
+  }
+
+  function groupingLabel(days) {
+    if (days === 1) return '1 jour · données quotidiennes';
+    if (days === 7) return '7 jours · semaines du lundi au dimanche';
+    if (days === 30) return '30 jours · mois calendaires';
+    if (days === 60) return '60 jours · périodes de 2 mois';
+    if (days === 90) return '90 jours · trimestres calendaires';
+    return days+' jours · regroupement par blocs de '+days+' jours';
+  }
+
+  function aggregateDailyPoints(points, days) {
+    if (!points?.length) return [];
+
+    if (days === 1) {
+      return points.map(point=>({
+        debut:point.date,
+        fin:point.date,
+        date:point.date,
+        annonces:point.annonces
+      }));
     }
-    if (granularity === 'semaine') {
-      const a = start.toLocaleDateString('fr-FR',{day:'numeric',month:'short',timeZone:'UTC'});
-      const b = end.toLocaleDateString('fr-FR',{day:'numeric',month:'short',timeZone:'UTC'});
-      return a+' – '+b;
+
+    // 30, 60 et 90 jours utilisent des repères calendaires lisibles :
+    // mois, périodes de 2 mois et trimestres.
+    if (days % 30 === 0) {
+      const monthsPerBucket = days / 30;
+      const groups = new Map();
+      points.forEach(point=>{
+        const d=dateObj(point.date);
+        const monthIndex=d.getUTCFullYear()*12+d.getUTCMonth();
+        const groupIndex=Math.floor(monthIndex/monthsPerBucket)*monthsPerBucket;
+        const year=Math.floor(groupIndex/12);
+        const month=groupIndex%12;
+        const begin=new Date(Date.UTC(year,month,1));
+        const endExclusive=addMonths(begin,monthsPerBucket);
+        const key=isoDate(begin);
+        if(!groups.has(key)){
+          groups.set(key,{
+            debut:key,
+            fin:isoDate(new Date(endExclusive.getTime()-DAY_MS)),
+            date:key,
+            annonces:0
+          });
+        }
+        groups.get(key).annonces+=point.annonces;
+      });
+      return [...groups.values()].sort((a,b)=>a.debut.localeCompare(b.debut));
     }
-    return start.toLocaleDateString('fr-FR',{month:'long',year:'numeric',timeZone:'UTC'});
+
+    const first=dateObj(points[0].date);
+    let anchor=first;
+    // Les multiples de 7 sont alignés sur un lundi pour garder un repère stable.
+    if(days%7===0) anchor=mondayOnOrBefore(first);
+
+    const groups=new Map();
+    points.forEach(point=>{
+      const d=dateObj(point.date);
+      const diff=Math.floor((d-anchor)/DAY_MS);
+      const index=Math.floor(diff/days);
+      const begin=new Date(anchor.getTime()+index*days*DAY_MS);
+      const end=new Date(begin.getTime()+(days-1)*DAY_MS);
+      const key=isoDate(begin);
+      if(!groups.has(key)){
+        groups.set(key,{
+          debut:key,
+          fin:isoDate(end),
+          date:key,
+          annonces:0
+        });
+      }
+      groups.get(key).annonces+=point.annonces;
+    });
+
+    return [...groups.values()].sort((a,b)=>a.debut.localeCompare(b.debut));
+  }
+
+  function tickSettings(series, days) {
+    if (!series.length) return {};
+
+    const first=dateObj(series[0].debut);
+    const last=dateObj(series[series.length-1].fin);
+
+    // Pour les regroupements courts, l'axe garde les lundis comme repères
+    // même si les données sont quotidiennes ou par blocs de 2, 3, 4... jours.
+    if(days<=7){
+      const tickvals=[];
+      const ticktext=[];
+      let monday=mondayOnOrBefore(first);
+      if(monday<first) monday=new Date(monday.getTime()+7*DAY_MS);
+      for(let d=monday;d<=last;d=new Date(d.getTime()+7*DAY_MS)){
+        const iso=isoDate(d);
+        tickvals.push(iso);
+        ticktext.push(d.toLocaleDateString('fr-FR',{
+          weekday:'short',day:'numeric',month:'short',timeZone:'UTC'
+        }));
+      }
+      return {tickmode:'array',tickvals,ticktext};
+    }
+
+    const step=Math.max(1,Math.ceil(series.length/12));
+    const sampled=series.filter((_,index)=>index%step===0 || index===series.length-1);
+    const tickvals=sampled.map(point=>point.debut);
+    const ticktext=sampled.map(point=>{
+      const d=dateObj(point.debut);
+      if(days===30){
+        return d.toLocaleDateString('fr-FR',{month:'short',year:'numeric',timeZone:'UTC'});
+      }
+      if(days===60){
+        const end=dateObj(point.fin);
+        const a=d.toLocaleDateString('fr-FR',{month:'short',timeZone:'UTC'});
+        const b=end.toLocaleDateString('fr-FR',{month:'short',year:'numeric',timeZone:'UTC'});
+        return a+'–'+b;
+      }
+      if(days===90){
+        const quarter=Math.floor(d.getUTCMonth()/3)+1;
+        return 'T'+quarter+' '+d.getUTCFullYear();
+      }
+      return compactDate(point.debut);
+    });
+    return {tickmode:'array',tickvals,ticktext};
   }
 
   function plotTheme() {
@@ -87,24 +214,23 @@
     return {
       text: style.getPropertyValue('--ink').trim() || '#17233c',
       muted: style.getPropertyValue('--muted').trim() || '#667085',
-      grid: style.getPropertyValue('--line').trim() || '#e3e8f2',
-      surface: style.getPropertyValue('--surface').trim() || '#ffffff'
+      grid: style.getPropertyValue('--line').trim() || '#e3e8f2'
     };
   }
 
   function plotConfig() {
     return {
-      responsive: true,
-      displaylogo: false,
-      displayModeBar: 'hover',
-      scrollZoom: false,
-      modeBarButtonsToRemove: ['lasso2d','select2d','autoScale2d']
+      responsive:true,
+      displaylogo:false,
+      displayModeBar:'hover',
+      scrollZoom:false,
+      modeBarButtonsToRemove:['lasso2d','select2d','autoScale2d']
     };
   }
 
-  function plotlyReady(container, fallback) {
+  function plotlyReady(container) {
     if (window.Plotly) return true;
-    container.replaceChildren(element('p','chart-empty',fallback || 'Le graphique interactif ne peut pas être chargé.'));
+    container.replaceChildren(element('p','chart-empty','Plotly ne peut pas être chargé pour le moment.'));
     return false;
   }
 
@@ -116,53 +242,54 @@
   neighborhoodCopy.append(
     element('span','chart-kicker','Évolution des quartiers'),
     element('h3','','Comment évoluent les 5 quartiers les plus représentés ?'),
-    element('p','chart-subtitle','Survolez ou cliquez sur la courbe pour voir les valeurs exactes.')
+    element('p','chart-subtitle','Le Top 5 est calculé sur toute la base. Le curseur change seulement le niveau de regroupement dans le temps.')
   );
 
   const rangeControl = element('div','trend-range-control');
   const rangeTop = element('div','trend-range-top');
-  rangeTop.append(element('span','','Période analysée'), element('strong','trend-range-value','30 jours'));
-  const rangeInput = document.createElement('input');
-  rangeInput.type = 'range';
-  rangeInput.id = 'neighborhood-period-range';
-  rangeInput.min = '0';
-  rangeInput.max = '2';
-  rangeInput.step = '1';
-  rangeInput.value = '1';
-  rangeInput.setAttribute('aria-label','Choisir la période analysée : 7, 30 ou 90 jours');
-  const rangeLabels = element('div','trend-range-labels');
-  periods.forEach(period => rangeLabels.append(element('span','',period.title)));
-  const rangeCaption = element('p','trend-range-caption',periods[1].caption);
+  rangeTop.append(element('span','','Regrouper les données tous les'), element('strong','trend-range-value','7 jours'));
+  const rangeInput=document.createElement('input');
+  rangeInput.type='range';
+  rangeInput.id='neighborhood-period-range';
+  rangeInput.min='1';
+  rangeInput.max='90';
+  rangeInput.step='1';
+  rangeInput.value='7';
+  rangeInput.setAttribute('aria-label','Choisir un regroupement de 1 à 90 jours');
+  const rangeLabels=element('div','trend-range-labels');
+  rangeLabels.append(element('span','','1 jour'),element('span','','45 jours'),element('span','','90 jours'));
+  const rangeCaption=element('p','trend-range-caption',groupingLabel(7));
   rangeControl.append(rangeTop,rangeInput,rangeLabels,rangeCaption);
   neighborhoodHeader.append(neighborhoodCopy,rangeControl);
 
-  const neighborhoodChart = element('div','plotly-chart');
-  neighborhoodChart.id = 'neighborhood-trend-chart';
-  neighborhoodChart.append(element('p','chart-empty','Chargement des quartiers…'));
-  const neighborhoodDetail = element('p','plot-click-detail','Cliquez sur une courbe pour afficher le détail d’une période.');
-  neighborhoodDetail.id = 'neighborhood-trend-detail';
+  const neighborhoodChart=element('div','plotly-chart');
+  neighborhoodChart.id='neighborhood-trend-chart';
+  neighborhoodChart.append(element('p','chart-empty','Chargement de toute la base…'));
+  const neighborhoodDetail=element('p','plot-click-detail','Cliquez sur une courbe pour afficher le détail d’une période.');
+  neighborhoodDetail.id='neighborhood-trend-detail';
   neighborhoodCard.append(neighborhoodHeader,neighborhoodChart,neighborhoodDetail);
   marketGrid?.insertAdjacentElement('afterend',neighborhoodCard);
 
-  const rankingCard = element('article','weekly-card neighborhood-card ranking-card');
-  const rankingCopy = element('div','neighborhood-alt-heading');
+  const rankingCard=element('article','weekly-card neighborhood-card ranking-card');
+  const rankingCopy=element('div','neighborhood-alt-heading');
   rankingCopy.append(
     element('span','chart-kicker','Classement des quartiers'),
     element('h3','','Où se concentre le plus d’offres ?'),
-    element('p','chart-subtitle','Cliquez sur une barre pour afficher le volume et la part du quartier.')
+    element('p','chart-subtitle','Même Top 5, calculé sur toute la base. Cliquez sur une barre pour voir le détail.')
   );
-  const rankingChart = element('div','plotly-chart plotly-ranking');
-  rankingChart.id = 'neighborhood-ranking-chart';
+  const rankingChart=element('div','plotly-chart plotly-ranking');
+  rankingChart.id='neighborhood-ranking-chart';
   rankingChart.append(element('p','chart-empty','Chargement du classement…'));
-  const rankingDetail = element('p','plot-click-detail','Cliquez sur un quartier pour afficher son détail.');
-  rankingDetail.id = 'neighborhood-ranking-detail';
+  const rankingDetail=element('p','plot-click-detail','Cliquez sur un quartier pour afficher son détail.');
+  rankingDetail.id='neighborhood-ranking-detail';
   rankingCard.append(rankingCopy,rankingChart,rankingDetail);
   neighborhoodCard.insertAdjacentElement('afterend',rankingCard);
 
-  let market = null;
-  let trends = null;
-  let trendPeriodIndex = 1;
-  let trendLoading = null;
+  let market=null;
+  let trends=null;
+  let bucketDays=7;
+  let trendLoading=null;
+  let drawFrame=null;
 
   // Les deux graphiques historiques restent dans leur rendu d'origine.
   function drawChart(container, weeks, kind, metric) {
@@ -171,32 +298,32 @@
       container.append(element('p','chart-empty','Aucune donnée disponible.'));
       return;
     }
-    const values = weeks.map(w => w.types?.[kind]?.[metric] ?? null);
-    const price = metric === 'prix_m2';
-    const finite = values.filter(v => Number.isFinite(v));
-    const maximum = Math.max(...finite, 1);
-    const svg = svgElement('svg',{
+    const values=weeks.map(w=>w.types?.[kind]?.[metric] ?? null);
+    const price=metric==='prix_m2';
+    const finite=values.filter(v=>Number.isFinite(v));
+    const maximum=Math.max(...finite,1);
+    const svg=svgElement('svg',{
       viewBox:'0 0 520 180',
       role:'img',
-      'aria-label':price ? 'Évolution du prix moyen annoncé par mètre carré.' : 'Nombre d’annonces publiées par semaine.'
+      'aria-label':price?'Évolution du prix moyen annoncé par mètre carré.':'Nombre d’annonces publiées par semaine.'
     });
 
-    for (const ratio of [0,0.5,1]) {
-      const y = 142-ratio*115;
+    for(const ratio of [0,0.5,1]){
+      const y=142-ratio*115;
       svg.append(svgElement('line',{x1:62,x2:500,y1:y,y2:y,class:'chart-gridline'}));
-      const label = svgElement('text',{x:55,y:y+4,'text-anchor':'end',class:'chart-axis'});
+      const label=svgElement('text',{x:55,y:y+4,'text-anchor':'end',class:'chart-axis'});
       label.textContent=fmt.format(maximum*ratio);
       svg.append(label);
     }
 
-    let points = [];
-    const flush = () => {
+    let points=[];
+    const flush=()=>{
       if(points.length>1) svg.append(svgElement('polyline',{points:points.join(' '),class:'chart-line'}));
       points=[];
     };
-    values.forEach((value,i) => {
-      const x = 80+i*(400/Math.max(weeks.length-1,1));
-      if (!Number.isFinite(value)) {
+    values.forEach((value,index)=>{
+      const x=80+index*(400/Math.max(weeks.length-1,1));
+      if(!Number.isFinite(value)){
         flush();
         return;
       }
@@ -204,16 +331,16 @@
     });
     flush();
 
-    values.forEach((value,i) => {
-      if (!Number.isFinite(value)) return;
+    values.forEach((value,index)=>{
+      if(!Number.isFinite(value)) return;
       const circle=svgElement('circle',{
-        cx:80+i*(400/Math.max(weeks.length-1,1)),
+        cx:80+index*(400/Math.max(weeks.length-1,1)),
         cy:142-value/maximum*115,
         r:5,
         class:'chart-point'
       });
       const label=svgElement('title',{});
-      label.textContent=shortDate(weeks[i].debut)+' : '+fmt.format(value)+(price?' FCFA/m²':' annonces');
+      label.textContent=shortDate(weeks[index].debut)+' : '+fmt.format(value)+(price?' FCFA/m²':' annonces');
       circle.append(label);
       svg.append(circle);
     });
@@ -223,16 +350,16 @@
     const detail=element('p','chart-detail',price?'Prix demandés, en FCFA par m².':'Une annonce est comptée selon sa date de publication.');
     detail.setAttribute('aria-live','polite');
 
-    weeks.forEach((week,i) => {
+    weeks.forEach((week,index)=>{
       const button=element('button','chart-week');
       button.type='button';
       button.append(
         element('span','',shortDate(week.debut)+' – '+shortDate(week.fin)),
-        element('strong','',values[i]===null?'Non renseigné':fmt.format(values[i])+(price?' FCFA':' annonces'))
+        element('strong','',values[index]===null?'Non renseigné':fmt.format(values[index])+(price?' FCFA':' annonces'))
       );
       button.setAttribute('aria-pressed','false');
       button.addEventListener('click',()=>{
-        dates.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));
+        dates.querySelectorAll('button').forEach(current=>current.setAttribute('aria-pressed',String(current===button)));
         const stats=week.types[kind];
         detail.textContent='Du '+shortDate(week.debut)+' au '+shortDate(week.fin)+' : '+(
           price
@@ -245,73 +372,85 @@
       dates.append(button);
     });
     container.append(dates,detail);
-    if (!finite.length) detail.textContent='Aucun prix au m² calculable sur ces semaines.';
+    if(!finite.length) detail.textContent='Aucun prix au m² calculable sur ces semaines.';
   }
 
   function currentNeighborhoodData() {
-    if (!trends) return null;
-    const periodMeta = periods[trendPeriodIndex];
-    const kind = $('#weekly-property').value;
-    const period = trends.periodes?.[periodMeta.key];
+    if(!trends) return null;
+    const kind=$('#weekly-property').value;
+    const typeData=trends.types?.[kind];
     return {
-      periodMeta,
       kind,
-      period,
-      periodData: period?.types?.[kind],
-      neighborhoods: period?.types?.[kind]?.quartiers || []
+      typeData,
+      neighborhoods:typeData?.quartiers || []
     };
   }
 
   function updateRangeText() {
-    const meta=periods[trendPeriodIndex];
-    $('.trend-range-value').textContent=meta.title;
-    rangeCaption.textContent=meta.caption;
+    $('.trend-range-value').textContent=bucketDays+' jour'+(bucketDays>1?'s':'');
+    rangeCaption.textContent=groupingLabel(bucketDays);
   }
 
   function drawNeighborhoodTrend() {
     const container=$('#neighborhood-trend-chart');
     const detail=$('#neighborhood-trend-detail');
-    if (!container) return;
+    if(!container) return;
+
     const data=currentNeighborhoodData();
-    if (!data) {
-      container.replaceChildren(element('p','chart-empty','Chargement des quartiers…'));
+    if(!data){
+      container.replaceChildren(element('p','chart-empty','Chargement de toute la base…'));
       return;
     }
-    const {period,periodMeta,neighborhoods}=data;
-    if (!neighborhoods.length) {
-      if (window.Plotly) Plotly.purge(container);
-      container.replaceChildren(element('p','chart-empty','Pas assez d’annonces avec un quartier identifié sur cette période.'));
+
+    const {neighborhoods}=data;
+    if(!neighborhoods.length){
+      if(window.Plotly) Plotly.purge(container);
+      container.replaceChildren(element('p','chart-empty','Pas assez d’annonces avec un quartier identifié.'));
       detail.textContent='Aucun détail disponible.';
       return;
     }
-    if (!plotlyReady(container)) return;
+    if(!plotlyReady(container)) return;
 
+    const aggregated=neighborhoods.map(item=>({
+      item,
+      points:aggregateDailyPoints(item.points,bucketDays)
+    }));
+    const reference=aggregated[0]?.points || [];
+    const ticks=tickSettings(reference,bucketDays);
     const theme=plotTheme();
-    const traces=neighborhoods.map((item,index)=>({
+
+    const traces=aggregated.map(({item,points},index)=>({
       type:'scatter',
       mode:'lines',
       name:item.nom,
-      x:item.points.map(point=>pointLabel(point,period.granularite)),
-      y:item.points.map(point=>point.annonces),
-      customdata:item.points.map(point=>[item.nom,point.debut,point.fin]),
-      line:{color:seriesColors[index],width:3,shape:'spline',smoothing:1.05},
-      hovertemplate:'<b>%{fullData.name}</b><br>%{x}<br>%{y} annonce(s)<extra></extra>'
+      x:points.map(point=>point.debut),
+      y:points.map(point=>point.annonces),
+      customdata:points.map(point=>[
+        item.nom,
+        point.debut,
+        point.fin,
+        intervalLabel(point.debut,point.fin)
+      ]),
+      line:{color:seriesColors[index],width:3,shape:'spline',smoothing:0.9},
+      hovertemplate:'<b>%{fullData.name}</b><br>%{customdata[3]}<br>%{y} annonce(s)<extra></extra>'
     }));
 
     const layout={
       autosize:true,
-      height:360,
-      margin:{l:48,r:18,t:16,b:58},
+      height:370,
+      margin:{l:48,r:18,t:18,b:62},
       paper_bgcolor:'rgba(0,0,0,0)',
       plot_bgcolor:'rgba(0,0,0,0)',
       font:{family:'Manrope, sans-serif',color:theme.text,size:12},
-      hovermode:'x unified',
+      hovermode:'closest',
       legend:{orientation:'h',y:1.13,x:0,font:{size:11}},
       xaxis:{
-        title:{text:period.granularite==='jour'?'Jour':period.granularite==='semaine'?'Semaine':'Mois',font:{size:11}},
+        type:'date',
+        title:{text:'Date',font:{size:11}},
         showgrid:false,
         tickfont:{color:theme.muted,size:10},
-        automargin:true
+        automargin:true,
+        ...ticks
       },
       yaxis:{
         title:{text:'Annonces',font:{size:11}},
@@ -320,54 +459,60 @@
         zeroline:false,
         tickfont:{color:theme.muted,size:10},
         dtick:1
-      }
+      },
+      uirevision:'neighborhood-'+bucketDays+'-'+data.kind
     };
 
     Plotly.react(container,traces,layout,plotConfig()).then(()=>{
-      if (typeof container.removeAllListeners === 'function') container.removeAllListeners('plotly_click');
+      if(typeof container.removeAllListeners==='function') container.removeAllListeners('plotly_click');
       container.on('plotly_click',event=>{
         const point=event.points?.[0];
-        if (!point) return;
-        const [name,start,end]=point.customdata;
-        const interval=start===end ? longDate(start) : longDate(start)+' au '+longDate(end);
-        detail.textContent=name+' · '+interval+' · '+fmt.format(point.y)+' annonce'+(point.y>1?'s':'')+'.';
+        if(!point) return;
+        const [name,start,end,label]=point.customdata;
+        detail.textContent=name+' · '+label+' · '+fmt.format(point.y)+' annonce'+(point.y>1?'s':'')+'.';
       });
     });
 
-    detail.textContent=periodMeta.caption+' · Top 5 calculé sur la période sélectionnée.';
+    detail.textContent='Toute la base · '+groupingLabel(bucketDays)+' · cliquez sur une courbe pour voir le détail.';
   }
 
   function drawNeighborhoodRanking() {
     const container=$('#neighborhood-ranking-chart');
     const detail=$('#neighborhood-ranking-detail');
-    if (!container) return;
+    if(!container) return;
+
     const data=currentNeighborhoodData();
-    if (!data) {
+    if(!data){
       container.replaceChildren(element('p','chart-empty','Chargement du classement…'));
       return;
     }
-    const {period,periodMeta,periodData,neighborhoods}=data;
-    if (!neighborhoods.length) {
-      if (window.Plotly) Plotly.purge(container);
+
+    const {typeData,neighborhoods}=data;
+    if(!neighborhoods.length){
+      if(window.Plotly) Plotly.purge(container);
       container.replaceChildren(element('p','chart-empty','Pas assez de données pour établir un classement.'));
       detail.textContent='Aucun détail disponible.';
       return;
     }
-    if (!plotlyReady(container)) return;
+    if(!plotlyReady(container)) return;
 
     const theme=plotTheme();
-    const total=Math.max(periodData?.total_annonces || 0,1);
+    const total=Math.max(typeData?.total_annonces || 0,1);
     const trace={
       type:'bar',
       orientation:'h',
       x:neighborhoods.map(item=>item.total),
       y:neighborhoods.map(item=>item.nom),
-      customdata:neighborhoods.map(item=>[item.part_pct ?? (item.total/total*100),item.total]),
+      customdata:neighborhoods.map(item=>[
+        item.part_pct ?? (item.total/total*100),
+        item.total
+      ]),
       marker:{color:neighborhoods.map((_,index)=>seriesColors[index])},
       text:neighborhoods.map(item=>fmt.format(item.total)),
       textposition:'auto',
-      hovertemplate:'<b>%{y}</b><br>%{x} annonces<br>%{customdata[0]:.1f}% des annonces de la période<extra></extra>'
+      hovertemplate:'<b>%{y}</b><br>%{x} annonces<br>%{customdata[0]:.1f}% de toute la base<extra></extra>'
     };
+
     const layout={
       autosize:true,
       height:330,
@@ -388,20 +533,21 @@
         autorange:'reversed',
         tickfont:{color:theme.text,size:11},
         automargin:true
-      }
+      },
+      uirevision:'ranking-'+data.kind
     };
 
     Plotly.react(container,[trace],layout,plotConfig()).then(()=>{
-      if (typeof container.removeAllListeners === 'function') container.removeAllListeners('plotly_click');
+      if(typeof container.removeAllListeners==='function') container.removeAllListeners('plotly_click');
       container.on('plotly_click',event=>{
         const point=event.points?.[0];
-        if (!point) return;
+        if(!point) return;
         const share=Number(point.customdata?.[0] || 0);
-        detail.textContent=point.y+' · '+fmt.format(point.x)+' annonces · '+share.toLocaleString('fr-FR',{maximumFractionDigits:1})+'% des annonces observées sur la période.';
+        detail.textContent=point.y+' · '+fmt.format(point.x)+' annonces · '+share.toLocaleString('fr-FR',{maximumFractionDigits:1})+'% des annonces de toute la base.';
       });
     });
 
-    detail.textContent='Classement du '+longDate(period.debut)+' au '+longDate(period.fin)+' · '+periodMeta.title+'.';
+    detail.textContent='Classement calculé sur toute la base, du '+longDate(trends.debut)+' au '+longDate(trends.fin)+'.';
   }
 
   function drawNeighborhoodViews() {
@@ -410,20 +556,29 @@
     drawNeighborhoodRanking();
   }
 
+  function scheduleNeighborhoodDraw() {
+    if(drawFrame) cancelAnimationFrame(drawFrame);
+    drawFrame=requestAnimationFrame(()=>{
+      drawFrame=null;
+      drawNeighborhoodViews();
+    });
+  }
+
   function renderStats() {
-    if (!market) return;
+    if(!market) return;
     const kind=$('#weekly-property').value;
     drawChart($('#weekly-count-chart'),market.semaines || [],kind,'annonces');
     drawChart($('#weekly-price-chart'),market.semaines || [],kind,'prix_m2');
-    drawNeighborhoodViews();
+    scheduleNeighborhoodDraw();
   }
 
   async function loadNeighborhoodTrends() {
-    if (trends) {
-      drawNeighborhoodViews();
+    if(trends){
+      scheduleNeighborhoodDraw();
       return;
     }
-    if (trendLoading) return trendLoading;
+    if(trendLoading) return trendLoading;
+
     trendLoading=fetch('/market/neighborhood-trends')
       .then(response=>{
         if(!response.ok) throw Error();
@@ -431,26 +586,29 @@
       })
       .then(data=>{
         trends=data;
-        drawNeighborhoodViews();
+        scheduleNeighborhoodDraw();
       })
       .catch(()=>{
-        for(const id of ['neighborhood-trend-chart','neighborhood-ranking-chart']) {
+        for(const id of ['neighborhood-trend-chart','neighborhood-ranking-chart']){
           const container=$('#'+id);
           container?.replaceChildren(element('p','chart-empty','Les données par quartier ne sont pas disponibles pour le moment.'));
         }
       })
       .finally(()=>{trendLoading=null;});
+
     return trendLoading;
   }
 
   $('#weekly-property').addEventListener('change',renderStats);
+
   rangeInput.addEventListener('input',()=>{
-    trendPeriodIndex=Number(rangeInput.value);
-    drawNeighborhoodViews();
+    bucketDays=Math.max(1,Math.min(90,Number(rangeInput.value) || 1));
+    updateRangeText();
+    if(trends) scheduleNeighborhoodDraw();
   });
 
   const observer=new MutationObserver(()=>{
-    if(trends) requestAnimationFrame(drawNeighborhoodViews);
+    if(trends) scheduleNeighborhoodDraw();
   });
   observer.observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
 
@@ -472,6 +630,7 @@
   const updateBudget=()=>{
     $('#budget-label').textContent=budget.value && Number(budget.value)>0 ? fmt.format(Number(budget.value))+' FCFA' : '';
   };
+
   budget.addEventListener('input',updateBudget);
   document.querySelectorAll('[data-budget]').forEach(button=>button.addEventListener('click',()=>{
     budget.value=button.dataset.budget;
@@ -486,10 +645,10 @@
 
   function filterNeighborhoods() {
     options.replaceChildren();
-    if (!neighborhoods) return;
+    if(!neighborhoods) return;
     const query=fold(zone.value.trim());
     const matches=neighborhoods.filter(name=>fold(name).includes(query)).slice(0,20);
-    for(const name of matches) {
+    for(const name of matches){
       const option=document.createElement('option');
       option.value=name;
       options.append(option);
@@ -498,11 +657,12 @@
   }
 
   async function loadNeighborhoods() {
-    if (neighborhoods) {
+    if(neighborhoods){
       filterNeighborhoods();
       return;
     }
-    if (loading) return loading;
+    if(loading) return loading;
+
     $('#zone-status').textContent='Chargement des quartiers…';
     loading=fetch('/market/neighborhoods')
       .then(response=>{
@@ -517,6 +677,7 @@
         $('#zone-status').textContent='Suggestions indisponibles. Vous pouvez saisir votre quartier.';
       })
       .finally(()=>{loading=null;});
+
     return loading;
   }
 
@@ -533,7 +694,7 @@
     clearStats(){
       market=null;
       trends=null;
-      for(const id of ['weekly-count-chart','weekly-price-chart','neighborhood-trend-chart','neighborhood-ranking-chart']) {
+      for(const id of ['weekly-count-chart','weekly-price-chart','neighborhood-trend-chart','neighborhood-ranking-chart']){
         $('#'+id)?.replaceChildren(element('p','chart-empty','Données indisponibles.'));
       }
     },
