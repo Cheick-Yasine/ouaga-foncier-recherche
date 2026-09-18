@@ -596,7 +596,7 @@
     }
     if(trendLoading) return trendLoading;
 
-    trendLoading=fetch('/market/neighborhood-trends')
+    trendLoading=fetch('/market/neighborhood-trends',{cache:'no-store'})
       .then(response=>{
         if(!response.ok) throw Error();
         return response.json();
