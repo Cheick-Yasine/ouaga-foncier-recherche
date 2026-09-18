@@ -124,15 +124,17 @@ def _candidate_from_row(
     row: dict[str, Any],
     *,
     now: datetime,
+    preserve_raw_neighborhood: bool = False,
 ) -> SearchCandidate:
     text = (
         _optional_text(row.get("texte_nettoye"))
         or _optional_text(row.get("resume_court"))
         or ""
     )
+    raw_neighborhood = _optional_text(row.get("quartier_zone"))
     neighborhood = resolve_neighborhood(
         text,
-        _optional_text(row.get("quartier_zone")),
+        raw_neighborhood,
     )
     collected_at = row.get("premiere_collecte")
     if collected_at is not None and collected_at.tzinfo is None:
@@ -162,7 +164,11 @@ def _candidate_from_row(
             or _optional_text(row.get("type_bien")),
             text,
         ),
-        neighborhood=neighborhood.canonical if neighborhood.in_scope else None,
+        neighborhood=(
+            neighborhood.canonical
+            if neighborhood.in_scope
+            else raw_neighborhood if preserve_raw_neighborhood else None
+        ),
         price_fcfa=effective_price,
         area_m2=effective_area,
         proximity=None if proximity == "non_precisee" else proximity,
@@ -190,6 +196,95 @@ def _is_prepared_candidate(candidate: SearchCandidate) -> bool:
             and candidate.area_m2 is None
         )
     )
+
+
+
+def load_market_candidates(
+    settings: Settings | None = None,
+    *,
+    now: datetime | None = None,
+    publication_days: int = 60,
+) -> list[SearchCandidate]:
+    """Charge les annonces pour les statistiques sans filtre géographique strict.
+
+    La recherche utilisateur garde sa normalisation stricte. Les statistiques
+    doivent en revanche refléter la base après les exclusions métier, sans
+    supprimer une annonce uniquement parce que son quartier est une variante
+    orthographique non encore normalisée.
+    """
+
+    current_settings = settings or get_settings()
+    if current_settings.database_url is None:
+        raise DatabaseNotConfiguredError(
+            "DATABASE_URL n'est pas configurée dans l'environnement."
+        )
+
+    current_time = now or datetime.now(timezone.utc)
+    database_url = current_settings.database_url.get_secret_value()
+
+    with psycopg.connect(
+        database_url,
+        row_factory=dict_row,
+    ) as connection:
+        with connection.transaction():
+            connection.execute("SET TRANSACTION READ ONLY")
+            rows = connection.execute(
+                """
+                SELECT
+                    id::text AS id,
+                    url,
+                    date_publication,
+                    type_bien,
+                    type_bien_normalise,
+                    quartier_zone,
+                    superficie_m2,
+                    prix_fcfa,
+                    statut_document,
+                    contacts_whatsapp,
+                    resume_court,
+                    texte_nettoye,
+                    premiere_collecte
+                FROM public.annonces
+                WHERE NOT (prix_fcfa IS NULL AND superficie_m2 IS NULL)
+                  AND COALESCE(
+                      NULLIF(LOWER(TRIM(type_bien_normalise)), ''),
+                      NULLIF(LOWER(TRIM(type_bien)), ''),
+                      ''
+                  ) <> 'villa'
+                ORDER BY premiere_collecte DESC NULLS LAST, id
+                """
+            ).fetchall()
+
+    start = current_time - timedelta(days=publication_days)
+    dated_rows = [
+        row for row in rows
+        if (
+            published := publication_time(
+                _optional_text(row.get("date_publication"))
+            )
+        ) is not None
+        and start <= published <= current_time
+    ]
+
+    candidates = [
+        _candidate_from_row(
+            dict(row),
+            now=current_time,
+            preserve_raw_neighborhood=True,
+        )
+        for row in dated_rows
+    ]
+
+    return [
+        candidate
+        for candidate in candidates
+        if candidate.property_type in _ALLOWED_PROPERTY_TYPES
+        and sale_eligible(candidate.text)
+        and not (
+            candidate.price_fcfa is None
+            and candidate.area_m2 is None
+        )
+    ]
 
 
 def load_recent_candidates(
