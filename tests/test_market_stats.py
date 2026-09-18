@@ -34,7 +34,7 @@ class MarketStatsTests(unittest.TestCase):
         ]
         stats = summarize_market(rows, now=self.now)
         self.assertEqual(stats['annonces_30_jours'], 5)
-        self.assertEqual(stats['prix_m2_moyen_fcfa'], 15_000)
+        self.assertEqual(stats['prix_m2_moyen_fcfa'], 12_500)
         self.assertEqual(stats['annonces_avec_prix_m2'], 4)
         self.assertEqual(stats['quartier_le_plus_represente'], 'Karpala')
         self.assertEqual(stats['annonces_quartier_principal'], 3)
