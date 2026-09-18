@@ -3,8 +3,8 @@ import psycopg
 from fastapi import APIRouter, HTTPException
 
 from app.database import DatabaseNotConfiguredError
-from app.market_stats import summarize_market
-from app.search_repository import load_market_candidates
+from app.market_stats import neighborhood_trends, summarize_market
+from app.search_repository import load_market_candidates, load_neighborhood_candidates
 from app.neighborhoods import KNOWN_NEIGHBORHOOD_ALIASES, neighborhood_key
 
 router = APIRouter(prefix='/market', tags=['Accueil'])
@@ -18,6 +18,17 @@ def market_stats() -> dict:
         return summarize_market(load_market_candidates(publication_days=60))
     except (DatabaseNotConfiguredError, psycopg.Error):
         raise HTTPException(status_code=503, detail='Les chiffres ne sont pas disponibles pour le moment.') from None
+
+
+@router.get('/neighborhood-trends')
+def market_neighborhood_trends() -> dict:
+    try:
+        return neighborhood_trends(load_neighborhood_candidates())
+    except (DatabaseNotConfiguredError, psycopg.Error):
+        raise HTTPException(
+            status_code=503,
+            detail='Les tendances par quartier ne sont pas disponibles pour le moment.',
+        ) from None
 
 
 @router.get('/neighborhoods')
