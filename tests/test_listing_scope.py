@@ -4,7 +4,12 @@ from types import SimpleNamespace
 import unittest
 
 from app.assistant_constraints import conversation_city_only, respect_search_scope
-from app.listing_scope import sale_eligible, within_ouagadougou, facebook_publication_url
+from app.listing_scope import (
+    facebook_publication_url,
+    sale_eligible,
+    within_ouagadougou,
+    within_ouagadougou_and_surroundings,
+)
 from app.search_engine import SearchCandidate, parse_search_description, rank_candidates
 
 
@@ -34,6 +39,27 @@ class ListingScopeTests(unittest.TestCase):
             with self.subTest(name=name): self.assertFalse(within_ouagadougou('Parcelle à '+name, 'Ouagadougou'))
         self.assertFalse(within_ouagadougou('Parcelle à Tanghin, commune de Saaba', 'Tanghin'))
         self.assertFalse(within_ouagadougou('Parcelle en commune de Komsilga', 'Ouagadougou'))
+
+    def test_extended_scope_accepts_valid_surroundings_only(self):
+        for name in (
+            'Karpala', 'Saaba', 'Gampela', 'Pabré', 'Koubri',
+            'Komsilga', 'Loumbila', 'Bassinko', 'Kouba',
+        ):
+            with self.subTest(name=name):
+                self.assertTrue(
+                    within_ouagadougou_and_surroundings(
+                        'Parcelle en vente à ' + name,
+                        name,
+                    )
+                )
+        for name in ('Bobo-Dioulasso', 'Sapouy', 'Tenkodogo', 'Zone inconnue'):
+            with self.subTest(name=name):
+                self.assertFalse(
+                    within_ouagadougou_and_surroundings(
+                        'Parcelle en vente à ' + name,
+                        name,
+                    )
+                )
 
     def test_hard_exclusions_precede_price_and_completeness(self):
         urban = SearchCandidate('urban', 'Parcelle en vente à Karpala', neighborhood='Karpala', property_type='parcelle', price_fcfa=8_000_000, area_m2=300)
