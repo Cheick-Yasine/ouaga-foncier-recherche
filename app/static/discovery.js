@@ -168,44 +168,59 @@
 
     const first=dateObj(series[0].debut);
     const last=dateObj(series[series.length-1].fin);
+    const spanDays=Math.max(1,Math.round((last-first)/DAY_MS)+1);
 
-    // Pour les regroupements courts, l'axe garde les lundis comme repères
-    // même si les données sont quotidiennes ou par blocs de 2, 3, 4... jours.
-    if(days<=7){
+    if(spanDays<=70){
       const tickvals=[];
       const ticktext=[];
       let monday=mondayOnOrBefore(first);
       if(monday<first) monday=new Date(monday.getTime()+7*DAY_MS);
       for(let d=monday;d<=last;d=new Date(d.getTime()+7*DAY_MS)){
-        const iso=isoDate(d);
-        tickvals.push(iso);
+        tickvals.push(isoDate(d));
         ticktext.push(d.toLocaleDateString('fr-FR',{
           weekday:'short',day:'numeric',month:'short',timeZone:'UTC'
+        }));
+      }
+      if(!tickvals.length){
+        tickvals.push(isoDate(first));
+        ticktext.push(first.toLocaleDateString('fr-FR',{
+          day:'numeric',month:'short',timeZone:'UTC'
         }));
       }
       return {tickmode:'array',tickvals,ticktext};
     }
 
-    const step=Math.max(1,Math.ceil(series.length/12));
-    const sampled=series.filter((_,index)=>index%step===0 || index===series.length-1);
-    const tickvals=sampled.map(point=>point.debut);
-    const ticktext=sampled.map(point=>{
-      const d=dateObj(point.debut);
-      if(days===30){
-        return d.toLocaleDateString('fr-FR',{month:'short',year:'numeric',timeZone:'UTC'});
-      }
-      if(days===60){
-        const end=dateObj(point.fin);
-        const a=d.toLocaleDateString('fr-FR',{month:'short',timeZone:'UTC'});
-        const b=end.toLocaleDateString('fr-FR',{month:'short',year:'numeric',timeZone:'UTC'});
-        return a+'–'+b;
-      }
-      if(days===90){
-        const quarter=Math.floor(d.getUTCMonth()/3)+1;
-        return 'T'+quarter+' '+d.getUTCFullYear();
-      }
-      return compactDate(point.debut);
-    });
+    const monthStep=
+      spanDays<=220 ? 1 :
+      spanDays<=450 ? 2 :
+      spanDays<=900 ? 3 :
+      spanDays<=1500 ? 6 : 12;
+
+    const tickvals=[];
+    const ticktext=[];
+    let cursor=new Date(Date.UTC(first.getUTCFullYear(),first.getUTCMonth(),1));
+    if(cursor<first) cursor=addMonths(cursor,1);
+
+    for(let d=cursor;d<=last;d=addMonths(d,monthStep)){
+      tickvals.push(isoDate(d));
+      ticktext.push(
+        monthStep>=12
+          ? String(d.getUTCFullYear())
+          : d.toLocaleDateString('fr-FR',{
+              month:'short',
+              year:spanDays>220?'2-digit':'numeric',
+              timeZone:'UTC'
+            })
+      );
+    }
+
+    if(!tickvals.length){
+      tickvals.push(isoDate(first));
+      ticktext.push(first.toLocaleDateString('fr-FR',{
+        month:'short',year:'numeric',timeZone:'UTC'
+      }));
+    }
+
     return {tickmode:'array',tickvals,ticktext};
   }
 
@@ -242,7 +257,7 @@
   neighborhoodCopy.append(
     element('span','chart-kicker','Évolution des quartiers'),
     element('h3','','Comment évoluent les 5 quartiers les plus représentés ?'),
-    element('p','chart-subtitle','Le Top 5 est calculé sur toute la base. Le curseur change seulement le niveau de regroupement dans le temps.')
+    element('p','chart-subtitle','Toute la base est analysée. Les dates très isolées, séparées du bloc principal d’activité, sont écartées du tracé. Le curseur change seulement le regroupement dans le temps.')
   );
 
   const rangeControl = element('div','trend-range-control');
@@ -275,7 +290,7 @@
   rankingCopy.append(
     element('span','chart-kicker','Classement des quartiers'),
     element('h3','','Où se concentre le plus d’offres ?'),
-    element('p','chart-subtitle','Même Top 5, calculé sur toute la base. Cliquez sur une barre pour voir le détail.')
+    element('p','chart-subtitle','Même période utile que la courbe. Cliquez sur une barre pour voir le détail du quartier.')
   );
   const rankingChart=element('div','plotly-chart plotly-ranking');
   rankingChart.id='neighborhood-ranking-chart';
@@ -458,7 +473,8 @@
         gridcolor:theme.grid,
         zeroline:false,
         tickfont:{color:theme.muted,size:10},
-        dtick:1
+        nticks:6,
+        tickformat:'d'
       },
       uirevision:'neighborhood-'+bucketDays+'-'+data.kind
     };
@@ -473,7 +489,7 @@
       });
     });
 
-    detail.textContent='Toute la base · '+groupingLabel(bucketDays)+' · cliquez sur une courbe pour voir le détail.';
+    detail.textContent='Période utile : '+longDate(trends.debut)+' → '+longDate(trends.fin)+' · '+groupingLabel(bucketDays)+(trends.annonces_isolees_ignorees ? ' · '+fmt.format(trends.annonces_isolees_ignorees)+' annonce(s) très isolée(s) écartée(s).' : '.')+' Cliquez sur une courbe pour voir le détail.';
   }
 
   function drawNeighborhoodRanking() {
@@ -510,7 +526,7 @@
       marker:{color:neighborhoods.map((_,index)=>seriesColors[index])},
       text:neighborhoods.map(item=>fmt.format(item.total)),
       textposition:'auto',
-      hovertemplate:'<b>%{y}</b><br>%{x} annonces<br>%{customdata[0]:.1f}% de toute la base<extra></extra>'
+      hovertemplate:'<b>%{y}</b><br>%{x} annonces<br>%{customdata[0]:.1f}% de la période retenue<extra></extra>'
     };
 
     const layout={
@@ -527,7 +543,8 @@
         gridcolor:theme.grid,
         zeroline:false,
         tickfont:{color:theme.muted,size:10},
-        dtick:1
+        nticks:6,
+        tickformat:'d'
       },
       yaxis:{
         autorange:'reversed',
@@ -543,11 +560,11 @@
         const point=event.points?.[0];
         if(!point) return;
         const share=Number(point.customdata?.[0] || 0);
-        detail.textContent=point.y+' · '+fmt.format(point.x)+' annonces · '+share.toLocaleString('fr-FR',{maximumFractionDigits:1})+'% des annonces de toute la base.';
+        detail.textContent=point.y+' · '+fmt.format(point.x)+' annonces · '+share.toLocaleString('fr-FR',{maximumFractionDigits:1})+'% des annonces de la période retenue.';
       });
     });
 
-    detail.textContent='Classement calculé sur toute la base, du '+longDate(trends.debut)+' au '+longDate(trends.fin)+'.';
+    detail.textContent='Classement sur la période utile du '+longDate(trends.debut)+' au '+longDate(trends.fin)+(trends.annonces_isolees_ignorees ? ' · '+fmt.format(trends.annonces_isolees_ignorees)+' annonce(s) très isolée(s) écartée(s).' : '.');
   }
 
   function drawNeighborhoodViews() {
