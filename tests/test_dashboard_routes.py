@@ -15,12 +15,12 @@ client = TestClient(app)
 def test_stats_are_public_aggregates_without_search_pool_limit(monkeypatch):
     candidate=SearchCandidate('a','Parcelle en vente à Karpala', neighborhood='Karpala', price_fcfa=3_000_000, area_m2=300, publication_label=datetime.now(timezone.utc).isoformat(), contact='70 12 34 56')
     calls=[]
-    def load(days, *, pool_limit, publication_days):
-        calls.append((days,pool_limit,publication_days)); return [candidate]
-    monkeypatch.setattr('app.market_routes.load_recent_candidates',load)
+    def load(*, publication_days):
+        calls.append(publication_days); return [candidate]
+    monkeypatch.setattr('app.market_routes.load_market_candidates',load)
     response=client.get('/market/stats')
     assert response.status_code==200
-    assert calls==[(None,None,60)]
+    assert calls==[60]
     assert len(response.json()['semaines']) == 4
     assert response.json()['annonces_30_jours']==1
     assert response.json()['prix_m2_moyen_fcfa']==10_000
@@ -30,7 +30,7 @@ def test_stats_are_public_aggregates_without_search_pool_limit(monkeypatch):
 
 def test_stats_unavailable_is_not_reported_as_zero(monkeypatch):
     def failed(*args,**kwargs): raise DatabaseNotConfiguredError('No database')
-    monkeypatch.setattr('app.market_routes.load_recent_candidates',failed)
+    monkeypatch.setattr('app.market_routes.load_market_candidates',failed)
     response=client.get('/market/stats')
     assert response.status_code==503
     assert 'annonces_30_jours' not in response.json()
