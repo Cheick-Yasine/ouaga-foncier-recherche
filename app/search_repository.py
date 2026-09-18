@@ -38,6 +38,8 @@ def clear_candidate_cache() -> None:
 
     with _candidate_cache_lock:
         _candidate_cache.clear()
+        if '_neighborhood_cache' in globals():
+            _neighborhood_cache.clear()
 
 
 def _candidate_cache_key(
@@ -319,7 +321,7 @@ def load_recent_candidates(
     return prepared
 
 _neighborhood_cache: dict[
-    tuple[str, int], tuple[float, tuple[SearchCandidate, ...]]
+    str, tuple[float, tuple[SearchCandidate, ...]]
 ] = {}
 
 
@@ -327,13 +329,11 @@ def load_neighborhood_candidates(
     settings: Settings | None = None,
     *,
     now: datetime | None = None,
-    publication_days: int = 95,
 ) -> list[SearchCandidate]:
-    """Charge uniquement les champs nécessaires aux graphiques de quartiers.
+    """Charge toute la base utile aux graphiques de quartiers.
 
-    Cette lecture évite les extractions prix/document/proximité du moteur de
-    recherche, inutiles pour les graphiques. Le premier chargement des tendances
-    reste ainsi indépendant et beaucoup plus léger.
+    Aucune limite de 7/30/90 jours n'est appliquée ici. Le regroupement choisi
+    dans l'interface est réalisé ensuite sur l'historique quotidien complet.
     """
 
     current_settings = settings or get_settings()
@@ -345,10 +345,7 @@ def load_neighborhood_candidates(
     current_time = now or datetime.now(timezone.utc)
     database_url = current_settings.database_url.get_secret_value()
     cache_enabled = settings is None and now is None
-    cache_key = (
-        hashlib.sha256(database_url.encode("utf-8")).hexdigest(),
-        publication_days,
-    )
+    cache_key = hashlib.sha256(database_url.encode("utf-8")).hexdigest()
 
     if cache_enabled:
         with _candidate_cache_lock:
@@ -366,7 +363,7 @@ def load_neighborhood_candidates(
     ) as connection:
         with connection.transaction():
             connection.execute("SET TRANSACTION READ ONLY")
-            connection.execute("SET LOCAL statement_timeout = '20s'")
+            connection.execute("SET LOCAL statement_timeout = '30s'")
             rows = connection.execute(
                 """
                 SELECT
@@ -388,19 +385,15 @@ def load_neighborhood_candidates(
                   AND BTRIM(COALESCE(date_publication, ''))
                       ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}'
                   AND LEFT(BTRIM(date_publication), 10)
-                      >= TO_CHAR(CURRENT_DATE - %s, 'YYYY-MM-DD')
-                  AND LEFT(BTRIM(date_publication), 10)
                       <= TO_CHAR(CURRENT_DATE, 'YYYY-MM-DD')
-                ORDER BY date_publication DESC, id
-                """,
-                (publication_days,),
+                ORDER BY date_publication ASC, id
+                """
             ).fetchall()
 
-    start = current_time - timedelta(days=publication_days)
     prepared: list[SearchCandidate] = []
     for row in rows:
         published = publication_time(_optional_text(row.get("date_publication")))
-        if published is None or not start <= published <= current_time:
+        if published is None or published > current_time:
             continue
 
         text = (
@@ -438,8 +431,7 @@ def load_neighborhood_candidates(
 
     if cache_enabled:
         with _candidate_cache_lock:
-            if len(_neighborhood_cache) >= 4:
-                _neighborhood_cache.clear()
+            _neighborhood_cache.clear()
             _neighborhood_cache[cache_key] = (
                 monotonic(),
                 tuple(prepared),
