@@ -23,13 +23,21 @@ class MarketStatsTests(unittest.TestCase):
 
     def test_mean_counts_and_top_quarter_share_same_eligible_pool(self):
         rows = [self.candidate('a'), self.candidate('b', price_fcfa=6_000_000), self.candidate('no-price', price_fcfa=None)]
-        rows += [self.candidate('outer', text='Terrain à Saaba', neighborhood='Saaba'), self.candidate('rent', text='Parcelle en location à Karpala'), self.candidate('future', publication_label=(self.now+timedelta(days=1)).isoformat()), self.candidate('old', publication_label=(self.now-timedelta(days=31)).isoformat()), self.candidate('unknown-date', publication_label='Il y a 2 h')]
+        rows += [
+            self.candidate('surroundings', text='Terrain à Saaba', neighborhood='Saaba'),
+            self.candidate('outside', text='Terrain à Bobo-Dioulasso', neighborhood='Bobo-Dioulasso'),
+            self.candidate('rent', text='Parcelle en location à Karpala'),
+            self.candidate('future', publication_label=(self.now+timedelta(days=1)).isoformat()),
+            self.candidate('old', publication_label=(self.now-timedelta(days=31)).isoformat()),
+            self.candidate('unknown-date', publication_label='Il y a 2 h'),
+        ]
         stats = summarize_market(rows, now=self.now)
-        self.assertEqual(stats['annonces_30_jours'], 3)
+        self.assertEqual(stats['annonces_30_jours'], 4)
         self.assertEqual(stats['prix_m2_moyen_fcfa'], 15_000)
-        self.assertEqual(stats['annonces_avec_prix_m2'], 2)
+        self.assertEqual(stats['annonces_avec_prix_m2'], 3)
         self.assertEqual(stats['quartier_le_plus_represente'], 'Karpala')
         self.assertEqual(stats['annonces_quartier_principal'], 3)
+        self.assertEqual(stats['perimetre'], 'Ouagadougou et environs')
 
     def test_known_publication_date_takes_precedence_over_collection(self):
         rows=[self.candidate('recent', collected_at='2020-01-01T00:00:00Z'), self.candidate('old', publication_label='2020-01-01T00:00:00Z', collected_at=self.now.isoformat())]
