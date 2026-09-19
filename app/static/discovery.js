@@ -426,8 +426,9 @@
     }
     if(!plotlyReady(container)) return;
 
-    // Retire le message de chargement avant que Plotly crée son rendu.
-    container.replaceChildren();
+    // Retire uniquement le placeholder. Ne jamais vider le conteneur Plotly
+    // lors d'un redraw : cela détruirait son graphe interne.
+    container.querySelector('.chart-empty')?.remove();
 
     const aggregated=neighborhoods.map(item=>({
       item,
@@ -515,8 +516,9 @@
     }
     if(!plotlyReady(container)) return;
 
-    // Retire le message de chargement avant que Plotly crée son rendu.
-    container.replaceChildren();
+    // Retire uniquement le placeholder. Ne jamais vider le conteneur Plotly
+    // lors d'un redraw : cela détruirait son graphe interne.
+    container.querySelector('.chart-empty')?.remove();
 
     const theme=plotTheme();
     const total=Math.max(typeData?.total_annonces || 0,1);
