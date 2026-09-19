@@ -665,12 +665,14 @@
     return fmt.format(value)+' m²';
   }
 
-  function setupDualRange({minId,maxId,minValueId,maxValueId,summaryId,values,format}) {
+  function setupDualRange({minId,maxId,minValueId,maxValueId,summaryId,minBubbleId,maxBubbleId,values,format}) {
     const minInput=$('#'+minId);
     const maxInput=$('#'+maxId);
     const minValue=$('#'+minValueId);
     const maxValue=$('#'+maxValueId);
     const summary=$('#'+summaryId);
+    const minBubble=$('#'+minBubbleId);
+    const maxBubble=$('#'+maxBubbleId);
     const wrap=minInput.closest('.dual-range');
     const fill=wrap.querySelector('.dual-range-fill');
     const last=values.length-1;
@@ -699,6 +701,22 @@
       fill.style.left=left+'%';
       fill.style.width=Math.max(0,right-left)+'%';
 
+      const placeBubble=(node,percent,text)=>{
+        node.style.left=percent+'%';
+        node.style.transform=percent<=3
+          ? 'translateX(0)'
+          : percent>=97
+          ? 'translateX(-100%)'
+          : 'translateX(-50%)';
+        node.textContent=text;
+      };
+      placeBubble(minBubble,left,format(lowValue));
+      placeBubble(
+        maxBubble,
+        right,
+        format(highValue)+(high===last?' +':'')
+      );
+
       if(low===0 && high===last) summary.textContent='Sans limite';
       else if(low===0) summary.textContent='Jusqu’à '+format(highValue);
       else if(high===last) summary.textContent='À partir de '+format(lowValue);
@@ -723,6 +741,8 @@
     minValueId:'deal-price-min-value',
     maxValueId:'deal-price-max-value',
     summaryId:'deal-price-summary',
+    minBubbleId:'deal-price-min-bubble',
+    maxBubbleId:'deal-price-max-bubble',
     values:priceValues,
     format:compactMoney
   });
@@ -732,6 +752,8 @@
     minValueId:'deal-area-min-value',
     maxValueId:'deal-area-max-value',
     summaryId:'deal-area-summary',
+    minBubbleId:'deal-area-min-bubble',
+    maxBubbleId:'deal-area-max-bubble',
     values:areaValues,
     format:compactArea
   });
