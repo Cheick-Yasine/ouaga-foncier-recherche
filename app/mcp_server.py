@@ -54,9 +54,15 @@ def _criteria_payload(criteria) -> dict[str, Any]:
         "ouagadougou_uniquement": criteria.city_only,
         "type_bien": criteria.property_type,
         "quartier": criteria.neighborhood,
+        "quartiers": list(criteria.neighborhoods),
+        "quartiers_stricts": criteria.neighborhoods_strict,
         "prix_fcfa": criteria.price_fcfa,
+        "prix_min_fcfa": criteria.price_min_fcfa,
+        "prix_max_fcfa": criteria.price_max_fcfa,
         "prix_est_un_maximum": criteria.price_is_maximum,
         "superficie_m2": criteria.area_m2,
+        "superficie_min_m2": criteria.area_min_m2,
+        "superficie_max_m2": criteria.area_max_m2,
         "proximite": criteria.proximity,
         "viabilite": criteria.viability,
         "document": criteria.document_status,
@@ -135,6 +141,11 @@ def rechercher_annonces(
         "viabilite",
     }
     required = set(criteres_obligatoires or [])
+    normalized_description = description.casefold()
+    if normalized_description.lstrip().startswith("trouve-moi une bonne affaire :"):
+        required.add("type_bien")
+        if "document souhait" in normalized_description:
+            required.add("statut_document")
     unknown = sorted(required - allowed)
     if unknown:
         return {"erreur": "Critères obligatoires inconnus : " + ", ".join(unknown)}

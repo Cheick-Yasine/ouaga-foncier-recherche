@@ -154,3 +154,35 @@ def test_requested_multiple_proximities_keep_their_identity() -> None:
     )
 
     assert set(details.split("+")) == {"voie_bitumee", "ecole"}
+
+
+
+def test_extended_document_categories() -> None:
+    assert extract_document_status(None, "Acte de vente disponible") == "acte_vente"
+    assert extract_document_status(None, "Arrêté ministériel") == "arrete"
+    assert extract_document_status(None, "Croquis disponible") == "croquis"
+    assert (
+        extract_document_status(None, "Attestation provisoire")
+        == "attestation_provisoire"
+    )
+    assert (
+        extract_document_status(None, "Attestation de cession provisoire de terrain")
+        == "attestation_cession_provisoire"
+    )
+    assert (
+        extract_document_status(None, "Certificat d'attribution disponible")
+        == "attestation_attribution"
+    )
+    assert (
+        extract_document_status(None, "Papillon d'attribution")
+        == "attestation_attribution"
+    )
+    assert extract_document_status(None, "Décharge") == "decharge"
+    assert (
+        extract_document_status(None, "Permis d'exploiter")
+        == "permis_exploiter"
+    )
+    assert (
+        extract_document_status(None, "Papiers complets")
+        == "papiers_complets"
+    )

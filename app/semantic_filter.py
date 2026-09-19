@@ -84,9 +84,15 @@ def build_anonymized_payload(
         "criteres": {
             "type_bien": criteria.property_type,
             "quartier": criteria.neighborhood,
+            "quartiers": list(criteria.neighborhoods),
+            "quartiers_stricts": criteria.neighborhoods_strict,
             "prix_fcfa": criteria.price_fcfa,
+            "prix_min_fcfa": criteria.price_min_fcfa,
+            "prix_max_fcfa": criteria.price_max_fcfa,
             "prix_est_un_maximum": criteria.price_is_maximum,
             "superficie_m2": criteria.area_m2,
+            "superficie_min_m2": criteria.area_min_m2,
+            "superficie_max_m2": criteria.area_max_m2,
             "proximite": criteria.proximity,
             "viabilite": criteria.viability,
             "document": criteria.document_status,
@@ -140,6 +146,7 @@ def _instructions() -> str:
         "demandés, puis privilégie le prix_m2_fcfa le plus faible parmi les annonces "
         "comparables. Une annonce moins chère au total n'est pas forcément une meilleure "
         "affaire si sa superficie est beaucoup plus petite. "
+        "Une fourchette de prix doit être respectée sur ses deux bornes. "
         "Un montant introduit par le mot budget est un plafond strict. Un prix "
         "demandé sans le mot budget est une cible : favorise d'abord les annonces à ce "
         "prix ou au prix le plus proche. Si un bon deal est demandé à un prix cible, "

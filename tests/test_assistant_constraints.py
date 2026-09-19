@@ -1,7 +1,7 @@
 import unittest
 from types import SimpleNamespace
 
-from app.assistant_constraints import conversation_budget, budget_description, respect_search_budget
+from app.assistant_constraints import conversation_budget, budget_description, respect_search_budget, conversation_numeric_request, price_range_description
 from app.search_engine import parse_search_description
 
 
@@ -65,3 +65,22 @@ class AssistantConstraintsTests(unittest.TestCase):
 
 if __name__=='__main__':
     unittest.main()
+
+
+
+def test_price_range_survives_conversation_rewrite():
+    source = (
+        "Trouve-moi une bonne affaire : parcelle en vente. "
+        "Prix entre 5000000 et 25000000 FCFA."
+    )
+    criteria = conversation_numeric_request(source, [], "prix")
+    assert criteria is not None
+    assert criteria.price_min_fcfa == 5_000_000
+    assert criteria.price_max_fcfa == 25_000_000
+    rewritten = price_range_description(
+        "Parcelle à Saaba, prix 20 millions FCFA",
+        criteria,
+    )
+    parsed = parse_search_description(rewritten)
+    assert parsed.price_min_fcfa == 5_000_000
+    assert parsed.price_max_fcfa == 25_000_000
