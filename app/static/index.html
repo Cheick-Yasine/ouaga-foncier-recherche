@@ -163,13 +163,69 @@
   </template>
 <dialog id="deal-dialog" aria-labelledby="deal-title" class="deal-dialog">
 <form id="deal-form"><div class="dialog-heading"><h2 id="deal-title">Dénicher une bonne affaire</h2><button type="button" data-close="deal-dialog" class="icon-button" aria-label="Fermer">×</button></div>
-<p>Indiquez ce qui compte pour vous. HAKIMO vous aidera à comparer les offres.</p>
-<div class="deal-fields"><label>Type de bien<select name="property"><option value="parcelle">Parcelle</option><option value="terrain">Terrain</option><option value="maison">Maison</option></select></label>
-<label>Quartier ou zone<input id="deal-zone" name="zone" list="neighborhood-options" autocomplete="off" placeholder="Commencez à écrire un quartier…" maxlength="100"><datalist id="neighborhood-options"></datalist><small id="zone-status" class="field-note" role="status"></small></label>
-<div class="deal-wide price-controls"><label>Comment rechercher le prix ?<select name="price_mode"><option value="target">Autour de mon montant</option><option value="maximum">Sans dépasser mon montant</option></select></label><label>Montant en FCFA<input id="deal-budget" name="budget" type="number" min="1" step="1" placeholder="Ex. 50 000 000"><small id="budget-label" class="field-note" role="status"></small></label><div class="budget-presets" aria-label="Montants courants"><button type="button" data-budget="5000000">5 millions</button><button type="button" data-budget="10000000">10 millions</button><button type="button" data-budget="25000000">25 millions</button><button type="button" data-budget="50000000">50 millions</button><button type="button" data-budget="100000000">100 millions</button></div><p class="field-note">Les offres proches du montant passent en premier. Un plafond ne sera jamais dépassé.</p></div>
-<label>Choisir une superficie<select id="deal-area-range" name="area_range"><option value="">Sans préférence</option><option value="1:199">Moins de 200 m²</option><option value="200:299">200 à 299 m²</option><option value="300:499">300 à 499 m²</option><option value="500:999">500 à 999 m²</option><option value="1000:4999">1 000 à 4 999 m²</option><option value="5000:9999">5 000 à 9 999 m²</option><option value="10000:">10 000 m² et plus</option></select></label><label>Ou saisir une surface précise (m²)<input id="deal-area" name="area" type="number" min="1" step="1" placeholder="Ex. 350"><small id="area-category" class="field-note" role="status"></small></label>
-<label class="deal-wide">Documents, équipements et proximités<textarea name="details" maxlength="1000" placeholder="Ex. attestation disponible, eau, électricité, école à proximité…"></textarea></label></div>
-<label class="deal-nearby"><input name="nearby" type="checkbox"> Inclure les zones proches</label>
+<p>Choisissez vos critères. Vous pouvez sélectionner plusieurs quartiers et définir directement une fourchette de prix et de superficie.</p>
+<div class="deal-fields">
+<label>Type de bien<select name="property"><option value="parcelle">Parcelle</option><option value="terrain">Terrain</option><option value="maison">Maison</option></select></label>
+<label>Document<select id="deal-document" name="document">
+<option value="">Sans préférence</option>
+<option value="attestation">Attestation (type non précisé)</option>
+<option value="attestation de possession">Attestation de possession</option>
+<option value="attestation d'attribution">Attestation d’attribution</option>
+<option value="fiche d'attribution">Fiche d’attribution</option>
+<option value="certificat d'attribution">Certificat d’attribution</option>
+<option value="papillon d'attribution">Papillon d’attribution</option>
+<option value="attestation provisoire">Attestation provisoire</option>
+<option value="attestation de cession provisoire">Attestation de cession provisoire</option>
+<option value="APFR">APFR</option>
+<option value="PUH">PUH</option>
+<option value="titre foncier">Titre foncier</option>
+<option value="croquis">Croquis</option>
+<option value="récépissé">Récépissé</option>
+<option value="acte de vente">Acte de vente</option>
+<option value="arrêté">Arrêté</option>
+<option value="décharge">Décharge</option>
+<option value="permis d'exploiter">Permis d’exploiter</option>
+<option value="papiers complets">Papiers complets</option>
+</select></label>
+
+<label class="deal-wide">Quartiers ou zones
+<div id="deal-zone-select" class="deal-multiselect">
+  <div id="deal-zone-chips" class="deal-multiselect-input">
+    <input id="deal-zone-search" type="search" autocomplete="off" placeholder="Rechercher puis sélectionner un ou plusieurs quartiers…" aria-label="Rechercher un quartier" aria-controls="deal-zone-menu" aria-expanded="false">
+  </div>
+  <div id="deal-zone-menu" class="deal-multiselect-menu" role="listbox" aria-multiselectable="true" hidden></div>
+  <div id="deal-zone-values"></div>
+</div>
+<small id="zone-status" class="field-note" role="status">Aucun quartier sélectionné : la recherche portera sur tout le périmètre.</small>
+</label>
+
+<div class="deal-wide range-panel">
+  <div class="range-panel-heading"><span>Prix</span><strong id="deal-price-summary">Sans limite</strong></div>
+  <div class="dual-range" id="deal-price-range">
+    <div class="dual-range-base"></div><div class="dual-range-fill"></div>
+    <input id="deal-price-min" type="range" aria-label="Prix minimum">
+    <input id="deal-price-max" type="range" aria-label="Prix maximum">
+  </div>
+  <div class="range-scale"><span>0 FCFA</span><span>50 M</span><span>500 M+</span></div>
+  <input id="deal-price-min-value" name="price_min" type="hidden" value="0">
+  <input id="deal-price-max-value" name="price_max" type="hidden" value="">
+</div>
+
+<div class="deal-wide range-panel">
+  <div class="range-panel-heading"><span>Superficie</span><strong id="deal-area-summary">Sans limite</strong></div>
+  <div class="dual-range" id="deal-area-range">
+    <div class="dual-range-base"></div><div class="dual-range-fill"></div>
+    <input id="deal-area-min" type="range" aria-label="Superficie minimum">
+    <input id="deal-area-max" type="range" aria-label="Superficie maximum">
+  </div>
+  <div class="range-scale"><span>0 m²</span><span>1 000 m²</span><span>100 000 m²+</span></div>
+  <input id="deal-area-min-value" name="area_min" type="hidden" value="0">
+  <input id="deal-area-max-value" name="area_max" type="hidden" value="">
+</div>
+
+<label class="deal-wide">Équipements et proximités<textarea name="details" maxlength="1000" placeholder="Ex. eau, électricité, école, voie bitumée à proximité…"></textarea></label>
+</div>
+<label class="deal-nearby"><input name="nearby" type="checkbox"> Inclure aussi les zones proches des quartiers sélectionnés</label>
 <button type="submit" class="primary-button">Trouver des offres</button></form></dialog>
 </body>
 </html>
