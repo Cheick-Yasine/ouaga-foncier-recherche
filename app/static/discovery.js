@@ -327,6 +327,7 @@
   let selectedAggregation='day';
   let isolatedNeighborhood=null;
   let trendLoading=null;
+  let trendRequestId=0;
   let drawFrame=null;
 
   // Les deux graphiques historiques restent dans leur rendu d'origine.
@@ -603,7 +604,7 @@
       container.on('plotly_click',event=>{
         const point=event.points?.[0];
         if(!point) return;
-        const [name,, ,label]=point.customdata;
+        const [name,,,label]=point.customdata;
 
         if(isolatedNeighborhood===name){
           isolatedNeighborhood=null;
@@ -768,8 +769,8 @@
       scheduleNeighborhoodDraw();
       return;
     }
-    if(trendLoading) return trendLoading;
 
+    const requestId=++trendRequestId;
     const params=new URLSearchParams({
       period:selectedPeriod,
       aggregation:selectedAggregation
@@ -787,7 +788,7 @@
       }
     }
 
-    trendLoading=fetch(
+    const request=fetch(
       '/market/neighborhood-trends?'+params.toString(),
       {cache:'no-store'}
     )
@@ -796,11 +797,13 @@
         return response.json();
       })
       .then(data=>{
+        if(requestId!==trendRequestId) return;
         trends=data;
         isolatedNeighborhood=null;
         scheduleNeighborhoodDraw();
       })
       .catch(()=>{
+        if(requestId!==trendRequestId) return;
         for(const id of [
           'neighborhood-trend-chart',
           'neighborhood-ranking-chart'
@@ -815,9 +818,12 @@
           );
         }
       })
-      .finally(()=>{trendLoading=null;});
+      .finally(()=>{
+        if(requestId===trendRequestId) trendLoading=null;
+      });
 
-    return trendLoading;
+    trendLoading=request;
+    return request;
   }
 
   $('#weekly-property').addEventListener('change',renderStats);
