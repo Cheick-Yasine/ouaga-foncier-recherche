@@ -9,10 +9,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/styles.css?v=20260919-multi-documents-1">
+  <link rel="stylesheet" href="/static/styles.css?v=20260919-deal-scale-align-1">
   <script src="/static/waiting.js?v=20260906-waiting-1" defer></script>
   <script src="https://cdn.plot.ly/plotly-4.0.0.min.js" charset="utf-8" defer></script>
-  <script src="/static/discovery.js?v=20260919-deal-button-fix-1" defer></script>
+  <script src="/static/discovery.js?v=20260919-deal-scale-align-1" defer></script>
   <script src="/static/app.js?v=20260919-multi-documents-1" defer></script>
 </head>
 <body>
@@ -165,8 +165,8 @@
 <form id="deal-form"><div class="dialog-heading"><h2 id="deal-title">Dénicher une bonne affaire</h2><button type="button" data-close="deal-dialog" class="icon-button" aria-label="Fermer">×</button></div>
 <p>Choisissez vos critères. Vous pouvez sélectionner plusieurs quartiers et définir directement une fourchette de prix et de superficie.</p>
 <div class="deal-fields">
-<label>Type de bien<select name="property"><option value="parcelle">Parcelle</option><option value="terrain">Terrain</option><option value="maison">Maison</option></select></label>
-<label>Documents
+<label class="deal-top-field deal-type-field">Type de bien<select name="property"><option value="parcelle">Parcelle</option><option value="terrain">Terrain</option><option value="maison">Maison</option></select></label>
+<label class="deal-top-field deal-document-field">Documents
 <div id="deal-document-select" class="deal-multiselect">
   <div id="deal-document-chips" class="deal-multiselect-input">
     <input id="deal-document-search" type="search" autocomplete="off" placeholder="Rechercher puis sélectionner un ou plusieurs documents…" aria-label="Rechercher un document" aria-controls="deal-document-menu" aria-expanded="false">
