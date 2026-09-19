@@ -1,5 +1,6 @@
 """Statistiques publiques agrégées : aucun contact ni texte d'annonce."""
 import psycopg
+from typing import Literal
 from fastapi import APIRouter, HTTPException
 
 from app.database import DatabaseNotConfiguredError
@@ -21,9 +22,16 @@ def market_stats() -> dict:
 
 
 @router.get('/neighborhood-trends')
-def market_neighborhood_trends() -> dict:
+def market_neighborhood_trends(
+    period: Literal["7d", "14d", "1m", "2m", "3m", "1y", "max"] = "1m",
+    aggregation: Literal["day", "week"] = "day",
+) -> dict:
     try:
-        return neighborhood_trends(load_neighborhood_candidates())
+        return neighborhood_trends(
+            load_neighborhood_candidates(),
+            period=period,
+            aggregation=aggregation,
+        )
     except (DatabaseNotConfiguredError, psycopg.Error):
         raise HTTPException(
             status_code=503,
