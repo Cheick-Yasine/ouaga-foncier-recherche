@@ -328,6 +328,13 @@ def _original_publication(message: str, history: Sequence[ChatMessage], proposed
 ASSISTANT_INSTRUCTIONS += "\nMontant demandé : privilégie les offres proches de ce montant. Un maximum reste un plafond strict. Pour une cible sans maximum, ne la transforme pas en plafond. Si les offres sont éloignées de plus de 20 %, indique cet écart simplement (par exemple 27 millions pour une demande de 50 millions) ; ne prétends pas qu’elles sont proches. Respecte les intervalles de superficie transmis par le formulaire.\n"
 
 
+def normalize_structured_deal_message(message: str) -> bool:
+    """Vrai pour le message généré par le formulaire « bonne affaire »."""
+
+    normalized = " ".join(message.split()).casefold()
+    return normalized.startswith("trouve-moi une bonne affaire :")
+
+
 async def run_assistant(
     message: str,
     history: Sequence[ChatMessage],
@@ -428,7 +435,12 @@ async def run_assistant(
                 arguments = {k: v for k, v in arguments.items() if k in allowed_arguments}
                 if call.name == "evaluer_annonce":
                     arguments["publication"] = _original_publication(message, history, arguments.get("publication", ""))
-                elif call.name == "rechercher_annonces" and user_budget is not None:
+                elif (
+                    call.name == "rechercher_annonces"
+                    and normalize_structured_deal_message(message)
+                ):
+                    arguments["description"] = message
+                if call.name == "rechercher_annonces" and user_budget is not None:
                     arguments["description"] = budget_description(arguments.get("description", ""), user_budget)
                 if call.name == "rechercher_annonces":
                     if price_request and not price_request.price_is_maximum:
