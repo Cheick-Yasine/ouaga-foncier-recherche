@@ -249,12 +249,11 @@ def load_market_candidates(
                     texte_nettoye,
                     premiere_collecte
                 FROM public.annonces
-                WHERE NOT (prix_fcfa IS NULL AND superficie_m2 IS NULL)
-                  AND COALESCE(
-                      NULLIF(LOWER(TRIM(type_bien_normalise)), ''),
-                      NULLIF(LOWER(TRIM(type_bien)), ''),
-                      ''
-                  ) <> 'villa'
+                WHERE type_bien_normalise IS NOT NULL
+                  AND LOWER(TRIM(type_bien_normalise)) IN (
+                      'terrain', 'parcelle', 'maison'
+                  )
+                  AND NOT (prix_fcfa IS NULL AND superficie_m2 IS NULL)
                 ORDER BY premiere_collecte DESC NULLS LAST, id
                 """
             ).fetchall()
@@ -358,12 +357,11 @@ def load_recent_candidates(
                     premiere_collecte
                 FROM public.annonces
                 WHERE {age_clause}
-                      NOT (prix_fcfa IS NULL AND superficie_m2 IS NULL)
-                  AND COALESCE(
-                      NULLIF(LOWER(TRIM(type_bien_normalise)), ''),
-                      NULLIF(LOWER(TRIM(type_bien)), ''),
-                      ''
-                  ) <> 'villa'
+                      type_bien_normalise IS NOT NULL
+                  AND LOWER(TRIM(type_bien_normalise)) IN (
+                      'terrain', 'parcelle', 'maison'
+                  )
+                  AND NOT (prix_fcfa IS NULL AND superficie_m2 IS NULL)
                 ORDER BY premiere_collecte DESC NULLS LAST, id
                 {limit_clause}
                 """,
@@ -452,12 +450,11 @@ def load_neighborhood_candidates(
                     resume_court,
                     texte_nettoye
                 FROM public.annonces
-                WHERE NOT (prix_fcfa IS NULL AND superficie_m2 IS NULL)
-                  AND COALESCE(
-                      NULLIF(LOWER(TRIM(type_bien_normalise)), ''),
-                      NULLIF(LOWER(TRIM(type_bien)), ''),
-                      ''
-                  ) <> 'villa'
+                WHERE type_bien_normalise IS NOT NULL
+                  AND LOWER(TRIM(type_bien_normalise)) IN (
+                      'terrain', 'parcelle', 'maison'
+                  )
+                  AND NOT (prix_fcfa IS NULL AND superficie_m2 IS NULL)
                 ORDER BY premiere_collecte ASC NULLS LAST, id
                 """
             ).fetchall()
