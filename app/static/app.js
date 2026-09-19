@@ -476,13 +476,47 @@ $$('[data-deal]').forEach(b=>b.addEventListener('click',()=>{
   $('#deal-form').reset(); window.HakimoDiscovery.resetForm(); $('#deal-dialog').showModal();
 }));
 $('#deal-form').addEventListener('submit',e=>{
-  e.preventDefault(); const values=new FormData(e.currentTarget);
-  const zone=String(values.get('zone') || '').trim(), details=String(values.get('details') || '').trim();
+  e.preventDefault();
+  const values=new FormData(e.currentTarget);
+  const zones=values.getAll('zones').map(value=>String(value).trim()).filter(Boolean);
+  const details=String(values.get('details') || '').trim();
+  const documentType=String(values.get('document') || '').trim();
+  const priceMin=Number(values.get('price_min') || 0);
+  const priceMax=Number(values.get('price_max') || 0);
+  const areaMin=Number(values.get('area_min') || 0);
+  const areaMax=Number(values.get('area_max') || 0);
+
   const parts=['Trouve-moi une bonne affaire : '+values.get('property')+' en vente.'];
-  if(zone)parts.push('Zone souhaitée : '+zone+'. '+(values.has('nearby')?'Inclure les zones proches.':'Uniquement dans cette zone.'));
-  if(values.get('budget'))parts.push((values.get('price_mode')==='maximum'?'Budget maximum ':'Prix souhaité autour de ')+values.get('budget')+' FCFA.');
-  if(values.get('area'))parts.push('Superficie souhaitée '+values.get('area')+' m².');
-  else if(values.get('area_range')) { const [min,max]=String(values.get('area_range')).split(':'); parts.push(max?'Superficie entre '+min+' et '+max+' m².':'Superficie minimum '+min+' m².'); }
-  if(details)parts.push('Mes priorités : '+details+'.');
-  $('#deal-dialog').close(); startConversation(); sendMessage(parts.join(' '));
+
+  if(zones.length){
+    parts.push(
+      'Zones souhaitées : '+zones.join(', ')+'. '+
+      (values.has('nearby')
+        ? 'Inclure aussi les zones proches de ces quartiers.'
+        : 'Uniquement dans ces zones.')
+    );
+  }
+
+  if(priceMin>0 && priceMax>0){
+    parts.push('Prix entre '+priceMin+' et '+priceMax+' FCFA.');
+  } else if(priceMax>0){
+    parts.push('Budget maximum '+priceMax+' FCFA.');
+  } else if(priceMin>0){
+    parts.push('Prix minimum '+priceMin+' FCFA.');
+  }
+
+  if(areaMin>0 && areaMax>0){
+    parts.push('Superficie entre '+areaMin+' et '+areaMax+' m².');
+  } else if(areaMax>0){
+    parts.push('Superficie entre 1 et '+areaMax+' m².');
+  } else if(areaMin>0){
+    parts.push('Superficie minimum '+areaMin+' m².');
+  }
+
+  if(documentType) parts.push('Document souhaité : '+documentType+'.');
+  if(details) parts.push('Mes priorités : '+details+'.');
+
+  $('#deal-dialog').close();
+  startConversation();
+  sendMessage(parts.join(' '));
 });
