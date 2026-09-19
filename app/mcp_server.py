@@ -66,6 +66,8 @@ def _criteria_payload(criteria) -> dict[str, Any]:
         "proximite": criteria.proximity,
         "viabilite": criteria.viability,
         "document": criteria.document_status,
+        "documents": list(criteria.documents),
+        "documents_stricts": criteria.documents_strict,
         "contraintes_obligatoires": sorted(criteria.required_fields),
         "anciennete_maximale_jours": criteria.max_age_days,
     }
@@ -144,7 +146,7 @@ def rechercher_annonces(
     normalized_description = description.casefold()
     if normalized_description.lstrip().startswith("trouve-moi une bonne affaire :"):
         required.add("type_bien")
-        if "document souhait" in normalized_description:
+        if "document" in normalized_description and "souhait" in normalized_description:
             required.add("statut_document")
     unknown = sorted(required - allowed)
     if unknown:
