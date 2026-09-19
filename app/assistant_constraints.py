@@ -33,6 +33,34 @@ def target_price_description(description: str, price: float) -> str:
     return f'Prix souhaité {price:.2f} FCFA. ' + rewritten
 
 
+def price_range_description(description: str, criteria) -> str:
+    """Réinjecte fidèlement une fourchette de prix exprimée par l'utilisateur."""
+
+    description = re.sub(
+        r"(?i)\b(?:prix|budget)\s+entre\s+[\d .,]+\s+et\s+[\d .,]+\s*"
+        r"(?:fcfa|f\s*cfa|cfa)?",
+        "",
+        description,
+    )
+    description = re.sub(
+        r"(?i)\bprix\s+(?:minimum|au moins)\s+[\d .,]+\s*"
+        r"(?:fcfa|f\s*cfa|cfa)?",
+        "",
+        description,
+    )
+    if criteria.price_min_fcfa is not None and criteria.price_max_fcfa is not None:
+        return (
+            description
+            + f". Prix entre {criteria.price_min_fcfa:.2f} "
+            + f"et {criteria.price_max_fcfa:.2f} FCFA."
+        )
+    if criteria.price_min_fcfa is not None:
+        return description + f". Prix minimum {criteria.price_min_fcfa:.2f} FCFA."
+    if criteria.price_max_fcfa is not None:
+        return budget_description(description, criteria.price_max_fcfa)
+    return description
+
+
 def area_description(description: str, criteria) -> str:
     description = re.sub(r'(?i)superficie\s+(?:(?:souhaitée?|minimum|au moins)\s+)?(?:entre\s+)?[\d .,]+(?:\s+et\s+[\d .,]+)?\s*m[²2]', '', description)
     description = re.sub(r'(?i)\b\d[\d .,]*\s*(?:m[²2]|hectares?|ha)\b', '', description)
