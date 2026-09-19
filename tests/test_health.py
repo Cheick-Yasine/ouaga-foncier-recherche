@@ -130,3 +130,10 @@ def test_project_chat_has_a_distinct_empty_state_and_no_header_new_button() -> N
     assert "if(n.dataset.page==='chat') startConversation();" in script
     assert "$('#welcome').hidden=chat;" in script
     assert "$('#chat-intro').hidden=!chat || hasMessages;" in script
+
+
+
+def test_navigation_uses_query_selector_all_for_page_buttons() -> None:
+    script = client.get("/static/app.js").text
+    assert "$$('.nav-link[data-page]').forEach" in script
+    assert "$('.nav-link[data-page]').forEach" not in script
