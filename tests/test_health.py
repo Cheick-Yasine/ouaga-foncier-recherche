@@ -77,3 +77,12 @@ def test_database_health_without_database_url(monkeypatch) -> None:
     assert response.status_code == 503
     assert "DATABASE_URL" in response.json()["detail"]
     get_settings.cache_clear()
+
+
+
+def test_deal_document_multiselect_is_fully_initialized() -> None:
+    script = client.get("/static/discovery.js").text
+    assert "const documentOptions=[" in script
+    assert "const selectedDocuments=[]" in script
+    assert "const documentSearch=$('#deal-document-search')" in script
+    assert "selectedDocuments.splice" in script

@@ -749,6 +749,137 @@
     format:compactArea
   });
 
+  const documentOptions=[
+    {value:'attestation',label:'Attestation (type non précisé)'},
+    {value:'attestation de possession',label:'Attestation de possession'},
+    {value:"attestation d'attribution",label:'Attestation d’attribution'},
+    {value:"fiche d'attribution",label:'Fiche d’attribution'},
+    {value:"certificat d'attribution",label:'Certificat d’attribution'},
+    {value:"papillon d'attribution",label:'Papillon d’attribution'},
+    {value:'attestation provisoire',label:'Attestation provisoire'},
+    {value:'attestation de cession provisoire',label:'Attestation de cession provisoire'},
+    {value:'APFR',label:'APFR'},
+    {value:'PUH',label:'PUH'},
+    {value:'titre foncier',label:'Titre foncier'},
+    {value:'croquis',label:'Croquis'},
+    {value:'récépissé',label:'Récépissé'},
+    {value:'acte de vente',label:'Acte de vente'},
+    {value:'arrêté',label:'Arrêté'},
+    {value:'décharge',label:'Décharge'},
+    {value:"permis d'exploiter",label:'Permis d’exploiter'},
+    {value:'papiers complets',label:'Papiers complets'}
+  ];
+  const documentSearch=$('#deal-document-search');
+  const documentMenu=$('#deal-document-menu');
+  const documentChips=$('#deal-document-chips');
+  const documentValues=$('#deal-document-values');
+  const selectedDocuments=[];
+
+  function syncDocumentValues() {
+    documentValues.replaceChildren();
+    for(const item of selectedDocuments){
+      const hidden=document.createElement('input');
+      hidden.type='hidden';
+      hidden.name='documents';
+      hidden.value=item.value;
+      documentValues.append(hidden);
+    }
+    $('#document-status').textContent=selectedDocuments.length
+      ? selectedDocuments.length+' document'+(selectedDocuments.length>1?'s':'')+' sélectionné'+(selectedDocuments.length>1?'s':'')+'.'
+      : 'Aucun document sélectionné : sans préférence documentaire.';
+  }
+
+  function renderDocumentChips() {
+    documentChips.querySelectorAll('.multi-chip').forEach(node=>node.remove());
+    selectedDocuments.forEach(item=>{
+      const chip=element('span','multi-chip');
+      chip.append(document.createTextNode(item.label));
+      const remove=element('button','multi-chip-remove','×');
+      remove.type='button';
+      remove.setAttribute('aria-label','Retirer '+item.label);
+      remove.addEventListener('click',()=>{
+        const index=selectedDocuments.findIndex(
+          selected=>selected.value===item.value
+        );
+        if(index>=0) selectedDocuments.splice(index,1);
+        renderDocumentChips();
+        renderDocumentMenu();
+        documentSearch.focus();
+      });
+      chip.append(remove);
+      documentChips.insertBefore(chip,documentSearch);
+    });
+    syncDocumentValues();
+  }
+
+  function matchingDocuments() {
+    const query=fold(documentSearch.value.trim());
+    return documentOptions
+      .filter(item=>!selectedDocuments.some(
+        selected=>selected.value===item.value
+      ))
+      .filter(item=>!query || fold(item.label).includes(query))
+      .slice(0,30);
+  }
+
+  function addDocument(item) {
+    if(!item || selectedDocuments.some(
+      selected=>selected.value===item.value
+    )) return;
+    selectedDocuments.push(item);
+    documentSearch.value='';
+    renderDocumentChips();
+    renderDocumentMenu();
+  }
+
+  function renderDocumentMenu() {
+    documentMenu.replaceChildren();
+    const matches=matchingDocuments();
+    for(const item of matches){
+      const option=element('button','deal-multiselect-option',item.label);
+      option.type='button';
+      option.setAttribute('role','option');
+      option.setAttribute('aria-selected','false');
+      option.addEventListener('mousedown',event=>event.preventDefault());
+      option.addEventListener('click',()=>addDocument(item));
+      documentMenu.append(option);
+    }
+    documentMenu.hidden=!(
+      document.activeElement===documentSearch && matches.length
+    );
+    documentSearch.setAttribute(
+      'aria-expanded',
+      String(!documentMenu.hidden)
+    );
+  }
+
+  documentSearch.addEventListener('focus',renderDocumentMenu);
+  documentSearch.addEventListener('input',renderDocumentMenu);
+  documentSearch.addEventListener('keydown',event=>{
+    if(event.key==='Enter'){
+      event.preventDefault();
+      const first=matchingDocuments()[0];
+      if(first) addDocument(first);
+    } else if(
+      event.key==='Backspace'
+      && !documentSearch.value
+      && selectedDocuments.length
+    ){
+      selectedDocuments.pop();
+      renderDocumentChips();
+      renderDocumentMenu();
+    } else if(event.key==='Escape'){
+      documentMenu.hidden=true;
+      documentSearch.setAttribute('aria-expanded','false');
+    }
+  });
+  documentSearch.addEventListener('blur',()=>{
+    setTimeout(()=>{
+      documentMenu.hidden=true;
+      documentSearch.setAttribute('aria-expanded','false');
+    },120);
+  });
+
   let neighborhoods=null;
   let loading=null;
   const zoneSearch=$('#deal-zone-search');
