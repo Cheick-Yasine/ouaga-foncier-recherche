@@ -136,3 +136,10 @@ def test_project_chat_has_a_distinct_empty_state_and_no_header_new_button() -> N
 def test_navigation_uses_query_selector_all_for_page_buttons() -> None:
     script = client.get("/static/app.js").text
     assert script.count("$('.nav-link[data-page]').forEach") == 2
+
+
+
+def test_chat_intro_has_no_top_badge_or_kicker() -> None:
+    page = client.get("/").text
+    assert 'chat-intro-symbol' not in page
+    assert 'chat-intro-kicker' not in page
