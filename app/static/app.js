@@ -40,9 +40,6 @@ function setSidebarState() {
   workspace.classList.toggle('sidebar-collapsed', !visible);
   main.inert = expanded || (mobile.matches && mobileOpen);
   if (expanded) $('#history-section').open = true;
-  const newButton=$('#new-conversation'), newParent=expanded ? sidebarTop : $('.header-tools');
-  if(newButton.parentElement!==newParent)newParent.append(newButton);
-  // Le même bouton reste accessible dans chacun des trois modes, sans copie.
   if (visible && historyToggle.parentElement !== sidebarTop) sidebarTop.append(historyToggle);
   else if (!visible && historyToggle.parentElement !== conversationHeader) conversationHeader.prepend(historyToggle);
   const nextAction = !visible ? 'Afficher le volet historique' : expanded ? 'Afficher l’historique et la discussion' : collapseNext ? 'Masquer l’historique' : 'Afficher l’historique en plein écran';
@@ -69,8 +66,15 @@ document.addEventListener('keydown', e => {
     else if (!e.shiftKey && document.activeElement === nodes.at(-1)) { e.preventDefault(); nodes[0]?.focus(); }
   }
 });
-function startConversation() { persistThread(); thread = newThread(); input.value=''; showPage('chat'); renderConversation(); renderSidebar(); closeSidebar(); }
-$('#new-conversation').addEventListener('click', startConversation);
+function startConversation() {
+  persistThread();
+  thread = newThread();
+  input.value='';
+  showPage('chat');
+  renderConversation();
+  renderSidebar();
+  closeSidebar();
+}
 function dateText(date) { const d = new Date(date); return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('fr-FR', {day:'numeric',month:'short'}); }
 function isSaved(id) { return read('saved').some(x => x.id === id); }
 function requireLogin(action, message) {
@@ -286,9 +290,17 @@ function renderSuggestions(entry) {
 }
 function scrollEnd() { if (activePage !== 'chat') return; const node=$('#conversation-scroll'); node.scrollTop=node.scrollHeight; }
 function renderConversation() {
-  setBusy(pendingRequests.has(thread?.id)); syncWaitingPanels();
-  messages.replaceChildren(); const items=thread?.messages || []; $('#welcome').hidden=activePage === 'chat' && items.length>0;
-  items.forEach(appendMessage); renderSuggestions(items.filter(m=>m.role==='assistant').at(-1)); requestAnimationFrame(scrollEnd); refreshContacts(); refreshSourceLinks();
+  setBusy(pendingRequests.has(thread?.id));
+  syncWaitingPanels();
+  messages.replaceChildren();
+  const items=thread?.messages || [];
+  $('#welcome').hidden=activePage==='chat';
+  $('#chat-intro').hidden=activePage!=='chat' || items.length>0;
+  items.forEach(appendMessage);
+  renderSuggestions(items.filter(m=>m.role==='assistant').at(-1));
+  requestAnimationFrame(scrollEnd);
+  refreshContacts();
+  refreshSourceLinks();
 }
 function historyContent(entry) {
   let text=entry.content || 'Résultats affichés dans le tableau.';
@@ -323,7 +335,9 @@ async function sendMessage(message) {
   const previous=target.messages.filter(m=>!m.error).slice(-12).map(m=>({role:m.role,content:historyContent(m)}));
   if (!target.messages.length) target.query=message.slice(0,110);
   const userEntry={role:'user',content:message}; target.messages.push(userEntry); appendMessage(userEntry);
-  $('#welcome').hidden=true; input.value='';
+  $('#welcome').hidden=true;
+  $('#chat-intro').hidden=true;
+  input.value='';
   const waiting=$('#waiting-template').content.firstElementChild.cloneNode(true);
   const tip=waiting.querySelector('#waiting-tip');
   if(tip){tip.id='waiting-tip-'+threadId;waiting.querySelectorAll('[aria-controls]').forEach(n=>n.setAttribute('aria-controls',tip.id));}
@@ -373,6 +387,12 @@ function updateAccount() {
   $('#account-caption').textContent=currentUser ? 'Gérer mon compte' : 'Votre espace personnel';
   $('#account-avatar').textContent=currentUser?.name ? currentUser.name.split(' ').filter(Boolean).slice(0,2).map(n=>n[0]).join('').toUpperCase() : 'H';
   $('#welcome-greeting').textContent=currentUser?.name ? 'Bonjour, '+currentUser.name : 'Bonjour et bienvenue';
+  const chatGreeting=$('#chat-intro-greeting');
+  if(chatGreeting){
+    chatGreeting.textContent=currentUser?.name
+      ? 'Bonjour, '+currentUser.name+'.'
+      : 'Bonjour.';
+  }
   renderSidebar(); updateSaveButtons();
 }
 function openSettings() {
@@ -418,16 +438,42 @@ async function init() {
 $('#open-saved').addEventListener('click',()=>{renderSidebar();$('#saved-dialog').showModal();});
 $('#open-alerts').addEventListener('click',()=>{renderSidebar();$('#alerts-dialog').showModal();});
 function showPage(page) {
-  activePage = page === 'chat' ? 'chat' : 'home'; main.dataset.page=activePage;
+  activePage = page === 'chat' ? 'chat' : 'home';
+  main.dataset.page=activePage;
   const chat=activePage==='chat';
-  $('#page-label').textContent=chat?'Parlez-nous de votre projet immobilier':'Accueil';
-  messages.hidden=!chat; $('.composer-dock').hidden=!chat; $('.period-control').hidden=!chat;
-  $('#welcome').hidden=chat && Boolean(thread?.messages.length);
-  $$('.nav-link[data-page]').forEach(n=>{if(n.dataset.page===activePage)n.setAttribute('aria-current','page');else n.removeAttribute('aria-current');});
+  const hasMessages=Boolean(thread?.messages.length);
+
+  $('#page-label').textContent=chat
+    ? 'Votre projet immobilier'
+    : 'Accueil';
+  messages.hidden=!chat;
+  $('.composer-dock').hidden=!chat;
+  $('.period-control').hidden=!chat;
+  $('#welcome').hidden=chat;
+  $('#chat-intro').hidden=!chat || hasMessages;
+
+  input.placeholder=chat
+    ? 'Parlez-moi de votre projet : quartier, budget, superficie, document…'
+    : 'Décrivez votre projet, ou collez une annonce à analyser…';
+
+  $('.nav-link[data-page]').forEach(n=>{
+    if(n.dataset.page===activePage)n.setAttribute('aria-current','page');
+    else n.removeAttribute('aria-current');
+  });
   syncWaitingPanels();
-  if (!chat) $('#conversation-scroll').scrollTop=0; else requestAnimationFrame(scrollEnd);
+  if(!chat) $('#conversation-scroll').scrollTop=0;
+  else requestAnimationFrame(()=>{
+    scrollEnd();
+    if(!hasMessages) input.focus();
+  });
 }
-$$('.nav-link[data-page]').forEach(n=>n.addEventListener('click',()=>{showPage(n.dataset.page);closeSidebar();}));
+$('.nav-link[data-page]').forEach(n=>n.addEventListener('click',()=>{
+  if(n.dataset.page==='chat') startConversation();
+  else {
+    showPage(n.dataset.page);
+    closeSidebar();
+  }
+}));
 $('.brand').addEventListener('click',e=>{e.preventDefault();showPage('home');closeSidebar();});
 $('.skip-link').addEventListener('click',e=>{e.preventDefault();showPage('chat');closeSidebar();input.focus();});
 $$('[data-action]').forEach(n=>n.addEventListener('click',()=>{
