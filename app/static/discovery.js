@@ -643,29 +643,21 @@
   });
   observer.observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
 
-  const priceValues=[
-    0,1_000_000,2_000_000,3_000_000,4_000_000,5_000_000,
-    7_500_000,10_000_000,12_500_000,15_000_000,20_000_000,
-    25_000_000,30_000_000,40_000_000,50_000_000,75_000_000,
-    100_000_000,150_000_000,200_000_000,300_000_000,500_000_000
-  ];
-  const areaValues=[
-    0,100,150,200,250,300,350,400,500,600,750,1_000,
-    1_500,2_000,3_000,5_000,10_000,20_000,50_000,100_000
-  ];
-
   function compactMoney(value) {
     if(value>=1_000_000_000) return (value/1_000_000_000).toLocaleString('fr-FR',{maximumFractionDigits:1})+' Md FCFA';
-    if(value>=1_000_000) return (value/1_000_000).toLocaleString('fr-FR',{maximumFractionDigits:1})+' M FCFA';
+    if(value>=1_000_000) return (value/1_000_000).toLocaleString('fr-FR',{maximumFractionDigits:0})+' M FCFA';
     return fmt.format(value)+' FCFA';
   }
 
   function compactArea(value) {
-    if(value>=10_000) return (value/10_000).toLocaleString('fr-FR',{maximumFractionDigits:1})+' ha';
+    if(value>=10_000) return (value/10_000).toLocaleString('fr-FR',{maximumFractionDigits:2})+' ha';
     return fmt.format(value)+' m²';
   }
 
-  function setupDualRange({minId,maxId,minValueId,maxValueId,summaryId,minBubbleId,maxBubbleId,values,format}) {
+  function setupDualRange({
+    minId,maxId,minValueId,maxValueId,summaryId,
+    minBubbleId,maxBubbleId,min,max,step,format
+  }) {
     const minInput=$('#'+minId);
     const maxInput=$('#'+maxId);
     const minValue=$('#'+minValueId);
@@ -675,15 +667,16 @@
     const maxBubble=$('#'+maxBubbleId);
     const wrap=minInput.closest('.dual-range');
     const fill=wrap.querySelector('.dual-range-fill');
-    const last=values.length-1;
 
-    minInput.min=maxInput.min='0';
-    minInput.max=maxInput.max=String(last);
-    minInput.step=maxInput.step='1';
+    minInput.min=maxInput.min=String(min);
+    minInput.max=maxInput.max=String(max);
+    minInput.step=maxInput.step=String(step);
+
+    const clamp=value=>Math.max(min,Math.min(max,Number(value)||min));
 
     const render=()=>{
-      let low=Math.max(0,Math.min(last,Number(minInput.value)||0));
-      let high=Math.max(0,Math.min(last,Number(maxInput.value)||last));
+      let low=clamp(minInput.value);
+      let high=clamp(maxInput.value);
       if(low>high){
         if(document.activeElement===minInput) high=low;
         else low=high;
@@ -691,13 +684,11 @@
       minInput.value=String(low);
       maxInput.value=String(high);
 
-      const lowValue=values[low];
-      const highValue=values[high];
-      minValue.value=lowValue>0 ? String(lowValue) : '';
-      maxValue.value=high<last ? String(highValue) : '';
+      minValue.value=low>min ? String(low) : '';
+      maxValue.value=high<max ? String(high) : '';
 
-      const left=(low/last)*100;
-      const right=(high/last)*100;
+      const left=((low-min)/(max-min))*100;
+      const right=((high-min)/(max-min))*100;
       fill.style.left=left+'%';
       fill.style.width=Math.max(0,right-left)+'%';
 
@@ -710,25 +701,21 @@
           : 'translateX(-50%)';
         node.textContent=text;
       };
-      placeBubble(minBubble,left,format(lowValue));
-      placeBubble(
-        maxBubble,
-        right,
-        format(highValue)+(high===last?' +':'')
-      );
+      placeBubble(minBubble,left,format(low));
+      placeBubble(maxBubble,right,format(high)+(high===max?' +':''));
 
-      if(low===0 && high===last) summary.textContent='Sans limite';
-      else if(low===0) summary.textContent='Jusqu’à '+format(highValue);
-      else if(high===last) summary.textContent='À partir de '+format(lowValue);
-      else summary.textContent=format(lowValue)+' – '+format(highValue);
+      if(low===min && high===max) summary.textContent='Sans limite';
+      else if(low===min) summary.textContent='Jusqu’à '+format(high);
+      else if(high===max) summary.textContent='À partir de '+format(low);
+      else summary.textContent=format(low)+' – '+format(high);
     };
 
     minInput.addEventListener('input',render);
     maxInput.addEventListener('input',render);
 
     const reset=()=>{
-      minInput.value='0';
-      maxInput.value=String(last);
+      minInput.value=String(min);
+      maxInput.value=String(max);
       render();
     };
     reset();
@@ -743,7 +730,9 @@
     summaryId:'deal-price-summary',
     minBubbleId:'deal-price-min-bubble',
     maxBubbleId:'deal-price-max-bubble',
-    values:priceValues,
+    min:0,
+    max:500_000_000,
+    step:1_000_000,
     format:compactMoney
   });
   const areaRangeControl=setupDualRange({
@@ -754,139 +743,10 @@
     summaryId:'deal-area-summary',
     minBubbleId:'deal-area-min-bubble',
     maxBubbleId:'deal-area-max-bubble',
-    values:areaValues,
+    min:0,
+    max:100_000,
+    step:1,
     format:compactArea
-  });
-
-  const documentOptions=[
-    {value:'attestation',label:'Attestation (type non précisé)'},
-    {value:'attestation de possession',label:'Attestation de possession'},
-    {value:"attestation d'attribution",label:'Attestation d’attribution'},
-    {value:"fiche d'attribution",label:'Fiche d’attribution'},
-    {value:"certificat d'attribution",label:'Certificat d’attribution'},
-    {value:"papillon d'attribution",label:'Papillon d’attribution'},
-    {value:'attestation provisoire',label:'Attestation provisoire'},
-    {value:'attestation de cession provisoire',label:'Attestation de cession provisoire'},
-    {value:'APFR',label:'APFR'},
-    {value:'PUH',label:'PUH'},
-    {value:'titre foncier',label:'Titre foncier'},
-    {value:'croquis',label:'Croquis'},
-    {value:'récépissé',label:'Récépissé'},
-    {value:'acte de vente',label:'Acte de vente'},
-    {value:'arrêté',label:'Arrêté'},
-    {value:'décharge',label:'Décharge'},
-    {value:"permis d'exploiter",label:'Permis d’exploiter'},
-    {value:'papiers complets',label:'Papiers complets'}
-  ];
-  const documentSearch=$('#deal-document-search');
-  const documentMenu=$('#deal-document-menu');
-  const documentChips=$('#deal-document-chips');
-  const documentValues=$('#deal-document-values');
-  const selectedDocuments=[];
-
-  function syncDocumentValues() {
-    documentValues.replaceChildren();
-    for(const item of selectedDocuments){
-      const hidden=document.createElement('input');
-      hidden.type='hidden';
-      hidden.name='documents';
-      hidden.value=item.value;
-      documentValues.append(hidden);
-    }
-    $('#document-status').textContent=selectedDocuments.length
-      ? selectedDocuments.length+' document'+(selectedDocuments.length>1?'s':'')+' sélectionné'+(selectedDocuments.length>1?'s':'')+'.'
-      : 'Aucun document sélectionné : sans préférence documentaire.';
-  }
-
-  function renderDocumentChips() {
-    documentChips.querySelectorAll('.multi-chip').forEach(node=>node.remove());
-    selectedDocuments.forEach(item=>{
-      const chip=element('span','multi-chip');
-      chip.append(document.createTextNode(item.label));
-      const remove=element('button','multi-chip-remove','×');
-      remove.type='button';
-      remove.setAttribute('aria-label','Retirer '+item.label);
-      remove.addEventListener('click',()=>{
-        const index=selectedDocuments.findIndex(
-          selected=>selected.value===item.value
-        );
-        if(index>=0) selectedDocuments.splice(index,1);
-        renderDocumentChips();
-        renderDocumentMenu();
-        documentSearch.focus();
-      });
-      chip.append(remove);
-      documentChips.insertBefore(chip,documentSearch);
-    });
-    syncDocumentValues();
-  }
-
-  function matchingDocuments() {
-    const query=fold(documentSearch.value.trim());
-    return documentOptions
-      .filter(item=>!selectedDocuments.some(
-        selected=>selected.value===item.value
-      ))
-      .filter(item=>!query || fold(item.label).includes(query))
-      .slice(0,30);
-  }
-
-  function addDocument(item) {
-    if(!item || selectedDocuments.some(
-      selected=>selected.value===item.value
-    )) return;
-    selectedDocuments.push(item);
-    documentSearch.value='';
-    renderDocumentChips();
-    renderDocumentMenu();
-  }
-
-  function renderDocumentMenu() {
-    documentMenu.replaceChildren();
-    const matches=matchingDocuments();
-    for(const item of matches){
-      const option=element('button','deal-multiselect-option',item.label);
-      option.type='button';
-      option.setAttribute('role','option');
-      option.setAttribute('aria-selected','false');
-      option.addEventListener('mousedown',event=>event.preventDefault());
-      option.addEventListener('click',()=>addDocument(item));
-      documentMenu.append(option);
-    }
-    documentMenu.hidden=!(
-      document.activeElement===documentSearch && matches.length
-    );
-    documentSearch.setAttribute(
-      'aria-expanded',
-      String(!documentMenu.hidden)
-    );
-  }
-
-  documentSearch.addEventListener('focus',renderDocumentMenu);
-  documentSearch.addEventListener('input',renderDocumentMenu);
-  documentSearch.addEventListener('keydown',event=>{
-    if(event.key==='Enter'){
-      event.preventDefault();
-      const first=matchingDocuments()[0];
-      if(first) addDocument(first);
-    } else if(
-      event.key==='Backspace'
-      && !documentSearch.value
-      && selectedDocuments.length
-    ){
-      selectedDocuments.pop();
-      renderDocumentChips();
-      renderDocumentMenu();
-    } else if(event.key==='Escape'){
-      documentMenu.hidden=true;
-      documentSearch.setAttribute('aria-expanded','false');
-    }
-  });
-  documentSearch.addEventListener('blur',()=>{
-    setTimeout(()=>{
-      documentMenu.hidden=true;
-      documentSearch.setAttribute('aria-expanded','false');
-    },120);
   });
 
   let neighborhoods=null;
