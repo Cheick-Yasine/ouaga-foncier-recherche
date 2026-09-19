@@ -70,11 +70,7 @@ class SearchCriteria:
     description: str
     property_type: str | None = None
     neighborhood: str | None = None
-    neighborhoods: tuple[str, ...] = ()
-    neighborhoods_strict: bool = False
     price_fcfa: float | None = None
-    price_min_fcfa: float | None = None
-    price_max_fcfa: float | None = None
     price_is_maximum: bool = False
     area_m2: float | None = None
     proximity: str | None = None
@@ -85,6 +81,10 @@ class SearchCriteria:
     city_only: bool = False
     area_min_m2: float | None = None
     area_max_m2: float | None = None
+    neighborhoods: tuple[str, ...] = ()
+    neighborhoods_strict: bool = False
+    price_min_fcfa: float | None = None
+    price_max_fcfa: float | None = None
 
 
 @dataclass(frozen=True)
