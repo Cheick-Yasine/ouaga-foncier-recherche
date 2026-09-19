@@ -46,7 +46,7 @@ def document_evidence(candidate: SearchCandidate) -> tuple[str | None, str, str,
     windows = [text[max(0,m.start()-25):m.end()+65] for m in re.finditer(DOC_WORD, text)]
     if ABSENT_DOC.search(text):
         return document, 'absent', 'Document annoncé absent', 0.0
-    if re.search(r'\b(?:recepisse|croquis)\b', text) and document is None:
+    if re.search(r'\b(?:recepisse|croquis)\b', text) and document in {None, 'recepisse', 'croquis'}:
         kind = 'recepisse' if 'recepisse' in text else 'croquis'
         return kind, 'piece_annexe', 'Pièce mentionnée, document foncier à préciser', 0.1
     if windows and any(PENDING.search(w) for w in windows):
