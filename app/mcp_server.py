@@ -141,6 +141,11 @@ def rechercher_annonces(
         "viabilite",
     }
     required = set(criteres_obligatoires or [])
+    normalized_description = description.casefold()
+    if normalized_description.lstrip().startswith("trouve-moi une bonne affaire :"):
+        required.add("type_bien")
+        if "document souhait" in normalized_description:
+            required.add("statut_document")
     unknown = sorted(required - allowed)
     if unknown:
         return {"erreur": "Critères obligatoires inconnus : " + ", ".join(unknown)}
