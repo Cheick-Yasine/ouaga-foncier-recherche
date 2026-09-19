@@ -249,10 +249,11 @@ def load_market_candidates(
                     texte_nettoye,
                     premiere_collecte
                 FROM public.annonces
-                WHERE type_bien_normalise IS NOT NULL
-                  AND LOWER(TRIM(type_bien_normalise)) IN (
-                      'terrain', 'parcelle', 'maison'
-                  )
+                WHERE COALESCE(
+                      NULLIF(LOWER(TRIM(type_bien_normalise)), ''),
+                      NULLIF(LOWER(TRIM(type_bien)), ''),
+                      ''
+                  ) IN ('terrain', 'parcelle', 'maison')
                   AND NOT (prix_fcfa IS NULL AND superficie_m2 IS NULL)
                 ORDER BY premiere_collecte DESC NULLS LAST, id
                 """
@@ -357,10 +358,11 @@ def load_recent_candidates(
                     premiere_collecte
                 FROM public.annonces
                 WHERE {age_clause}
-                      type_bien_normalise IS NOT NULL
-                  AND LOWER(TRIM(type_bien_normalise)) IN (
-                      'terrain', 'parcelle', 'maison'
-                  )
+                      COALESCE(
+                      NULLIF(LOWER(TRIM(type_bien_normalise)), ''),
+                      NULLIF(LOWER(TRIM(type_bien)), ''),
+                      ''
+                  ) IN ('terrain', 'parcelle', 'maison')
                   AND NOT (prix_fcfa IS NULL AND superficie_m2 IS NULL)
                 ORDER BY premiere_collecte DESC NULLS LAST, id
                 {limit_clause}
@@ -450,10 +452,11 @@ def load_neighborhood_candidates(
                     resume_court,
                     texte_nettoye
                 FROM public.annonces
-                WHERE type_bien_normalise IS NOT NULL
-                  AND LOWER(TRIM(type_bien_normalise)) IN (
-                      'terrain', 'parcelle', 'maison'
-                  )
+                WHERE COALESCE(
+                      NULLIF(LOWER(TRIM(type_bien_normalise)), ''),
+                      NULLIF(LOWER(TRIM(type_bien)), ''),
+                      ''
+                  ) IN ('terrain', 'parcelle', 'maison')
                   AND NOT (prix_fcfa IS NULL AND superficie_m2 IS NULL)
                 ORDER BY premiere_collecte ASC NULLS LAST, id
                 """

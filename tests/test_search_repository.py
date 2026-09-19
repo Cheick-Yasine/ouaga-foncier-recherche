@@ -7,6 +7,7 @@ from app.search_repository import (
     _candidate_from_row,
     _is_prepared_candidate,
     clear_candidate_cache,
+    load_market_candidates,
     load_recent_candidates,
 )
 
@@ -312,3 +313,30 @@ def test_statistics_filters_publication_dates_before_text_analysis(monkeypatch):
     assert _candidate_cache_key('db', None, None, 30) != _candidate_cache_key('db', None, None)
     # Une recherche ordinaire conserve sa politique de date de collecte.
     assert len(load_recent_candidates(settings=settings, now=now, pool_limit=None)) == 6
+
+
+
+def test_market_loader_falls_back_to_raw_property_type_in_sql(monkeypatch):
+    from contextlib import nullcontext
+    from unittest.mock import Mock
+
+    connection = Mock()
+    connection.transaction.return_value = nullcontext()
+    connection.execute.return_value.fetchall.return_value = []
+    monkeypatch.setattr(
+        "app.search_repository.psycopg.connect",
+        lambda *args, **kwargs: nullcontext(connection),
+    )
+
+    settings = Settings(database_url="postgresql://example.test/database")
+    load_market_candidates(
+        settings=settings,
+        now=datetime(2026, 9, 19, 8, tzinfo=timezone.utc),
+        publication_days=60,
+    )
+
+    query = connection.execute.call_args.args[0]
+    assert "COALESCE" in query
+    assert "type_bien_normalise" in query
+    assert "type_bien" in query
+    assert "type_bien_normalise IS NOT NULL" not in query
