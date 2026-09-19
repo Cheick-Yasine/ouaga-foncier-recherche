@@ -199,12 +199,12 @@ def parse_search_description(description: str) -> SearchCriteria:
     text_without_area = _HECTARE_PATTERN.sub(" ", text_without_area)
 
     price_range = re.search(
-        r"\b(?:prix|budget) entre (\d(?:[\d ]*\d)?) et "
-        r"(\d(?:[\d ]*\d)?) (?:fcfa|f cfa|cfa)\b",
+        r"\b(?:prix|budget) entre (\d(?:[\d ]*\d)?(?:\.\d+)?) et "
+        r"(\d(?:[\d ]*\d)?(?:\.\d+)?) (?:fcfa|f cfa|cfa)\b",
         text_without_area,
     )
     price_floor = re.search(
-        r"\bprix (?:minimum|au moins) (\d(?:[\d ]*\d)?) "
+        r"\bprix (?:minimum|au moins) (\d(?:[\d ]*\d)?(?:\.\d+)?) "
         r"(?:fcfa|f cfa|cfa)\b",
         text_without_area,
     )
@@ -518,7 +518,14 @@ def score_candidate(
         match = _normalized_equal(criteria.document_status, document)
         if criteria.document_status == "attestation_non_precisee" and document:
             match = document.startswith("attestation_") or document == "apfr"
-        components["statut_document"] = float(match and document_state in {"mentionne", "annonce_disponible"}) if document else None
+        acceptable_document_states = {"mentionne", "annonce_disponible"}
+        if criteria.document_status in {"recepisse", "croquis"}:
+            acceptable_document_states.add("piece_annexe")
+        components["statut_document"] = (
+            float(match and document_state in acceptable_document_states)
+            if document
+            else None
+        )
     if criteria.viability:
         quality = offer_quality(candidate)
         expected_utilities = {"eau"} if criteria.viability == "eau" else {"electricite"} if criteria.viability == "electricite" else {"eau", "electricite"}
