@@ -784,3 +784,47 @@ def test_area_ceiling_from_guided_form_is_enforced() -> None:
             area_m2=600,
         ),
     ) is None
+
+
+
+def test_multiple_documents_are_parsed_as_alternatives() -> None:
+    criteria = parse_search_description(
+        "Trouve-moi une bonne affaire : parcelle en vente. "
+        "Documents souhaités : PUH, titre foncier, APFR. "
+        "Au moins un de ces documents."
+    )
+
+    assert criteria.documents == ("puh", "titre_foncier", "apfr")
+    assert criteria.documents_strict is True
+    assert criteria.document_status is None
+
+
+def test_multiple_documents_accept_any_selected_document() -> None:
+    criteria = parse_search_description(
+        "Trouve-moi une bonne affaire : parcelle en vente. "
+        "Documents souhaités : PUH, titre foncier. "
+        "Au moins un de ces documents."
+    )
+
+    with_puh = SearchCandidate(
+        identifier="puh",
+        text="Parcelle à vendre avec PUH disponible",
+        property_type="parcelle",
+        document_status="puh",
+    )
+    with_title = SearchCandidate(
+        identifier="title",
+        text="Parcelle à vendre avec titre foncier",
+        property_type="parcelle",
+        document_status="titre_foncier",
+    )
+    without_selected = SearchCandidate(
+        identifier="other",
+        text="Parcelle à vendre avec acte de vente",
+        property_type="parcelle",
+        document_status="acte_vente",
+    )
+
+    assert score_candidate(criteria, with_puh) is not None
+    assert score_candidate(criteria, with_title) is not None
+    assert score_candidate(criteria, without_selected) is None
