@@ -13,6 +13,7 @@ from app.listing_scope import city_only_request, sale_eligible, within_ouagadoug
 from app.normalization import normalize_property_type
 from app.text_features import (
     extract_document_status,
+    extract_document_statuses,
     extract_proximity_details,
     extract_viability,
     normalize_text,
@@ -85,6 +86,8 @@ class SearchCriteria:
     neighborhoods_strict: bool = False
     price_min_fcfa: float | None = None
     price_max_fcfa: float | None = None
+    documents: tuple[str, ...] = ()
+    documents_strict: bool = False
 
 
 @dataclass(frozen=True)
@@ -301,7 +304,30 @@ def parse_search_description(description: str) -> SearchCriteria:
 
     proximity = extract_proximity_details(description)
     viability = extract_viability(description)
-    document = extract_document_status(None, description)
+    document_match = re.search(
+        r"(?i)\bdocuments?\s+souhait[eé]s?\s*:\s*([^\.\n]+)",
+        description,
+    )
+    documents: tuple[str, ...] = ()
+    documents_strict = False
+    if document_match:
+        detected_documents: list[str] = []
+        for raw_document in re.split(
+            r"\s*,\s*|\s+ou\s+",
+            document_match.group(1),
+            flags=re.IGNORECASE,
+        ):
+            detected = extract_document_status(None, raw_document)
+            if (
+                detected != "non_precise"
+                and detected not in detected_documents
+            ):
+                detected_documents.append(detected)
+        documents = tuple(detected_documents)
+        documents_strict = bool(documents)
+        document = documents[0] if len(documents) == 1 else "non_precise"
+    else:
+        document = extract_document_status(None, description)
 
     return SearchCriteria(
         description=description.strip(),
@@ -320,6 +346,8 @@ def parse_search_description(description: str) -> SearchCriteria:
         proximity=None if proximity == "non_precisee" else proximity,
         viability=None if viability == "non_precisee" else viability,
         document_status=None if document == "non_precise" else document,
+        documents=documents,
+        documents_strict=documents_strict,
     )
 
 def _tokens(text: str) -> Counter[str]:
@@ -384,6 +412,18 @@ def _requested_neighborhoods(criteria: SearchCriteria) -> tuple[str, ...]:
     return (criteria.neighborhood,) if criteria.neighborhood else ()
 
 
+def _requested_documents(criteria: SearchCriteria) -> tuple[str, ...]:
+    if criteria.documents:
+        return criteria.documents
+    return (criteria.document_status,) if criteria.document_status else ()
+
+
+def _document_matches(requested: str, observed: str) -> bool:
+    if requested == "attestation_non_precisee":
+        return observed.startswith("attestation_") or observed == "apfr"
+    return requested == observed
+
+
 def _requested_components(criteria: SearchCriteria) -> list[str]:
     requested = ["texte"]
     if _requested_neighborhoods(criteria):
@@ -398,7 +438,7 @@ def _requested_components(criteria: SearchCriteria) -> list[str]:
         requested.append("superficie")
     if criteria.property_type:
         requested.append("type_bien")
-    if criteria.document_status:
+    if _requested_documents(criteria):
         requested.append("statut_document")
     if criteria.proximity:
         requested.append("proximite")
@@ -429,6 +469,27 @@ def score_candidate(
         criteria.neighborhoods_strict
         and requested_neighborhoods
         and not neighborhood_match
+    ):
+        return None
+
+    requested_documents = _requested_documents(criteria)
+    candidate_documents = extract_document_statuses(
+        candidate.document_status,
+        candidate.text,
+    )
+    document_match = bool(
+        requested_documents
+        and candidate_documents
+        and any(
+            _document_matches(requested, observed)
+            for requested in requested_documents
+            for observed in candidate_documents
+        )
+    )
+    if (
+        criteria.documents_strict
+        and requested_documents
+        and not document_match
     ):
         return None
 
@@ -500,10 +561,6 @@ def score_candidate(
         )
     categorical_pairs = {
         "type_bien": (criteria.property_type, candidate.property_type),
-        "statut_document": (
-            criteria.document_status,
-            candidate.document_status,
-        ),
         "viabilite": (criteria.viability, candidate.viability),
     }
     for component, (expected, observed) in categorical_pairs.items():
@@ -513,17 +570,20 @@ def score_candidate(
                 if observed is None
                 else float(_normalized_equal(expected, observed))
             )
-    if criteria.document_status:
-        document, document_state, _, _ = document_evidence(candidate)
-        match = _normalized_equal(criteria.document_status, document)
-        if criteria.document_status == "attestation_non_precisee" and document:
-            match = document.startswith("attestation_") or document == "apfr"
+    if requested_documents:
+        _, document_state, _, _ = document_evidence(candidate)
         acceptable_document_states = {"mentionne", "annonce_disponible"}
-        if criteria.document_status in {"recepisse", "croquis"}:
+        if any(
+            requested in {"recepisse", "croquis"}
+            for requested in requested_documents
+        ):
             acceptable_document_states.add("piece_annexe")
         components["statut_document"] = (
-            float(match and document_state in acceptable_document_states)
-            if document
+            float(
+                document_match
+                and document_state in acceptable_document_states
+            )
+            if candidate_documents
             else None
         )
     if criteria.viability:
@@ -663,7 +723,7 @@ def _descriptive_priority(
         int(bool(_requested_neighborhoods(criteria)) and components.get("quartier") == 1),
         int(criteria.property_type is not None and components.get("type_bien") == 1),
         int(
-            criteria.document_status is not None
+            bool(_requested_documents(criteria))
             and components.get("statut_document") == 1
         ),
         int(criteria.proximity is not None and components.get("proximite") == 1),
