@@ -142,10 +142,15 @@ def neighborhood_trends(
     candidates: Iterable[SearchCandidate],
     *,
     now: datetime | None = None,
-    period: str = "1m",
+    period: str | None = None,
     aggregation: str = "day",
 ) -> dict:
-    """Top 5 quartiers sur une période glissante, agrégés par jour ou semaine."""
+    """Top 5 quartiers sur une période glissante, agrégés par jour ou semaine.
+
+    Sans période explicite, conserve le comportement historique utilisé par
+    les appels internes/tests plus anciens : la concentration d'activité
+    principale est retenue. L'API publique fournit toujours une période.
+    """
 
     period_days = {
         "7d": 7,
@@ -156,7 +161,7 @@ def neighborhood_trends(
         "1y": 365,
         "max": None,
     }
-    if period not in period_days:
+    if period is not None and period not in period_days:
         raise ValueError(f"Période inconnue : {period}")
     if aggregation not in {"day", "week"}:
         raise ValueError(f"Agrégation inconnue : {aggregation}")
@@ -186,15 +191,22 @@ def neighborhood_trends(
         seen.add(identity)
         pool.append(candidate)
 
+    ignored_isolated = 0
+    legacy_window = period is None
+    effective_period = period or "max"
+
+    if legacy_window:
+        pool, ignored_isolated = _main_activity_cluster(pool)
+
     if not pool:
         return {
             "date_utilisee": "date_publication",
             "granularite_source": "jour",
-            "periode": period,
+            "periode": effective_period,
             "agregation": aggregation,
             "debut": None,
             "fin": None,
-            "annonces_isolees_ignorees": 0,
+            "annonces_isolees_ignorees": ignored_isolated,
             "types": {
                 kind: {"total_annonces": 0, "quartiers": []}
                 for kind in ("tous", "parcelle", "terrain", "maison")
@@ -213,17 +225,25 @@ def neighborhood_trends(
     latest = max(published for _, published in dated).date()
     oldest = min(published for _, published in dated).date()
 
-    days = period_days[period]
-    start_date = (
-        oldest
-        if days is None
-        else max(oldest, latest - timedelta(days=days - 1))
-    )
+    if legacy_window:
+        start_date = oldest
+        end_date = latest
+    else:
+        days = period_days[effective_period]
+        if days is None:
+            start_date = oldest
+            end_date = latest
+        else:
+            end_date = current.date()
+            start_date = max(
+                oldest,
+                end_date - timedelta(days=days - 1),
+            )
 
     selected_pool = [
         candidate
         for candidate, published in dated
-        if start_date <= published.date() <= latest
+        if start_date <= published.date() <= end_date
     ]
 
     def bucket_bounds(day):
@@ -231,7 +251,7 @@ def neighborhood_trends(
             return day, day
         monday = day - timedelta(days=day.weekday())
         sunday = monday + timedelta(days=6)
-        return max(monday, start_date), min(sunday, latest)
+        return max(monday, start_date), min(sunday, end_date)
 
     by_type = {}
     for kind in ("tous", "parcelle", "terrain", "maison"):
@@ -258,11 +278,17 @@ def neighborhood_trends(
         for candidate in selected:
             published = publication_time(candidate.publication_label)
             begin, end = bucket_bounds(published.date())
-            counts[(begin.isoformat(), end.isoformat(), candidate.neighborhood)] += 1
+            counts[
+                (
+                    begin.isoformat(),
+                    end.isoformat(),
+                    candidate.neighborhood,
+                )
+            ] += 1
 
         buckets: list[tuple[str, str]] = []
         cursor = start_date
-        while cursor <= latest:
+        while cursor <= end_date:
             begin, end = bucket_bounds(cursor)
             key = (begin.isoformat(), end.isoformat())
             if not buckets or buckets[-1] != key:
@@ -302,11 +328,11 @@ def neighborhood_trends(
     return {
         "date_utilisee": "date_publication",
         "granularite_source": "jour",
-        "periode": period,
+        "periode": effective_period,
         "agregation": aggregation,
         "debut": start_date.isoformat(),
-        "fin": latest.isoformat(),
-        "annonces_isolees_ignorees": 0,
+        "fin": end_date.isoformat(),
+        "annonces_isolees_ignorees": ignored_isolated,
         "types": by_type,
     }
 
