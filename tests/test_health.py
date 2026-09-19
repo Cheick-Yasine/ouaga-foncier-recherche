@@ -117,3 +117,16 @@ def test_neighborhood_chart_uses_period_buttons_and_dynamic_fill() -> None:
     assert "fill:isolatedNeighborhood ? 'tozeroy' : 'none'" in script
     assert "hexToRgba(color,0.16)" in script
     assert "data.aggregation" not in script
+
+
+
+def test_project_chat_has_a_distinct_empty_state_and_no_header_new_button() -> None:
+    page = client.get("/").text
+    script = client.get("/static/app.js").text
+
+    assert 'id="new-conversation"' not in page
+    assert 'id="chat-intro"' in page
+    assert 'id="chat-intro-greeting"' in page
+    assert "if(n.dataset.page==='chat') startConversation();" in script
+    assert "$('#welcome').hidden=chat;" in script
+    assert "$('#chat-intro').hidden=!chat || hasMessages;" in script
