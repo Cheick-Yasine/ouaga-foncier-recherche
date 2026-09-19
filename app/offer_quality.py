@@ -12,17 +12,28 @@ if TYPE_CHECKING:
 DOCUMENT_LABELS = {
     'apfr': 'APFR', 'puh': 'PUH', 'titre_foncier': 'Titre foncier',
     'attestation_possession': 'Attestation de possession',
-    'attestation_attribution': 'Attestation d’attribution',
+    'attestation_attribution': 'Attestation / fiche d’attribution',
+    'attestation_provisoire': 'Attestation provisoire',
+    'attestation_cession_provisoire': 'Attestation de cession provisoire',
     'attestation_non_precisee': 'Attestation (type non précisé)',
     'plusieurs_documents': 'Plusieurs documents',
     'recepisse': 'Récépissé de dépôt', 'croquis': 'Croquis',
+    'acte_vente': 'Acte de vente', 'arrete': 'Arrêté',
+    'decharge': 'Décharge', 'permis_exploiter': 'Permis d’exploiter',
+    'papiers_complets': 'Papiers complets',
 }
 PROXIMITY_LABELS = {
     'ecole': 'École à proximité', 'centre_sante_hopital': 'Centre de santé à proximité',
     'voie_bitumee': 'Voie bitumée à proximité', 'voie_route': 'Route mentionnée',
     'acces_voie_bitumee': 'Accès bitumé annoncé', 'marche': 'Marché à proximité',
 }
-DOC_WORD = r'(?:apfr|puh|titre foncier|attestation(?: de possession(?: fonciere rurale)?)?|documents?|papiers?)'
+DOC_WORD = (
+    r'(?:apfr|puh|titre foncier|attestation(?: de possession(?: fonciere rurale)?)?'
+    r'|attestation d attribution|attestation provisoire|attestation de cession provisoire'
+    r'|fiche d attribution|certificat d attribution|papillon d attribution'
+    r'|recepisse|croquis|acte de vente|arrete(?: ministeriel)?|decharge'
+    r'|permis d exploiter|documents?|papiers?)'
+)
 ABSENT_DOC = re.compile(rf'\b(?:sans|aucun|pas de)\s+{DOC_WORD}\b|\b{DOC_WORD}\s+(?:absent|indisponible|non disponible)')
 PENDING = re.compile(r'\b(?:en cours|en attente|depose\w*|demande\w*|a etablir|a fournir|a delivrer|non delivre\w*|non encore|pas encore)\b')
 AVAILABLE = re.compile(r'\b(?:disponible\w*|delivre\w*|en main|en possession|obtenu\w*|remis\w*)\b')
