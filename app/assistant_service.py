@@ -15,7 +15,7 @@ from mcp.client.streamable_http import streamable_http_client
 from openai import AsyncOpenAI
 
 from app.config import Settings, get_settings
-from app.assistant_constraints import conversation_budget, budget_description, respect_search_budget, conversation_city_only, respect_search_scope, conversation_numeric_request, target_price_description, area_description
+from app.assistant_constraints import conversation_budget, budget_description, respect_search_budget, conversation_city_only, respect_search_scope, conversation_numeric_request, target_price_description, price_range_description, area_description
 from app.semantic_filter import sanitize_external_text
 
 
@@ -432,7 +432,19 @@ async def run_assistant(
                     arguments["description"] = budget_description(arguments.get("description", ""), user_budget)
                 if call.name == "rechercher_annonces":
                     if price_request and not price_request.price_is_maximum:
-                        arguments["description"] = target_price_description(arguments.get("description", ""), price_request.price_fcfa)
+                        if (
+                            price_request.price_min_fcfa is not None
+                            or price_request.price_max_fcfa is not None
+                        ):
+                            arguments["description"] = price_range_description(
+                                arguments.get("description", ""),
+                                price_request,
+                            )
+                        else:
+                            arguments["description"] = target_price_description(
+                                arguments.get("description", ""),
+                                price_request.price_fcfa,
+                            )
                     if area_request:
                         arguments["description"] = area_description(arguments.get("description", ""), area_request)
                 if call.name in {"rechercher_annonces", "evaluer_annonce"} and city_only:
