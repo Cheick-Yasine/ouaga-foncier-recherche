@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from app.text_features import (
     build_text_features_audit,
     extract_document_status,
+    extract_document_statuses,
     extract_proximity,
     extract_proximity_details,
     extract_text_features,
@@ -186,3 +187,11 @@ def test_extended_document_categories() -> None:
         extract_document_status(None, "Papiers complets")
         == "papiers_complets"
     )
+
+
+
+def test_document_statuses_keep_multiple_detected_documents() -> None:
+    assert extract_document_statuses(
+        None,
+        "PUH disponible avec titre foncier et croquis",
+    ) == ("titre_foncier", "puh", "croquis")
