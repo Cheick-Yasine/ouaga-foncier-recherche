@@ -643,6 +643,26 @@
   });
   observer.observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
 
+  const priceValues=[
+    0,
+    1_000_000,2_000_000,3_000_000,4_000_000,5_000_000,
+    6_000_000,7_000_000,8_000_000,9_000_000,10_000_000,
+    11_000_000,12_000_000,13_000_000,14_000_000,15_000_000,
+    16_000_000,17_000_000,18_000_000,19_000_000,20_000_000,
+    25_000_000,30_000_000,35_000_000,40_000_000,50_000_000,
+    60_000_000,75_000_000,100_000_000,125_000_000,150_000_000,
+    175_000_000,200_000_000,225_000_000,250_000_000,275_000_000,
+    300_000_000,325_000_000,350_000_000,400_000_000,500_000_000
+  ];
+
+  const areaValues=[
+    0,50,100,150,200,250,300,350,400,450,500,
+    525,550,575,600,625,650,675,700,725,750,
+    800,850,900,1_000,1_200,1_500,2_000,3_000,5_000,
+    7_500,10_000,15_000,20_000,30_000,40_000,50_000,
+    60_000,75_000,90_000,100_000
+  ];
+
   function compactMoney(value) {
     if(value>=1_000_000_000) return (value/1_000_000_000).toLocaleString('fr-FR',{maximumFractionDigits:1})+' Md FCFA';
     if(value>=1_000_000) return (value/1_000_000).toLocaleString('fr-FR',{maximumFractionDigits:0})+' M FCFA';
@@ -656,7 +676,7 @@
 
   function setupDualRange({
     minId,maxId,minValueId,maxValueId,summaryId,
-    minBubbleId,maxBubbleId,min,max,step,format
+    minBubbleId,maxBubbleId,values,format
   }) {
     const minInput=$('#'+minId);
     const maxInput=$('#'+maxId);
@@ -667,16 +687,15 @@
     const maxBubble=$('#'+maxBubbleId);
     const wrap=minInput.closest('.dual-range');
     const fill=wrap.querySelector('.dual-range-fill');
+    const last=values.length-1;
 
-    minInput.min=maxInput.min=String(min);
-    minInput.max=maxInput.max=String(max);
-    minInput.step=maxInput.step=String(step);
-
-    const clamp=value=>Math.max(min,Math.min(max,Number(value)||min));
+    minInput.min=maxInput.min='0';
+    minInput.max=maxInput.max=String(last);
+    minInput.step=maxInput.step='1';
 
     const render=()=>{
-      let low=clamp(minInput.value);
-      let high=clamp(maxInput.value);
+      let low=Math.max(0,Math.min(last,Number(minInput.value)||0));
+      let high=Math.max(0,Math.min(last,Number(maxInput.value)||last));
       if(low>high){
         if(document.activeElement===minInput) high=low;
         else low=high;
@@ -684,11 +703,13 @@
       minInput.value=String(low);
       maxInput.value=String(high);
 
-      minValue.value=low>min ? String(low) : '';
-      maxValue.value=high<max ? String(high) : '';
+      const lowValue=values[low];
+      const highValue=values[high];
+      minValue.value=low>0 ? String(lowValue) : '';
+      maxValue.value=high<last ? String(highValue) : '';
 
-      const left=((low-min)/(max-min))*100;
-      const right=((high-min)/(max-min))*100;
+      const left=(low/last)*100;
+      const right=(high/last)*100;
       fill.style.left=left+'%';
       fill.style.width=Math.max(0,right-left)+'%';
 
@@ -701,21 +722,21 @@
           : 'translateX(-50%)';
         node.textContent=text;
       };
-      placeBubble(minBubble,left,format(low));
-      placeBubble(maxBubble,right,format(high)+(high===max?' +':''));
+      placeBubble(minBubble,left,format(lowValue));
+      placeBubble(maxBubble,right,format(highValue)+(high===last?' +':''));
 
-      if(low===min && high===max) summary.textContent='Sans limite';
-      else if(low===min) summary.textContent='Jusqu’à '+format(high);
-      else if(high===max) summary.textContent='À partir de '+format(low);
-      else summary.textContent=format(low)+' – '+format(high);
+      if(low===0 && high===last) summary.textContent='Sans limite';
+      else if(low===0) summary.textContent='Jusqu’à '+format(highValue);
+      else if(high===last) summary.textContent='À partir de '+format(lowValue);
+      else summary.textContent=format(lowValue)+' – '+format(highValue);
     };
 
     minInput.addEventListener('input',render);
     maxInput.addEventListener('input',render);
 
     const reset=()=>{
-      minInput.value=String(min);
-      maxInput.value=String(max);
+      minInput.value='0';
+      maxInput.value=String(last);
       render();
     };
     reset();
@@ -730,9 +751,7 @@
     summaryId:'deal-price-summary',
     minBubbleId:'deal-price-min-bubble',
     maxBubbleId:'deal-price-max-bubble',
-    min:0,
-    max:500_000_000,
-    step:1_000_000,
+    values:priceValues,
     format:compactMoney
   });
   const areaRangeControl=setupDualRange({
@@ -743,9 +762,7 @@
     summaryId:'deal-area-summary',
     minBubbleId:'deal-area-min-bubble',
     maxBubbleId:'deal-area-max-bubble',
-    min:0,
-    max:100_000,
-    step:1,
+    values:areaValues,
     format:compactArea
   });
 

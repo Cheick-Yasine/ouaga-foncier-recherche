@@ -86,3 +86,18 @@ def test_deal_document_multiselect_is_fully_initialized() -> None:
     assert "const selectedDocuments=[]" in script
     assert "const documentSearch=$('#deal-document-search')" in script
     assert "selectedDocuments.splice" in script
+
+
+
+def test_deal_ranges_follow_visible_midpoint_scales() -> None:
+    page = client.get("/").text
+    script = client.get("/static/discovery.js").text
+
+    assert 'class="deal-top-field deal-type-field"' in page
+    assert 'class="deal-top-field deal-document-field"' in page
+    assert '<span>20 M</span>' in page
+    assert '<span>750 m²</span>' in page
+
+    assert "minInput.step=maxInput.step='1'" in script
+    assert "19_000_000,20_000_000" in script
+    assert "700,725,750" in script
