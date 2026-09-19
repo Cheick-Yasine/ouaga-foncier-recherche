@@ -157,6 +157,34 @@ def extract_viability(*texts: Any) -> str:
     return "non_precisee"
 
 
+def extract_document_statuses(structured_status: Any, *texts: Any) -> tuple[str, ...]:
+    """Retourne chaque type de document détecté, sans les fusionner."""
+
+    descriptive = normalize_text(
+        " ".join(str(text or "") for text in texts)
+    )
+    detected = [
+        label
+        for label, pattern in _DOCUMENT_PATTERNS.items()
+        if pattern.search(descriptive)
+    ]
+    if not detected and _GENERIC_ATTESTATION_RE.search(descriptive):
+        detected.append("attestation_non_precisee")
+
+    structured = normalize_text(structured_status)
+    for label, pattern in _DOCUMENT_PATTERNS.items():
+        if pattern.search(structured) and label not in detected:
+            detected.append(label)
+    if (
+        not detected
+        and structured
+        and _GENERIC_ATTESTATION_RE.search(structured)
+    ):
+        detected.append("attestation_non_precisee")
+
+    return tuple(detected)
+
+
 def _detect_document_in_text(searchable: str) -> str:
     detected = {
         label

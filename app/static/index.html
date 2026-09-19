@@ -9,11 +9,11 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/styles.css?v=20260919-deal-ranges-3">
+  <link rel="stylesheet" href="/static/styles.css?v=20260919-multi-documents-1">
   <script src="/static/waiting.js?v=20260906-waiting-1" defer></script>
   <script src="https://cdn.plot.ly/plotly-4.0.0.min.js" charset="utf-8" defer></script>
-  <script src="/static/discovery.js?v=20260919-deal-ranges-3" defer></script>
-  <script src="/static/app.js?v=20260919-deal-ranges-3" defer></script>
+  <script src="/static/discovery.js?v=20260919-multi-documents-1" defer></script>
+  <script src="/static/app.js?v=20260919-multi-documents-1" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#assistant-input">Aller à la conversation</a>
@@ -166,27 +166,16 @@
 <p>Choisissez vos critères. Vous pouvez sélectionner plusieurs quartiers et définir directement une fourchette de prix et de superficie.</p>
 <div class="deal-fields">
 <label>Type de bien<select name="property"><option value="parcelle">Parcelle</option><option value="terrain">Terrain</option><option value="maison">Maison</option></select></label>
-<label>Document<select id="deal-document" name="document">
-<option value="">Sans préférence</option>
-<option value="attestation">Attestation (type non précisé)</option>
-<option value="attestation de possession">Attestation de possession</option>
-<option value="attestation d'attribution">Attestation d’attribution</option>
-<option value="fiche d'attribution">Fiche d’attribution</option>
-<option value="certificat d'attribution">Certificat d’attribution</option>
-<option value="papillon d'attribution">Papillon d’attribution</option>
-<option value="attestation provisoire">Attestation provisoire</option>
-<option value="attestation de cession provisoire">Attestation de cession provisoire</option>
-<option value="APFR">APFR</option>
-<option value="PUH">PUH</option>
-<option value="titre foncier">Titre foncier</option>
-<option value="croquis">Croquis</option>
-<option value="récépissé">Récépissé</option>
-<option value="acte de vente">Acte de vente</option>
-<option value="arrêté">Arrêté</option>
-<option value="décharge">Décharge</option>
-<option value="permis d'exploiter">Permis d’exploiter</option>
-<option value="papiers complets">Papiers complets</option>
-</select></label>
+<label>Documents
+<div id="deal-document-select" class="deal-multiselect">
+  <div id="deal-document-chips" class="deal-multiselect-input">
+    <input id="deal-document-search" type="search" autocomplete="off" placeholder="Rechercher puis sélectionner un ou plusieurs documents…" aria-label="Rechercher un document" aria-controls="deal-document-menu" aria-expanded="false">
+  </div>
+  <div id="deal-document-menu" class="deal-multiselect-menu" role="listbox" aria-multiselectable="true" hidden></div>
+  <div id="deal-document-values"></div>
+</div>
+<small id="document-status" class="field-note" role="status">Aucun document sélectionné : sans préférence documentaire.</small>
+</label>
 
 <label class="deal-wide">Quartiers ou zones
 <div id="deal-zone-select" class="deal-multiselect">

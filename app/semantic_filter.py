@@ -96,6 +96,8 @@ def build_anonymized_payload(
             "proximite": criteria.proximity,
             "viabilite": criteria.viability,
             "document": criteria.document_status,
+            "documents": list(criteria.documents),
+            "documents_stricts": criteria.documents_strict,
             "contraintes_obligatoires": sorted(criteria.required_fields),
         },
         "annonces": [
@@ -136,7 +138,8 @@ def _instructions() -> str:
         "simplement accessible par une voie bitumée; ce sont deux catégories différentes. "
         "De même, destination école signifie usage prévu pour une école et ne prouve "
         "jamais la présence d'une école à proximité. "
-        "Pour le document, recopie strictement la catégorie fournie : une attestation "
+        "Quand plusieurs documents sont sélectionnés, une annonce peut correspondre à "
+        "au moins un des documents choisis. Pour le document, recopie strictement la catégorie fournie : une attestation "
         "de possession n'est jamais une attestation d'attribution, et inversement. "
         "Ne confonds jamais un prix total avec un prix par hectare ou par m². "
         "Quand base_prix est renseignée, utilise uniquement le coût et la surface "
