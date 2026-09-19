@@ -255,3 +255,48 @@ async def test_search_budget_is_kept_before_mcp_and_before_the_advisory_reply():
     assert outcome.answer.startswith('Je privilégierais')
     tool_output=next(item['output'] for item in client.responses.calls[1]['input'] if isinstance(item,dict) and item.get('type')=='function_call_output')
     assert [r['id'] for r in json.loads(tool_output)['results']]==['within-budget']
+
+
+
+@pytest.mark.anyio
+async def test_guided_deal_form_keeps_ranges_and_multiple_zones():
+    message = (
+        "Trouve-moi une bonne affaire : parcelle en vente. "
+        "Zones souhaitées : Saaba, Karpala. Uniquement dans ces zones. "
+        "Prix entre 5000000 et 25000000 FCFA. "
+        "Superficie entre 300 et 600 m². "
+        "Document souhaité : PUH."
+    )
+    client = FakeClient([
+        tool_response({
+            "description": "Parcelle à Ouagadougou avec PUH",
+            "criteres_obligatoires": [],
+        }),
+        text_response("Voici les offres."),
+    ])
+    received = {}
+
+    async def execute(name, arguments):
+        received["name"] = name
+        received["arguments"] = arguments
+        return {"criteres": {}, "results": []}
+
+    await run_assistant(
+        message,
+        [],
+        max_age_days=30,
+        client=client,
+        tool_executor=execute,
+        settings=Settings(openai_api_key="test"),
+    )
+
+    from app.search_engine import parse_search_description
+
+    parsed = parse_search_description(received["arguments"]["description"])
+    assert parsed.neighborhoods == ("Saaba", "Karpala")
+    assert parsed.neighborhoods_strict is True
+    assert parsed.price_min_fcfa == 5_000_000
+    assert parsed.price_max_fcfa == 25_000_000
+    assert parsed.area_min_m2 == 300
+    assert parsed.area_max_m2 == 600
+    assert parsed.document_status == "puh"
