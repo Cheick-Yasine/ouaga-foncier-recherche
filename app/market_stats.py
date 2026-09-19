@@ -142,21 +142,42 @@ def neighborhood_trends(
     candidates: Iterable[SearchCandidate],
     *,
     now: datetime | None = None,
+    period: str = "1m",
+    aggregation: str = "day",
 ) -> dict:
-    """Top 5 quartiers calculé après détection de la période utile de la base."""
+    """Top 5 quartiers sur une période glissante, agrégés par jour ou semaine."""
+
+    period_days = {
+        "7d": 7,
+        "14d": 14,
+        "1m": 30,
+        "2m": 60,
+        "3m": 90,
+        "1y": 365,
+        "max": None,
+    }
+    if period not in period_days:
+        raise ValueError(f"Période inconnue : {period}")
+    if aggregation not in {"day", "week"}:
+        raise ValueError(f"Agrégation inconnue : {aggregation}")
+
     current = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
-    pool, seen = [], set()
+    pool: list[SearchCandidate] = []
+    seen: set[str] = set()
 
     for candidate in candidates:
         published = publication_time(candidate.publication_label)
         if published is None or published > current:
             continue
         if not sale_eligible(candidate.text) or not market_scope_eligible(
-                candidate.text,
-                candidate.neighborhood,
-            ):
+            candidate.text,
+            candidate.neighborhood,
+        ):
             continue
-        if not candidate.neighborhood or candidate.neighborhood in CITY_LEVEL_AREAS:
+        if (
+            not candidate.neighborhood
+            or candidate.neighborhood in CITY_LEVEL_AREAS
+        ):
             continue
 
         identity = candidate.url or candidate.identifier
@@ -165,73 +186,113 @@ def neighborhood_trends(
         seen.add(identity)
         pool.append(candidate)
 
-    pool, ignored_isolated = _main_activity_cluster(pool)
     if not pool:
         return {
-            'date_utilisee': 'date_publication',
-            'granularite_source': 'jour',
-            'debut': None,
-            'fin': None,
-            'annonces_isolees_ignorees': 0,
-            'types': {
-                kind: {'total_annonces': 0, 'quartiers': []}
-                for kind in ('tous', 'parcelle', 'terrain', 'maison')
+            "date_utilisee": "date_publication",
+            "granularite_source": "jour",
+            "periode": period,
+            "agregation": aggregation,
+            "debut": None,
+            "fin": None,
+            "annonces_isolees_ignorees": 0,
+            "types": {
+                kind: {"total_annonces": 0, "quartiers": []}
+                for kind in ("tous", "parcelle", "terrain", "maison")
             },
         }
 
-    published_dates = [
-        publication_time(candidate.publication_label)
+    dated = [
+        (
+            candidate,
+            publication_time(candidate.publication_label).astimezone(
+                timezone.utc
+            ),
+        )
         for candidate in pool
     ]
-    start = min(published_dates).replace(
-        hour=0, minute=0, second=0, microsecond=0
-    )
-    latest = max(published_dates).replace(
-        hour=0, minute=0, second=0, microsecond=0
+    latest = max(published for _, published in dated).date()
+    oldest = min(published for _, published in dated).date()
+
+    days = period_days[period]
+    start_date = (
+        oldest
+        if days is None
+        else max(oldest, latest - timedelta(days=days - 1))
     )
 
-    days: list[str] = []
-    day = start.date()
-    while day <= latest.date():
-        days.append(day.isoformat())
-        day += timedelta(days=1)
+    selected_pool = [
+        candidate
+        for candidate, published in dated
+        if start_date <= published.date() <= latest
+    ]
+
+    def bucket_bounds(day):
+        if aggregation == "day":
+            return day, day
+        monday = day - timedelta(days=day.weekday())
+        sunday = monday + timedelta(days=6)
+        return max(monday, start_date), min(sunday, latest)
 
     by_type = {}
-    for kind in ('tous', 'parcelle', 'terrain', 'maison'):
-        selected = pool if kind == 'tous' else [
-            candidate
-            for candidate in pool
-            if candidate.property_type == kind
-        ]
-        totals = Counter(candidate.neighborhood for candidate in selected)
+    for kind in ("tous", "parcelle", "terrain", "maison"):
+        selected = (
+            selected_pool
+            if kind == "tous"
+            else [
+                candidate
+                for candidate in selected_pool
+                if candidate.property_type == kind
+            ]
+        )
+        totals = Counter(
+            candidate.neighborhood
+            for candidate in selected
+            if candidate.neighborhood
+        )
         names = sorted(
             totals,
             key=lambda name: (-totals[name], neighborhood_key(name)),
         )[:5]
-        daily = Counter(
-            (
-                publication_time(candidate.publication_label).date().isoformat(),
-                candidate.neighborhood,
+
+        counts = Counter()
+        for candidate in selected:
+            published = publication_time(candidate.publication_label)
+            begin, end = bucket_bounds(published.date())
+            counts[(begin.isoformat(), end.isoformat(), candidate.neighborhood)] += 1
+
+        buckets: list[tuple[str, str]] = []
+        cursor = start_date
+        while cursor <= latest:
+            begin, end = bucket_bounds(cursor)
+            key = (begin.isoformat(), end.isoformat())
+            if not buckets or buckets[-1] != key:
+                buckets.append(key)
+            cursor = (
+                cursor + timedelta(days=1)
+                if aggregation == "day"
+                else end + timedelta(days=1)
             )
-            for candidate in selected
-        )
 
         by_type[kind] = {
-            'total_annonces': len(selected),
-            'quartiers': [
+            "total_annonces": len(selected),
+            "quartiers": [
                 {
-                    'nom': name,
-                    'total': totals[name],
-                    'part_pct': round(
+                    "nom": name,
+                    "total": totals[name],
+                    "part_pct": round(
                         (totals[name] / len(selected)) * 100,
                         1,
-                    ) if selected else 0.0,
-                    'points': [
+                    )
+                    if selected
+                    else 0.0,
+                    "points": [
                         {
-                            'date': date,
-                            'annonces': daily[(date, name)],
+                            "date": begin,
+                            "debut": begin,
+                            "fin": end,
+                            "annonces": counts[(begin, end, name)],
                         }
-                        for date in days
+                        for begin, end in buckets
                     ],
                 }
                 for name in names
@@ -239,10 +300,13 @@ def neighborhood_trends(
         }
 
     return {
-        'date_utilisee': 'date_publication',
-        'granularite_source': 'jour',
-        'debut': start.date().isoformat(),
-        'fin': latest.date().isoformat(),
-        'annonces_isolees_ignorees': ignored_isolated,
-        'types': by_type,
+        "date_utilisee": "date_publication",
+        "granularite_source": "jour",
+        "periode": period,
+        "agregation": aggregation,
+        "debut": start_date.isoformat(),
+        "fin": latest.isoformat(),
+        "annonces_isolees_ignorees": 0,
+        "types": by_type,
     }
+
