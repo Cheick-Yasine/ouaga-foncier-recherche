@@ -1625,3 +1625,18 @@ select,.modal,.modal input,.comparison-shell,.assistant-composer,.secondary-butt
   .deal-multiselect-input{min-height:44px}
 }
 
+
+
+/* Alignement des deux champs supérieurs du formulaire bonne affaire. */
+.deal-fields .deal-top-field{
+  align-self:start;
+  align-content:start;
+  grid-auto-rows:max-content
+}
+.deal-fields .deal-type-field select{
+  height:48px;
+  min-height:48px
+}
+.deal-fields .deal-document-field .deal-multiselect-input{
+  min-height:48px
+}
