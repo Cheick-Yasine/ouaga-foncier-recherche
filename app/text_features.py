@@ -55,18 +55,35 @@ _ELECTRICITY_PATTERN = re.compile(
 _DOCUMENT_PATTERNS = {
     "titre_foncier": re.compile(r"\b(titre foncier|tf)\b"),
     "puh": re.compile(
-        r"\b(puh|permis urbain d habiter|permis urbain de habiter)\b"
+        r"\b(puh|p u h|permis urbain d habiter|permis urbain de habiter)\b"
     ),
     "attestation_attribution": re.compile(
         r"\b(attestation d attribution|attestation attribution"
-        r"|fiche d attribution|fiche attribution)\b"
+        r"|fiche d attribution|fiche attribution"
+        r"|certificat d attribution|certificat attribution"
+        r"|papillon d attribution|papillon attribution)\b"
     ),
     "attestation_possession": re.compile(
         r"\battestation de possession\b"
         r"(?!\s+fonciere\s+rurale)"
     ),
+    "attestation_cession_provisoire": re.compile(
+        r"\battestation de cession provisoire(?: de terrain)?\b"
+    ),
+    "attestation_provisoire": re.compile(
+        r"\battestation provisoire\b"
+    ),
     "apfr": re.compile(
         r"\b(apfr|attestation de possession fonciere rurale)\b"
+    ),
+    "croquis": re.compile(r"\bcroquis\b"),
+    "recepisse": re.compile(r"\brecepisse(?: de depot)?\b"),
+    "acte_vente": re.compile(r"\bacte de vente\b"),
+    "arrete": re.compile(r"\barrete(?: ministeriel)?\b"),
+    "decharge": re.compile(r"\bdecharge\b"),
+    "permis_exploiter": re.compile(r"\bpermis d exploiter\b"),
+    "papiers_complets": re.compile(
+        r"\b(?:papier|papiers) complet(?:s)?\b"
     ),
 }
 _GENERIC_ATTESTATION_RE = re.compile(r"\battestation\b")
