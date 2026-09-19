@@ -690,3 +690,97 @@ def test_candidate_must_have_every_requested_proximity() -> None:
 
     assert score_candidate(criteria, road_only) is None
     assert score_candidate(criteria, both) is not None
+
+
+
+def test_price_range_is_parsed_and_enforced() -> None:
+    criteria = parse_search_description(
+        "Parcelle. Prix entre 5 000 000 et 25 000 000 FCFA."
+    )
+
+    assert criteria.price_min_fcfa == 5_000_000
+    assert criteria.price_max_fcfa == 25_000_000
+    assert criteria.price_fcfa == 15_000_000
+    assert criteria.price_is_maximum is False
+
+    below = SearchCandidate(
+        identifier="below",
+        text="Parcelle à vendre",
+        property_type="parcelle",
+        price_fcfa=4_999_999,
+    )
+    inside = SearchCandidate(
+        identifier="inside",
+        text="Parcelle à vendre",
+        property_type="parcelle",
+        price_fcfa=12_000_000,
+    )
+    above = SearchCandidate(
+        identifier="above",
+        text="Parcelle à vendre",
+        property_type="parcelle",
+        price_fcfa=25_000_001,
+    )
+
+    assert score_candidate(criteria, below) is None
+    assert score_candidate(criteria, inside) is not None
+    assert score_candidate(criteria, above) is None
+
+
+def test_multiple_selected_neighborhoods_are_strict_alternatives() -> None:
+    criteria = parse_search_description(
+        "Trouve-moi une bonne affaire : parcelle en vente. "
+        "Zones souhaitées : Saaba, Karpala. Uniquement dans ces zones."
+    )
+
+    assert criteria.neighborhoods == ("Saaba", "Karpala")
+    assert criteria.neighborhoods_strict is True
+
+    saaba = SearchCandidate(
+        identifier="saaba",
+        text="Parcelle à Saaba",
+        property_type="parcelle",
+        neighborhood="Saaba",
+    )
+    karpala = SearchCandidate(
+        identifier="karpala",
+        text="Parcelle à Karpala",
+        property_type="parcelle",
+        neighborhood="Karpala",
+    )
+    tanghin = SearchCandidate(
+        identifier="tanghin",
+        text="Parcelle à Tanghin",
+        property_type="parcelle",
+        neighborhood="Tanghin",
+    )
+
+    assert score_candidate(criteria, saaba) is not None
+    assert score_candidate(criteria, karpala) is not None
+    assert score_candidate(criteria, tanghin) is None
+
+
+def test_area_ceiling_from_guided_form_is_enforced() -> None:
+    criteria = parse_search_description(
+        "Superficie maximum 500 m². Parcelle à vendre."
+    )
+
+    assert criteria.area_min_m2 is None
+    assert criteria.area_max_m2 == 500
+
+    assert score_candidate(
+        criteria,
+        SearchCandidate(
+            identifier="ok",
+            text="Parcelle de 450 m²",
+            area_m2=450,
+        ),
+    ) is not None
+    assert score_candidate(
+        criteria,
+        SearchCandidate(
+            identifier="too-large",
+            text="Parcelle de 600 m²",
+            area_m2=600,
+        ),
+    ) is None
