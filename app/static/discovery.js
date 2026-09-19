@@ -257,30 +257,51 @@
   neighborhoodCopy.append(
     element('span','chart-kicker','Évolution des quartiers'),
     element('h3','','Comment évoluent les 5 quartiers les plus représentés ?'),
-    element('p','chart-subtitle','Toute la base est analysée. Les dates très isolées, séparées du bloc principal d’activité, sont écartées du tracé. Le curseur change seulement le regroupement dans le temps.')
+    element('p','chart-subtitle','Choisissez une période puis une lecture par jour ou par semaine. Le Top 5 est recalculé sur la période choisie.')
   );
 
-  const rangeControl = element('div','trend-range-control');
-  const rangeTop = element('div','trend-range-top');
-  rangeTop.append(element('span','','Regrouper les données tous les'), element('strong','trend-range-value','7 jours'));
-  const rangeInput=document.createElement('input');
-  rangeInput.type='range';
-  rangeInput.id='neighborhood-period-range';
-  rangeInput.min='1';
-  rangeInput.max='90';
-  rangeInput.step='1';
-  rangeInput.value='7';
-  rangeInput.setAttribute('aria-label','Choisir un regroupement de 1 à 90 jours');
-  const rangeLabels=element('div','trend-range-labels');
-  rangeLabels.append(element('span','','1 jour'),element('span','','45 jours'),element('span','','90 jours'));
-  const rangeCaption=element('p','trend-range-caption',groupingLabel(7));
-  rangeControl.append(rangeTop,rangeInput,rangeLabels,rangeCaption);
-  neighborhoodHeader.append(neighborhoodCopy,rangeControl);
+  const periodOptions=[
+    ['7d','7 j','7 derniers jours'],
+    ['14d','14 j','14 derniers jours'],
+    ['1m','1 m','Dernier mois'],
+    ['2m','2 m','2 derniers mois'],
+    ['3m','3 m','3 derniers mois'],
+    ['1y','1 a','Dernière année'],
+    ['max','Max','Toute la base']
+  ];
+
+  const trendToolbar=element('div','trend-toolbar');
+  const periodControl=element('div','trend-period-control');
+  periodControl.append(element('span','trend-control-label','Période'));
+  const periodButtons=element('div','trend-period-buttons');
+  periodOptions.forEach(([value,label,title])=>{
+    const button=element('button','trend-pill',label);
+    button.type='button';
+    button.dataset.period=value;
+    button.title=title;
+    button.setAttribute('aria-pressed',String(value==='1m'));
+    periodButtons.append(button);
+  });
+  periodControl.append(periodButtons);
+
+  const aggregationControl=element('div','trend-aggregation-control');
+  aggregationControl.append(element('span','trend-control-label','Désagrégation'));
+  const aggregationButtons=element('div','trend-aggregation-buttons');
+  for(const [value,label] of [['day','Jour'],['week','Semaine']]){
+    const button=element('button','trend-pill',label);
+    button.type='button';
+    button.dataset.aggregation=value;
+    button.setAttribute('aria-pressed',String(value==='day'));
+    aggregationButtons.append(button);
+  }
+  aggregationControl.append(aggregationButtons);
+  trendToolbar.append(periodControl,aggregationControl);
+  neighborhoodHeader.append(neighborhoodCopy,trendToolbar);
 
   const neighborhoodChart=element('div','plotly-chart');
   neighborhoodChart.id='neighborhood-trend-chart';
-  neighborhoodChart.append(element('p','chart-empty','Chargement de toute la base…'));
-  const neighborhoodDetail=element('p','plot-click-detail','Cliquez sur une courbe pour afficher le détail d’une période.');
+  neighborhoodChart.append(element('p','chart-empty','Chargement des quartiers…'));
+  const neighborhoodDetail=element('p','plot-click-detail','Cliquez sur une courbe pour isoler un quartier.');
   neighborhoodDetail.id='neighborhood-trend-detail';
   neighborhoodCard.append(neighborhoodHeader,neighborhoodChart,neighborhoodDetail);
   marketGrid?.insertAdjacentElement('afterend',neighborhoodCard);
@@ -290,7 +311,7 @@
   rankingCopy.append(
     element('span','chart-kicker','Classement des quartiers'),
     element('h3','','Où se concentre le plus d’offres ?'),
-    element('p','chart-subtitle','Même période utile que la courbe. Cliquez sur une barre pour voir le détail du quartier.')
+    element('p','chart-subtitle','Le classement suit la même période que la courbe.')
   );
   const rankingChart=element('div','plotly-chart plotly-ranking');
   rankingChart.id='neighborhood-ranking-chart';
@@ -302,7 +323,9 @@
 
   let market=null;
   let trends=null;
-  let bucketDays=7;
+  let selectedPeriod='1m';
+  let selectedAggregation='day';
+  let isolatedNeighborhood=null;
   let trendLoading=null;
   let drawFrame=null;
 
