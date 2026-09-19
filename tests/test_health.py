@@ -100,4 +100,6 @@ def test_deal_ranges_follow_visible_midpoint_scales() -> None:
 
     assert "minInput.step=maxInput.step='1'" in script
     assert "19_000_000,20_000_000" in script
-    assert "700,725,750" in script
+    assert "Array.from({length:651},(_,index)=>100+index)" in script
+    assert "startLabel:'≤ 100 m²'" in script
+    assert '<span>100 m² et moins</span>' in page

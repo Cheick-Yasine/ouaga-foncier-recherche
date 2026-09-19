@@ -656,12 +656,16 @@
   ];
 
   const areaValues=[
-    0,50,100,150,200,250,300,350,400,450,500,
-    525,550,575,600,625,650,675,700,725,750,
-    800,850,900,1_000,1_200,1_500,2_000,3_000,5_000,
-    7_500,10_000,15_000,20_000,30_000,40_000,50_000,
-    60_000,75_000,90_000,100_000
-  ];
+    ...Array.from({length:651},(_,index)=>100+index),
+    ...Array.from(
+      {length:650},
+      (_,index)=>Math.round(
+        750*Math.pow(100_000/750,(index+1)/650)
+      )
+    )
+  ].filter((value,index,values)=>
+    index===0 || value!==values[index-1]
+  );
 
   function compactMoney(value) {
     if(value>=1_000_000_000) return (value/1_000_000_000).toLocaleString('fr-FR',{maximumFractionDigits:1})+' Md FCFA';
@@ -676,7 +680,7 @@
 
   function setupDualRange({
     minId,maxId,minValueId,maxValueId,summaryId,
-    minBubbleId,maxBubbleId,values,format
+    minBubbleId,maxBubbleId,values,format,startLabel=''
   }) {
     const minInput=$('#'+minId);
     const maxInput=$('#'+maxId);
@@ -722,7 +726,11 @@
           : 'translateX(-50%)';
         node.textContent=text;
       };
-      placeBubble(minBubble,left,format(lowValue));
+      placeBubble(
+        minBubble,
+        left,
+        low===0 && startLabel ? startLabel : format(lowValue)
+      );
       placeBubble(maxBubble,right,format(highValue)+(high===last?' +':''));
 
       if(low===0 && high===last) summary.textContent='Sans limite';
@@ -763,7 +771,8 @@
     minBubbleId:'deal-area-min-bubble',
     maxBubbleId:'deal-area-max-bubble',
     values:areaValues,
-    format:compactArea
+    format:compactArea,
+    startLabel:'≤ 100 m²'
   });
 
   const documentOptions=[
