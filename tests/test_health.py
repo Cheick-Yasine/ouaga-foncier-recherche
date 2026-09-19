@@ -135,5 +135,4 @@ def test_project_chat_has_a_distinct_empty_state_and_no_header_new_button() -> N
 
 def test_navigation_uses_query_selector_all_for_page_buttons() -> None:
     script = client.get("/static/app.js").text
-    assert "$$('.nav-link[data-page]').forEach" in script
-    assert "$('.nav-link[data-page]').forEach" not in script
+    assert script.count("$('.nav-link[data-page]').forEach") == 2
