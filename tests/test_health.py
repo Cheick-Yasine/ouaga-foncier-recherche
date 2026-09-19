@@ -103,3 +103,17 @@ def test_deal_ranges_follow_visible_midpoint_scales() -> None:
     assert "Array.from({length:651},(_,index)=>100+index)" in script
     assert "startLabel:'≤ 100 m²'" in script
     assert '<span>100 m² et moins</span>' in page
+
+
+
+def test_neighborhood_chart_uses_period_buttons_and_dynamic_fill() -> None:
+    script = client.get("/static/discovery.js").text
+    assert "['7d','7 j','7 derniers jours']" in script
+    assert "['14d','14 j','14 derniers jours']" in script
+    assert "['1m','1 m','Dernier mois']" in script
+    assert "['1y','1 a','Dernière année']" in script
+    assert "['max','Max','Toute la base']" in script
+    assert "selectedAggregation==='week' && isSeven" in script
+    assert "fill:isolatedNeighborhood ? 'tozeroy' : 'none'" in script
+    assert "hexToRgba(color,0.16)" in script
+    assert "data.aggregation" not in script
