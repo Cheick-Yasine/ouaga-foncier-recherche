@@ -480,7 +480,9 @@ $('#deal-form').addEventListener('submit',e=>{
   const values=new FormData(e.currentTarget);
   const zones=values.getAll('zones').map(value=>String(value).trim()).filter(Boolean);
   const details=String(values.get('details') || '').trim();
-  const documentType=String(values.get('document') || '').trim();
+  const documents=values.getAll('documents')
+    .map(value=>String(value).trim())
+    .filter(Boolean);
   const priceMin=Number(values.get('price_min') || 0);
   const priceMax=Number(values.get('price_max') || 0);
   const areaMin=Number(values.get('area_min') || 0);
@@ -513,7 +515,12 @@ $('#deal-form').addEventListener('submit',e=>{
     parts.push('Superficie minimum '+areaMin+' m².');
   }
 
-  if(documentType) parts.push('Document souhaité : '+documentType+'.');
+  if(documents.length){
+    parts.push(
+      'Documents souhaités : '+documents.join(', ')+
+      '. Au moins un de ces documents.'
+    );
+  }
   if(details) parts.push('Mes priorités : '+details+'.');
 
   $('#deal-dialog').close();
