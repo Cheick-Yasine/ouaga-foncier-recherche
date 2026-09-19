@@ -8,7 +8,7 @@ from collections import Counter
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field, replace
 from app.offer_quality import land_family, offer_quality, document_evidence
-from app.neighborhoods import resolve_neighborhood
+from app.neighborhoods import detect_neighborhoods, resolve_neighborhood
 from app.listing_scope import city_only_request, sale_eligible, within_ouagadougou
 from app.normalization import normalize_property_type
 from app.text_features import (
@@ -70,7 +70,11 @@ class SearchCriteria:
     description: str
     property_type: str | None = None
     neighborhood: str | None = None
+    neighborhoods: tuple[str, ...] = ()
+    neighborhoods_strict: bool = False
     price_fcfa: float | None = None
+    price_min_fcfa: float | None = None
+    price_max_fcfa: float | None = None
     price_is_maximum: bool = False
     area_m2: float | None = None
     proximity: str | None = None
@@ -122,14 +126,38 @@ def parse_search_description(description: str) -> SearchCriteria:
     """Interprète les critères explicites d'une description utilisateur."""
 
     # La normalisation textuelle efface les virgules : préserver 6,5 millions.
-    numeric_text = re.sub(r"\b\d{1,3}(?:[.,]\d{3})+\b", lambda m: re.sub(r"[.,]", "", m.group()), description)
-    numeric_text = re.sub(r"(?<=\d)[.,](?=\d)", "decimalmark", numeric_text)
-    numeric_text = re.sub(r"(?i)(millions?|milliards?)(?=\d)", r"\1 ", numeric_text)
+    numeric_text = re.sub(
+        r"\b\d{1,3}(?:[.,]\d{3})+\b",
+        lambda match: re.sub(r"[.,]", "", match.group()),
+        description,
+    )
+    numeric_text = re.sub(
+        r"(?<=\d)[.,](?=\d)",
+        "decimalmark",
+        numeric_text,
+    )
+    numeric_text = re.sub(
+        r"(?i)(millions?|milliards?)(?=\d)",
+        r"\1 ",
+        numeric_text,
+    )
     normalized = normalize_text(numeric_text).replace("decimalmark", ".")
-    area_range = re.search(r'\bsuperficie entre (\d+(?:\.\d+)?) et (\d+(?:\.\d+)?) m2\b', normalized)
-    area_floor = re.search(r'\bsuperficie (?:minimum|au moins) (\d+(?:\.\d+)?) m2\b', normalized)
+
+    area_range = re.search(
+        r"\bsuperficie entre (\d+(?:\.\d+)?) et (\d+(?:\.\d+)?) m2\b",
+        normalized,
+    )
+    area_floor = re.search(
+        r"\bsuperficie (?:minimum|au moins) (\d+(?:\.\d+)?) m2\b",
+        normalized,
+    )
+    area_ceiling = re.search(
+        r"\bsuperficie (?:maximum|au plus) (\d+(?:\.\d+)?) m2\b",
+        normalized,
+    )
     area_match = _AREA_PATTERN.search(normalized)
     hectare_match = _HECTARE_PATTERN.search(normalized)
+
     if area_match:
         area = _parse_number(area_match.group(1))
     elif hectare_match:
@@ -137,53 +165,89 @@ def parse_search_description(description: str) -> SearchCriteria:
     else:
         area = None
 
-    area_min = float(area_range[1]) if area_range else float(area_floor[1]) if area_floor else None
-    area_max = float(area_range[2]) if area_range else None
+    area_min = (
+        float(area_range[1])
+        if area_range
+        else float(area_floor[1])
+        if area_floor
+        else None
+    )
+    area_max = (
+        float(area_range[2])
+        if area_range
+        else float(area_ceiling[1])
+        if area_ceiling
+        else None
+    )
     if area_range:
         area = (area_min + area_max) / 2
     elif area_floor:
         area = area_min
+    elif area_ceiling:
+        area = area_max
 
     text_without_area = normalized
-    if area_range or area_floor:
-        matched = area_range or area_floor
-        text_without_area = text_without_area[:matched.start()] + ' ' + text_without_area[matched.end():]
+    for matched in (area_range, area_floor, area_ceiling):
+        if matched:
+            text_without_area = (
+                text_without_area[: matched.start()]
+                + " "
+                + text_without_area[matched.end() :]
+            )
+            break
     text_without_area = _AREA_PATTERN.sub(" ", text_without_area)
     text_without_area = _HECTARE_PATTERN.sub(" ", text_without_area)
-    price_match = _PRICE_PATTERN.search(text_without_area)
-    budget_match = _BUDGET_PATTERN.search(text_without_area)
-    if budget_match is not None:
-        price_match = budget_match
-    elif price_match is None:
-        price_match = _PLAIN_PRICE_PATTERN.search(text_without_area)
 
+    price_range = re.search(
+        r"\b(?:prix|budget) entre (\d(?:[\d ]*\d)?) et "
+        r"(\d(?:[\d ]*\d)?) (?:fcfa|f cfa|cfa)\b",
+        text_without_area,
+    )
+    price_floor = re.search(
+        r"\bprix (?:minimum|au moins) (\d(?:[\d ]*\d)?) "
+        r"(?:fcfa|f cfa|cfa)\b",
+        text_without_area,
+    )
+
+    price_min: float | None = None
+    price_max: float | None = None
     price: float | None = None
-    if price_match:
-        price = _parse_number(price_match.group(1))
-        unit = (
-            price_match.group(2)
-            if price_match.lastindex is not None and price_match.lastindex >= 2
-            else None
-        )
-        if unit and unit.startswith("million"):
-            price *= 1_000_000
-            fraction = re.match(r"\s+(\d{3})\b(?!\s+\d)", text_without_area[price_match.end():])
-            if fraction:
-                price += int(fraction.group(1)) * 1_000
-        elif unit and unit.startswith("milliard"):
-            price *= 1_000_000_000
 
-    if price is not None and (not math.isfinite(price) or price <= 0):
-        price = None
-    if area is not None and (not math.isfinite(area) or area <= 0):
-        area = None
-    property_type = normalize_property_type(None, description)
-    resolution = resolve_neighborhood(description, None)
-    neighborhood = resolution.canonical if resolution.in_scope else None
+    if price_range:
+        price_min = _parse_number(price_range.group(1))
+        price_max = _parse_number(price_range.group(2))
+        if price_min > price_max:
+            price_min, price_max = price_max, price_min
+        price = (price_min + price_max) / 2
+    elif price_floor:
+        price_min = _parse_number(price_floor.group(1))
+        price = price_min
+    else:
+        price_match = _PRICE_PATTERN.search(text_without_area)
+        budget_match = _BUDGET_PATTERN.search(text_without_area)
+        if budget_match is not None:
+            price_match = budget_match
+        elif price_match is None:
+            price_match = _PLAIN_PRICE_PATTERN.search(text_without_area)
 
-    proximity = extract_proximity_details(description)
-    viability = extract_viability(description)
-    document = extract_document_status(None, description)
+        if price_match:
+            price = _parse_number(price_match.group(1))
+            unit = (
+                price_match.group(2)
+                if price_match.lastindex is not None
+                and price_match.lastindex >= 2
+                else None
+            )
+            if unit and unit.startswith("million"):
+                price *= 1_000_000
+                fraction = re.match(
+                    r"\s+(\d{3})\b(?!\s+\d)",
+                    text_without_area[price_match.end() :],
+                )
+                if fraction:
+                    price += int(fraction.group(1)) * 1_000
+            elif unit and unit.startswith("milliard"):
+                price *= 1_000_000_000
 
     maximum_markers = (
         "budget",
@@ -194,16 +258,61 @@ def parse_search_description(description: str) -> SearchCriteria:
         "ne depasse pas",
         "jusqu a",
     )
-    price_is_maximum = price is not None and any(
-        marker in normalized for marker in maximum_markers
+    price_is_maximum = (
+        price is not None
+        and price_range is None
+        and price_floor is None
+        and any(marker in normalized for marker in maximum_markers)
     )
+    if price_is_maximum:
+        price_max = price
+
+    if price is not None and (not math.isfinite(price) or price <= 0):
+        price = None
+    if price_min is not None and (
+        not math.isfinite(price_min) or price_min <= 0
+    ):
+        price_min = None
+    if price_max is not None and (
+        not math.isfinite(price_max) or price_max <= 0
+    ):
+        price_max = None
+    if area is not None and (not math.isfinite(area) or area <= 0):
+        area = None
+
+    property_type = normalize_property_type(None, description)
+    detected = detect_neighborhoods(description)
+    resolution = resolve_neighborhood(description, None)
+    neighborhood = (
+        detected[0]
+        if len(detected) == 1
+        else resolution.canonical
+        if resolution.in_scope and not detected
+        else None
+    )
+    neighborhoods = tuple(dict.fromkeys(detected))
+    neighborhoods_strict = bool(
+        neighborhoods
+        and re.search(
+            r"\buniquement dans (?:ces|les) zones\b",
+            normalized,
+        )
+    )
+
+    proximity = extract_proximity_details(description)
+    viability = extract_viability(description)
+    document = extract_document_status(None, description)
 
     return SearchCriteria(
         description=description.strip(),
         city_only=city_only_request(description),
         property_type=property_type,
         neighborhood=neighborhood,
+        neighborhoods=neighborhoods,
+        neighborhoods_strict=neighborhoods_strict,
         price_fcfa=price,
+        price_min_fcfa=price_min,
+        price_max_fcfa=price_max,
         price_is_maximum=price_is_maximum,
         area_m2=area,
         area_min_m2=area_min,
@@ -212,7 +321,6 @@ def parse_search_description(description: str) -> SearchCriteria:
         viability=None if viability == "non_precisee" else viability,
         document_status=None if document == "non_precise" else document,
     )
-
 
 def _tokens(text: str) -> Counter[str]:
     words = normalize_text(text).split()
@@ -270,11 +378,21 @@ def _same_optional_value(left: str | None, right: str | None) -> bool:
     return _normalized_equal(left, right)
 
 
+def _requested_neighborhoods(criteria: SearchCriteria) -> tuple[str, ...]:
+    if criteria.neighborhoods:
+        return criteria.neighborhoods
+    return (criteria.neighborhood,) if criteria.neighborhood else ()
+
+
 def _requested_components(criteria: SearchCriteria) -> list[str]:
     requested = ["texte"]
-    if criteria.neighborhood:
+    if _requested_neighborhoods(criteria):
         requested.append("quartier")
-    if criteria.price_fcfa is not None:
+    if (
+        criteria.price_fcfa is not None
+        or criteria.price_min_fcfa is not None
+        or criteria.price_max_fcfa is not None
+    ):
         requested.append("prix")
     if criteria.area_m2 is not None:
         requested.append("superficie")
@@ -298,6 +416,36 @@ def score_candidate(
 
     if not sale_eligible(candidate.text):
         return None
+
+    requested_neighborhoods = _requested_neighborhoods(criteria)
+    neighborhood_match = (
+        candidate.neighborhood is not None
+        and any(
+            _normalized_equal(name, candidate.neighborhood)
+            for name in requested_neighborhoods
+        )
+    )
+    if (
+        criteria.neighborhoods_strict
+        and requested_neighborhoods
+        and not neighborhood_match
+    ):
+        return None
+
+    if criteria.price_min_fcfa is not None or criteria.price_max_fcfa is not None:
+        if candidate.price_fcfa is None:
+            return None
+        if (
+            criteria.price_min_fcfa is not None
+            and candidate.price_fcfa < criteria.price_min_fcfa
+        ):
+            return None
+        if (
+            criteria.price_max_fcfa is not None
+            and candidate.price_fcfa > criteria.price_max_fcfa
+        ):
+            return None
+
     if criteria.area_min_m2 is not None or criteria.area_max_m2 is not None:
         if candidate.area_m2 is None:
             return None
@@ -325,10 +473,14 @@ def score_candidate(
         "texte": cosine_similarity(criteria.description, candidate.text)
     }
 
-    if criteria.neighborhood:
+    if requested_neighborhoods:
         components["quartier"] = (
             1.0
-            if _normalized_equal(criteria.neighborhood, candidate.neighborhood) or (criteria.city_only and criteria.neighborhood == "Ouagadougou")
+            if neighborhood_match
+            or (
+                criteria.city_only
+                and "Ouagadougou" in requested_neighborhoods
+            )
             else (None if candidate.neighborhood is None else 0.0)
         )
     if criteria.price_fcfa is not None:
@@ -501,7 +653,7 @@ def _descriptive_priority(
 
     components = result.components
     return (
-        int(criteria.neighborhood is not None and components.get("quartier") == 1),
+        int(bool(_requested_neighborhoods(criteria)) and components.get("quartier") == 1),
         int(criteria.property_type is not None and components.get("type_bien") == 1),
         int(
             criteria.document_status is not None
