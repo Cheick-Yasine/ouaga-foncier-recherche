@@ -9,11 +9,11 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/styles.css?v=20260919-deal-scale-align-1">
+  <link rel="stylesheet" href="/static/styles.css?v=20260919-chat-entry-1">
   <script src="/static/waiting.js?v=20260906-waiting-1" defer></script>
   <script src="https://cdn.plot.ly/plotly-4.0.0.min.js" charset="utf-8" defer></script>
   <script src="/static/discovery.js?v=20260919-neighborhood-periods-1" defer></script>
-  <script src="/static/app.js?v=20260919-multi-documents-1" defer></script>
+  <script src="/static/app.js?v=20260919-chat-entry-1" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#assistant-input">Aller à la conversation</a>
@@ -50,7 +50,7 @@
     <main id="conversation-main" class="conversation-main" data-page="home">
       <header class="conversation-header">
         <p id="page-label" class="page-label">Accueil</p>
-        <div class="header-tools"><button id="new-conversation" class="new-conversation" type="button"><span aria-hidden="true">＋</span> Nouvelle conversation</button><button id="account-button" class="account-button" type="button"><span id="account-avatar" class="account-avatar" aria-hidden="true">H</span><span><strong id="account-name">Se connecter</strong><small id="account-caption">Votre espace personnel</small></span><span aria-hidden="true">⌄</span></button>
+        <div class="header-tools"><button id="account-button" class="account-button" type="button"><span id="account-avatar" class="account-avatar" aria-hidden="true">H</span><span><strong id="account-name">Se connecter</strong><small id="account-caption">Votre espace personnel</small></span><span aria-hidden="true">⌄</span></button>
           <details id="appearance-menu" class="appearance-menu"><summary>Apparence <span aria-hidden="true">◐</span></summary>
             <div class="appearance-panel"><label for="theme-mode">Thème</label><select id="theme-mode"><option value="system">Système</option><option value="light">Clair</option><option value="dark">Sombre</option></select>
               <p>Couleur</p><div class="color-choices" aria-label="Couleur de l’interface">
@@ -78,6 +78,21 @@
             <p class="chart-explainer">Les courbes portent sur les annonces collectées. Les prix varient aussi selon les biens proposés ; ils ne mesurent pas à eux seuls une hausse ou une baisse du marché.</p>
             <div class="stats-caption"><p id="stats-status" role="status">Chargement des chiffres de la plateforme…</p><button id="retry-stats" class="text-button" type="button" hidden>Réessayer</button></div>
           </section>
+        </section>
+
+        <section id="chat-intro" class="chat-intro" aria-labelledby="chat-intro-title" hidden>
+          <div class="chat-intro-symbol" aria-hidden="true">
+            <svg class="ui-icon" viewBox="0 0 24 24" focusable="false"><path d="M21 11a9 9 0 0 1-9 9H5l-3 2 2-6A9 9 0 1 1 21 11Z"/><path d="M8 11h8M8 15h5"/></svg>
+          </div>
+          <p class="chat-intro-kicker">Votre projet immobilier</p>
+          <h1 id="chat-intro-title"><span id="chat-intro-greeting">Bonjour.</span> On construit votre recherche ensemble.</h1>
+          <p class="chat-intro-text">Écrivez comme vous parleriez à quelqu’un : dites ce que vous savez déjà, même si votre projet n’est pas encore précis. HAKIMO vous aidera à compléter le reste.</p>
+          <div class="chat-intro-guide" aria-label="Comment commencer">
+            <div><span class="chat-guide-number">01</span><p><strong>Commencez simplement.</strong><br>Un quartier, un budget ou une superficie suffit pour démarrer.</p></div>
+            <div><span class="chat-guide-number">02</span><p><strong>Affinez ensuite.</strong><br>Documents, proximité, type de bien : ajoutez-les quand vous voulez.</p></div>
+            <div><span class="chat-guide-number">03</span><p><strong>Comparez avec les annonces.</strong><br>Je vous explique ce qui correspond vraiment à votre recherche.</p></div>
+          </div>
+          <div class="chat-intro-example"><span aria-hidden="true">✦</span><p>Vous pouvez commencer par : <strong>« Je cherche une parcelle à Saaba autour de 6 millions. »</strong></p></div>
         </section>
 
         <div id="assistant-messages" class="assistant-messages" role="log" aria-label="Conversation" aria-live="polite" aria-relevant="additions"></div>
