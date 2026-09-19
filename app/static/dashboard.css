@@ -17,10 +17,10 @@
 
 .neighborhood-heading {
   display:grid;
-  grid-template-columns:minmax(0,1fr) minmax(260px,360px);
+  grid-template-columns:minmax(0,1fr);
   align-items:start;
-  gap:28px;
-  margin-bottom:14px;
+  gap:18px;
+  margin-bottom:10px;
 }
 
 .neighborhood-heading h3,
@@ -34,57 +34,82 @@
   line-height:1.55;
 }
 
-.trend-range-control {
-  min-width:0;
-  padding:12px 14px 10px;
+.trend-toolbar {
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:22px;
+  padding:10px 0 4px;
+  border-top:1px solid var(--line);
+}
+
+.trend-period-control,
+.trend-aggregation-control {
+  display:grid;
+  gap:7px;
+}
+
+.trend-aggregation-control {
+  justify-items:end;
+  margin-left:auto;
+}
+
+.trend-control-label {
+  color:var(--muted);
+  font-size:10px;
+  font-weight:700;
+  letter-spacing:.02em;
+}
+
+.trend-period-buttons,
+.trend-aggregation-buttons {
+  display:flex;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:5px;
+}
+
+.trend-aggregation-buttons {
+  justify-content:flex-end;
+  padding:3px;
   border:1px solid var(--line);
-  border-radius:12px;
+  border-radius:10px;
   background:var(--surface-2);
 }
 
-.trend-range-top {
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  gap:12px;
-  margin-bottom:7px;
+.trend-pill {
+  min-width:42px;
+  padding:7px 10px;
+  border:1px solid transparent;
+  border-radius:8px;
+  background:transparent;
   color:var(--muted);
+  font:inherit;
   font-size:11px;
   font-weight:700;
-}
-
-.trend-range-value {
-  color:var(--blue);
-  font-size:13px;
-}
-
-.trend-range-control input[type="range"] {
-  width:100%;
-  accent-color:var(--blue);
   cursor:pointer;
+  transition:background .15s ease,color .15s ease,border-color .15s ease;
 }
 
-.trend-range-labels {
-  display:grid;
-  grid-template-columns:repeat(3,1fr);
-  margin-top:3px;
-  color:var(--muted);
-  font-size:10px;
+.trend-pill:hover {
+  color:var(--blue);
+  background:var(--blue-soft);
 }
 
-.trend-range-labels span:nth-child(2) {
-  text-align:center;
+.trend-pill[aria-pressed="true"] {
+  color:var(--blue);
+  border-color:color-mix(in srgb,var(--blue) 24%,var(--line));
+  background:var(--blue-soft);
 }
 
-.trend-range-labels span:last-child {
-  text-align:right;
+.trend-aggregation-buttons .trend-pill[aria-pressed="true"] {
+  color:white;
+  border-color:var(--blue);
+  background:var(--blue);
 }
 
-.trend-range-caption {
-  margin:7px 0 0;
-  color:var(--ink);
-  font-size:10px;
-  line-height:1.45;
+.trend-pill[hidden] {
+  display:none !important;
 }
 
 .plotly-chart {
@@ -121,12 +146,22 @@
 
 @media (max-width:900px) {
   .neighborhood-heading {
-    grid-template-columns:1fr;
     gap:14px;
   }
 
-  .trend-range-control {
-    max-width:none;
+  .trend-toolbar {
+    align-items:flex-start;
+    flex-direction:column;
+    gap:12px;
+  }
+
+  .trend-aggregation-control {
+    justify-items:start;
+    margin-left:0;
+  }
+
+  .trend-aggregation-buttons {
+    justify-content:flex-start;
   }
 }
 
@@ -137,5 +172,15 @@
 
   .neighborhood-card {
     overflow:hidden;
+  }
+
+  .trend-period-buttons {
+    gap:3px;
+  }
+
+  .trend-pill {
+    min-width:38px;
+    padding:6px 8px;
+    font-size:10px;
   }
 }

@@ -2,7 +2,7 @@ from datetime import datetime, timedelta, timezone
 from dataclasses import replace
 import unittest
 
-from app.market_stats import publication_time, summarize_market
+from app.market_stats import neighborhood_trends, publication_time, summarize_market
 from app.search_engine import SearchCandidate
 
 
@@ -60,3 +60,79 @@ class MarketStatsTests(unittest.TestCase):
         self.assertEqual(stats['annonces_30_jours'], 3)
         self.assertEqual(stats['annonces_avec_prix_m2'], 0)
         self.assertIsNone(stats['prix_m2_moyen_fcfa'])
+
+
+
+def test_neighborhood_top_five_is_recomputed_for_selected_period() -> None:
+    now = datetime(2026, 9, 19, 12, tzinfo=timezone.utc)
+
+    def row(identifier, neighborhood, days_ago):
+        return SearchCandidate(
+            identifier=identifier,
+            text=f"Parcelle en vente à {neighborhood}",
+            neighborhood=neighborhood,
+            property_type="parcelle",
+            publication_label=(now - timedelta(days=days_ago)).isoformat(),
+        )
+
+    rows = [
+        *[
+            row(f"old-{index}", "Karpala", 20)
+            for index in range(10)
+        ],
+        *[
+            row(f"saaba-{index}", "Saaba", index % 3)
+            for index in range(6)
+        ],
+        *[
+            row(f"bassinko-{index}", "Bassinko", index % 2)
+            for index in range(4)
+        ],
+        row("boassa-1", "Boassa", 1),
+        row("komsilga-1", "Komsilga", 2),
+        row("kouba-1", "Kouba", 3),
+        row("tanghin-1", "Tanghin", 4),
+    ]
+
+    recent = neighborhood_trends(rows, now=now, period="7d", aggregation="day")
+    recent_names = [
+        item["nom"]
+        for item in recent["types"]["tous"]["quartiers"]
+    ]
+    assert recent_names[0] == "Saaba"
+    assert "Karpala" not in recent_names
+    assert len(recent_names) == 5
+
+    maximum = neighborhood_trends(rows, now=now, period="max", aggregation="day")
+    max_names = [
+        item["nom"]
+        for item in maximum["types"]["tous"]["quartiers"]
+    ]
+    assert max_names[0] == "Karpala"
+
+
+def test_neighborhood_week_aggregation_groups_selected_period() -> None:
+    now = datetime(2026, 9, 19, 12, tzinfo=timezone.utc)
+    rows = [
+        SearchCandidate(
+            identifier=f"saaba-{days_ago}",
+            text="Parcelle en vente à Saaba",
+            neighborhood="Saaba",
+            property_type="parcelle",
+            publication_label=(now - timedelta(days=days_ago)).isoformat(),
+        )
+        for days_ago in (0, 1, 6, 7, 10, 13)
+    ]
+
+    trends = neighborhood_trends(
+        rows,
+        now=now,
+        period="14d",
+        aggregation="week",
+    )
+    points = trends["types"]["tous"]["quartiers"][0]["points"]
+
+    assert trends["agregation"] == "week"
+    assert trends["periode"] == "14d"
+    assert sum(point["annonces"] for point in points) == 6
+    assert all(point["debut"] <= point["fin"] for point in points)

@@ -25,7 +25,7 @@
 
   const css = document.createElement('link');
   css.rel = 'stylesheet';
-  css.href = '/static/dashboard.css?v=20260918-full-history-1';
+  css.href = '/static/dashboard.css?v=20260919-period-controls-1';
   document.head.append(css);
 
   function areaRange(value) {
@@ -257,30 +257,51 @@
   neighborhoodCopy.append(
     element('span','chart-kicker','Évolution des quartiers'),
     element('h3','','Comment évoluent les 5 quartiers les plus représentés ?'),
-    element('p','chart-subtitle','Toute la base est analysée. Les dates très isolées, séparées du bloc principal d’activité, sont écartées du tracé. Le curseur change seulement le regroupement dans le temps.')
+    element('p','chart-subtitle','Choisissez une période puis une lecture par jour ou par semaine. Le Top 5 est recalculé sur la période choisie.')
   );
 
-  const rangeControl = element('div','trend-range-control');
-  const rangeTop = element('div','trend-range-top');
-  rangeTop.append(element('span','','Regrouper les données tous les'), element('strong','trend-range-value','7 jours'));
-  const rangeInput=document.createElement('input');
-  rangeInput.type='range';
-  rangeInput.id='neighborhood-period-range';
-  rangeInput.min='1';
-  rangeInput.max='90';
-  rangeInput.step='1';
-  rangeInput.value='7';
-  rangeInput.setAttribute('aria-label','Choisir un regroupement de 1 à 90 jours');
-  const rangeLabels=element('div','trend-range-labels');
-  rangeLabels.append(element('span','','1 jour'),element('span','','45 jours'),element('span','','90 jours'));
-  const rangeCaption=element('p','trend-range-caption',groupingLabel(7));
-  rangeControl.append(rangeTop,rangeInput,rangeLabels,rangeCaption);
-  neighborhoodHeader.append(neighborhoodCopy,rangeControl);
+  const periodOptions=[
+    ['7d','7 j','7 derniers jours'],
+    ['14d','14 j','14 derniers jours'],
+    ['1m','1 m','Dernier mois'],
+    ['2m','2 m','2 derniers mois'],
+    ['3m','3 m','3 derniers mois'],
+    ['1y','1 a','Dernière année'],
+    ['max','Max','Toute la base']
+  ];
+
+  const trendToolbar=element('div','trend-toolbar');
+  const periodControl=element('div','trend-period-control');
+  periodControl.append(element('span','trend-control-label','Période'));
+  const periodButtons=element('div','trend-period-buttons');
+  periodOptions.forEach(([value,label,title])=>{
+    const button=element('button','trend-pill',label);
+    button.type='button';
+    button.dataset.period=value;
+    button.title=title;
+    button.setAttribute('aria-pressed',String(value==='1m'));
+    periodButtons.append(button);
+  });
+  periodControl.append(periodButtons);
+
+  const aggregationControl=element('div','trend-aggregation-control');
+  aggregationControl.append(element('span','trend-control-label','Désagrégation'));
+  const aggregationButtons=element('div','trend-aggregation-buttons');
+  for(const [value,label] of [['day','Jour'],['week','Semaine']]){
+    const button=element('button','trend-pill',label);
+    button.type='button';
+    button.dataset.aggregation=value;
+    button.setAttribute('aria-pressed',String(value==='day'));
+    aggregationButtons.append(button);
+  }
+  aggregationControl.append(aggregationButtons);
+  trendToolbar.append(periodControl,aggregationControl);
+  neighborhoodHeader.append(neighborhoodCopy,trendToolbar);
 
   const neighborhoodChart=element('div','plotly-chart');
   neighborhoodChart.id='neighborhood-trend-chart';
-  neighborhoodChart.append(element('p','chart-empty','Chargement de toute la base…'));
-  const neighborhoodDetail=element('p','plot-click-detail','Cliquez sur une courbe pour afficher le détail d’une période.');
+  neighborhoodChart.append(element('p','chart-empty','Chargement des quartiers…'));
+  const neighborhoodDetail=element('p','plot-click-detail','Cliquez sur une courbe pour isoler un quartier.');
   neighborhoodDetail.id='neighborhood-trend-detail';
   neighborhoodCard.append(neighborhoodHeader,neighborhoodChart,neighborhoodDetail);
   marketGrid?.insertAdjacentElement('afterend',neighborhoodCard);
@@ -290,7 +311,7 @@
   rankingCopy.append(
     element('span','chart-kicker','Classement des quartiers'),
     element('h3','','Où se concentre le plus d’offres ?'),
-    element('p','chart-subtitle','Même période utile que la courbe. Cliquez sur une barre pour voir le détail du quartier.')
+    element('p','chart-subtitle','Le classement suit la même période que la courbe.')
   );
   const rankingChart=element('div','plotly-chart plotly-ranking');
   rankingChart.id='neighborhood-ranking-chart';
@@ -302,8 +323,11 @@
 
   let market=null;
   let trends=null;
-  let bucketDays=7;
+  let selectedPeriod='1m';
+  let selectedAggregation='day';
+  let isolatedNeighborhood=null;
   let trendLoading=null;
+  let trendRequestId=0;
   let drawFrame=null;
 
   // Les deux graphiques historiques restent dans leur rendu d'origine.
@@ -401,9 +425,46 @@
     };
   }
 
-  function updateRangeText() {
-    $('.trend-range-value').textContent=bucketDays+' jour'+(bucketDays>1?'s':'');
-    rangeCaption.textContent=groupingLabel(bucketDays);
+  function periodLabel(value) {
+    return ({
+      '7d':'7 derniers jours',
+      '14d':'14 derniers jours',
+      '1m':'dernier mois',
+      '2m':'2 derniers mois',
+      '3m':'3 derniers mois',
+      '1y':'dernière année',
+      'max':'toute la base'
+    })[value] || value;
+  }
+
+  function aggregationLabel(value) {
+    return value==='week' ? 'par semaine' : 'par jour';
+  }
+
+  function hexToRgba(hex,alpha) {
+    const clean=hex.replace('#','');
+    const number=parseInt(clean,16);
+    const red=(number>>16)&255;
+    const green=(number>>8)&255;
+    const blue=number&255;
+    return 'rgba('+red+','+green+','+blue+','+alpha+')';
+  }
+
+  function syncTrendControls() {
+    periodButtons.querySelectorAll('[data-period]').forEach(button=>{
+      const isSeven=button.dataset.period==='7d';
+      button.hidden=selectedAggregation==='week' && isSeven;
+      button.setAttribute(
+        'aria-pressed',
+        String(button.dataset.period===selectedPeriod)
+      );
+    });
+    aggregationButtons.querySelectorAll('[data-aggregation]').forEach(button=>{
+      button.setAttribute(
+        'aria-pressed',
+        String(button.dataset.aggregation===selectedAggregation)
+      );
+    });
   }
 
   function drawNeighborhoodTrend() {
@@ -413,46 +474,84 @@
 
     const data=currentNeighborhoodData();
     if(!data){
-      container.replaceChildren(element('p','chart-empty','Chargement de toute la base…'));
+      container.replaceChildren(
+        element('p','chart-empty','Chargement des quartiers…')
+      );
       return;
     }
 
     const {neighborhoods}=data;
     if(!neighborhoods.length){
       if(window.Plotly) Plotly.purge(container);
-      container.replaceChildren(element('p','chart-empty','Pas assez d’annonces avec un quartier identifié.'));
+      container.replaceChildren(
+        element(
+          'p',
+          'chart-empty',
+          'Pas assez d’annonces avec un quartier identifié sur cette période.'
+        )
+      );
       detail.textContent='Aucun détail disponible.';
       return;
     }
     if(!plotlyReady(container)) return;
-
-    // Retire seulement le placeholder. Le conteneur Plotly doit rester intact
-    // pendant les redraws déclenchés par le curseur.
     container.querySelector('.chart-empty')?.remove();
 
-    const aggregated=neighborhoods.map(item=>({
-      item,
-      points:aggregateDailyPoints(item.points,bucketDays)
-    }));
-    const reference=aggregated[0]?.points || [];
-    const ticks=tickSettings(reference,bucketDays);
+    if(
+      isolatedNeighborhood
+      && !neighborhoods.some(item=>item.nom===isolatedNeighborhood)
+    ){
+      isolatedNeighborhood=null;
+    }
+
+    const visible=isolatedNeighborhood
+      ? neighborhoods.filter(item=>item.nom===isolatedNeighborhood)
+      : neighborhoods;
+    const colorByName=new Map(
+      neighborhoods.map((item,index)=>[item.nom,seriesColors[index]])
+    );
+    const reference=neighborhoods[0]?.points || [];
+    const ticks=tickSettings(
+      reference.map(point=>({
+        debut:point.debut || point.date,
+        fin:point.fin || point.date
+      })),
+      selectedAggregation==='week' ? 7 : 1
+    );
     const theme=plotTheme();
 
-    const traces=aggregated.map(({item,points},index)=>({
-      type:'scatter',
-      mode:'lines',
-      name:item.nom,
-      x:points.map(point=>point.debut),
-      y:points.map(point=>point.annonces),
-      customdata:points.map(point=>[
-        item.nom,
-        point.debut,
-        point.fin,
-        intervalLabel(point.debut,point.fin)
-      ]),
-      line:{color:seriesColors[index],width:3,shape:'spline',smoothing:0.9},
-      hovertemplate:'<b>%{fullData.name}</b><br>%{customdata[3]}<br>%{y} annonce(s)<extra></extra>'
-    }));
+    const traces=visible.map(item=>{
+      const color=colorByName.get(item.nom) || seriesColors[0];
+      const points=item.points || [];
+      return {
+        type:'scatter',
+        mode:'lines',
+        name:item.nom,
+        x:points.map(point=>point.date),
+        y:points.map(point=>point.annonces),
+        customdata:points.map(point=>[
+          item.nom,
+          point.debut || point.date,
+          point.fin || point.date,
+          intervalLabel(
+            point.debut || point.date,
+            point.fin || point.date
+          )
+        ]),
+        line:{
+          color,
+          width:3,
+          shape:'spline',
+          smoothing:0.9
+        },
+        fill:isolatedNeighborhood ? 'tozeroy' : 'none',
+        fillcolor:isolatedNeighborhood
+          ? hexToRgba(color,0.16)
+          : 'rgba(0,0,0,0)',
+        hovertemplate:
+          '<b>%{fullData.name}</b><br>%{customdata[3]}' +
+          '<br>%{y} annonce(s)<extra></extra>'
+      };
+    });
 
     const layout={
       autosize:true,
@@ -460,9 +559,18 @@
       margin:{l:48,r:18,t:18,b:62},
       paper_bgcolor:'rgba(0,0,0,0)',
       plot_bgcolor:'rgba(0,0,0,0)',
-      font:{family:'Manrope, sans-serif',color:theme.text,size:12},
+      font:{
+        family:'Manrope, sans-serif',
+        color:theme.text,
+        size:12
+      },
       hovermode:'closest',
-      legend:{orientation:'h',y:1.13,x:0,font:{size:11}},
+      legend:{
+        orientation:'h',
+        y:1.13,
+        x:0,
+        font:{size:11}
+      },
       xaxis:{
         type:'date',
         title:{text:'Date',font:{size:11}},
@@ -480,20 +588,47 @@
         nticks:6,
         tickformat:'d'
       },
-      uirevision:'neighborhood-'+bucketDays+'-'+data.kind
+      uirevision:[
+        'neighborhood',
+        selectedPeriod,
+        selectedAggregation,
+        data.kind,
+        isolatedNeighborhood || 'top5'
+      ].join('-')
     };
 
     Plotly.react(container,traces,layout,plotConfig()).then(()=>{
-      if(typeof container.removeAllListeners==='function') container.removeAllListeners('plotly_click');
+      if(typeof container.removeAllListeners==='function'){
+        container.removeAllListeners('plotly_click');
+      }
       container.on('plotly_click',event=>{
         const point=event.points?.[0];
         if(!point) return;
-        const [name,start,end,label]=point.customdata;
-        detail.textContent=name+' · '+label+' · '+fmt.format(point.y)+' annonce'+(point.y>1?'s':'')+'.';
+        const [name,,,label]=point.customdata;
+
+        if(isolatedNeighborhood===name){
+          isolatedNeighborhood=null;
+          detail.textContent=
+            'Top 5 réaffiché. Cliquez sur une courbe pour isoler un quartier.';
+        } else {
+          isolatedNeighborhood=name;
+          detail.textContent=
+            name+' · '+label+' · '+fmt.format(point.y)+' annonce'+
+            (point.y>1?'s':'')+
+            '. La zone transparente reprend la couleur de cette courbe. '+
+            'Cliquez de nouveau sur la courbe pour revenir au Top 5.';
+        }
+        drawNeighborhoodTrend();
       });
     });
 
-    detail.textContent='Période utile : '+longDate(trends.debut)+' → '+longDate(trends.fin)+' · '+groupingLabel(bucketDays)+(trends.annonces_isolees_ignorees ? ' · '+fmt.format(trends.annonces_isolees_ignorees)+' annonce(s) très isolée(s) écartée(s).' : '.')+' Cliquez sur une courbe pour voir le détail.';
+    if(!isolatedNeighborhood){
+      detail.textContent=
+        'Période : '+longDate(trends.debut)+' → '+longDate(trends.fin)+
+        ' · '+periodLabel(selectedPeriod)+
+        ' · '+aggregationLabel(selectedAggregation)+
+        '. Cliquez sur une courbe pour l’isoler.';
+    }
   }
 
   function drawNeighborhoodRanking() {
@@ -503,21 +638,26 @@
 
     const data=currentNeighborhoodData();
     if(!data){
-      container.replaceChildren(element('p','chart-empty','Chargement du classement…'));
+      container.replaceChildren(
+        element('p','chart-empty','Chargement du classement…')
+      );
       return;
     }
 
     const {typeData,neighborhoods}=data;
     if(!neighborhoods.length){
       if(window.Plotly) Plotly.purge(container);
-      container.replaceChildren(element('p','chart-empty','Pas assez de données pour établir un classement.'));
+      container.replaceChildren(
+        element(
+          'p',
+          'chart-empty',
+          'Pas assez de données pour établir un classement.'
+        )
+      );
       detail.textContent='Aucun détail disponible.';
       return;
     }
     if(!plotlyReady(container)) return;
-
-    // Retire seulement le placeholder. Le conteneur Plotly doit rester intact
-    // pendant les redraws déclenchés par le curseur.
     container.querySelector('.chart-empty')?.remove();
 
     const theme=plotTheme();
@@ -531,10 +671,14 @@
         item.part_pct ?? (item.total/total*100),
         item.total
       ]),
-      marker:{color:neighborhoods.map((_,index)=>seriesColors[index])},
+      marker:{
+        color:neighborhoods.map((_,index)=>seriesColors[index])
+      },
       text:neighborhoods.map(item=>fmt.format(item.total)),
       textposition:'auto',
-      hovertemplate:'<b>%{y}</b><br>%{x} annonces<br>%{customdata[0]:.1f}% de la période retenue<extra></extra>'
+      hovertemplate:
+        '<b>%{y}</b><br>%{x} annonces' +
+        '<br>%{customdata[0]:.1f}% de la période choisie<extra></extra>'
     };
 
     const layout={
@@ -543,7 +687,11 @@
       margin:{l:110,r:24,t:16,b:46},
       paper_bgcolor:'rgba(0,0,0,0)',
       plot_bgcolor:'rgba(0,0,0,0)',
-      font:{family:'Manrope, sans-serif',color:theme.text,size:12},
+      font:{
+        family:'Manrope, sans-serif',
+        color:theme.text,
+        size:12
+      },
       showlegend:false,
       xaxis:{
         title:{text:'Nombre d’annonces',font:{size:11}},
@@ -559,24 +707,32 @@
         tickfont:{color:theme.text,size:11},
         automargin:true
       },
-      uirevision:'ranking-'+data.kind
+      uirevision:
+        'ranking-'+selectedPeriod+'-'+selectedAggregation+'-'+data.kind
     };
 
     Plotly.react(container,[trace],layout,plotConfig()).then(()=>{
-      if(typeof container.removeAllListeners==='function') container.removeAllListeners('plotly_click');
+      if(typeof container.removeAllListeners==='function'){
+        container.removeAllListeners('plotly_click');
+      }
       container.on('plotly_click',event=>{
         const point=event.points?.[0];
         if(!point) return;
         const share=Number(point.customdata?.[0] || 0);
-        detail.textContent=point.y+' · '+fmt.format(point.x)+' annonces · '+share.toLocaleString('fr-FR',{maximumFractionDigits:1})+'% des annonces de la période retenue.';
+        detail.textContent=
+          point.y+' · '+fmt.format(point.x)+' annonces · '+
+          share.toLocaleString('fr-FR',{maximumFractionDigits:1})+
+          '% des annonces de la période choisie.';
       });
     });
 
-    detail.textContent='Classement sur la période utile du '+longDate(trends.debut)+' au '+longDate(trends.fin)+(trends.annonces_isolees_ignorees ? ' · '+fmt.format(trends.annonces_isolees_ignorees)+' annonce(s) très isolée(s) écartée(s).' : '.');
+    detail.textContent=
+      'Classement du '+longDate(trends.debut)+' au '+
+      longDate(trends.fin)+' · '+aggregationLabel(selectedAggregation)+'.';
   }
 
   function drawNeighborhoodViews() {
-    updateRangeText();
+    syncTrendControls();
     drawNeighborhoodTrend();
     drawNeighborhoodRanking();
   }
@@ -592,51 +748,108 @@
   function renderStats() {
     if(!market) return;
     const kind=$('#weekly-property').value;
-    drawChart($('#weekly-count-chart'),market.semaines || [],kind,'annonces');
-    drawChart($('#weekly-price-chart'),market.semaines || [],kind,'prix_m2');
+    drawChart(
+      $('#weekly-count-chart'),
+      market.semaines || [],
+      kind,
+      'annonces'
+    );
+    drawChart(
+      $('#weekly-price-chart'),
+      market.semaines || [],
+      kind,
+      'prix_m2'
+    );
+    isolatedNeighborhood=null;
     scheduleNeighborhoodDraw();
   }
 
-  async function loadNeighborhoodTrends() {
-    if(trends){
+  async function loadNeighborhoodTrends(force=false) {
+    if(trends && !force){
       scheduleNeighborhoodDraw();
       return;
     }
-    if(trendLoading) return trendLoading;
 
-    trendLoading=fetch('/market/neighborhood-trends',{cache:'no-store'})
+    const requestId=++trendRequestId;
+    const params=new URLSearchParams({
+      period:selectedPeriod,
+      aggregation:selectedAggregation
+    });
+
+    for(const id of [
+      'neighborhood-trend-chart',
+      'neighborhood-ranking-chart'
+    ]){
+      const container=$('#'+id);
+      if(container && !container.classList.contains('js-plotly-plot')){
+        container.replaceChildren(
+          element('p','chart-empty','Chargement des quartiers…')
+        );
+      }
+    }
+
+    const request=fetch(
+      '/market/neighborhood-trends?'+params.toString(),
+      {cache:'no-store'}
+    )
       .then(response=>{
         if(!response.ok) throw Error();
         return response.json();
       })
       .then(data=>{
+        if(requestId!==trendRequestId) return;
         trends=data;
+        isolatedNeighborhood=null;
         scheduleNeighborhoodDraw();
       })
       .catch(()=>{
-        for(const id of ['neighborhood-trend-chart','neighborhood-ranking-chart']){
+        if(requestId!==trendRequestId) return;
+        for(const id of [
+          'neighborhood-trend-chart',
+          'neighborhood-ranking-chart'
+        ]){
           const container=$('#'+id);
-          container?.replaceChildren(element('p','chart-empty','Les données par quartier ne sont pas disponibles pour le moment.'));
+          container?.replaceChildren(
+            element(
+              'p',
+              'chart-empty',
+              'Les données par quartier ne sont pas disponibles pour le moment.'
+            )
+          );
         }
       })
-      .finally(()=>{trendLoading=null;});
+      .finally(()=>{
+        if(requestId===trendRequestId) trendLoading=null;
+      });
 
-    return trendLoading;
+    trendLoading=request;
+    return request;
   }
 
   $('#weekly-property').addEventListener('change',renderStats);
 
-  rangeInput.addEventListener('input',()=>{
-    bucketDays=Math.max(1,Math.min(90,Number(rangeInput.value) || 1));
-    updateRangeText();
-    if(trends){
-      if(drawFrame) cancelAnimationFrame(drawFrame);
-      drawFrame=requestAnimationFrame(()=>{
-        drawFrame=null;
-        drawNeighborhoodTrend();
-      });
-    }
+  periodButtons.addEventListener('click',event=>{
+    const button=event.target.closest('[data-period]');
+    if(!button || button.hidden) return;
+    selectedPeriod=button.dataset.period;
+    isolatedNeighborhood=null;
+    syncTrendControls();
+    loadNeighborhoodTrends(true);
   });
+
+  aggregationButtons.addEventListener('click',event=>{
+    const button=event.target.closest('[data-aggregation]');
+    if(!button) return;
+    selectedAggregation=button.dataset.aggregation;
+    if(selectedAggregation==='week' && selectedPeriod==='7d'){
+      selectedPeriod='14d';
+    }
+    isolatedNeighborhood=null;
+    syncTrendControls();
+    loadNeighborhoodTrends(true);
+  });
+
+  syncTrendControls();
 
   const observer=new MutationObserver(()=>{
     if(trends) scheduleNeighborhoodDraw();
