@@ -456,7 +456,7 @@ function showPage(page) {
     ? 'Parlez-moi de votre projet : quartier, budget, superficie, document…'
     : 'Décrivez votre projet, ou collez une annonce à analyser…';
 
-  $('.nav-link[data-page]').forEach(n=>{
+  $$('.nav-link[data-page]').forEach(n=>{
     if(n.dataset.page===activePage)n.setAttribute('aria-current','page');
     else n.removeAttribute('aria-current');
   });
@@ -467,7 +467,7 @@ function showPage(page) {
     if(!hasMessages) input.focus();
   });
 }
-$('.nav-link[data-page]').forEach(n=>n.addEventListener('click',()=>{
+$$('.nav-link[data-page]').forEach(n=>n.addEventListener('click',()=>{
   if(n.dataset.page==='chat') startConversation();
   else {
     showPage(n.dataset.page);
