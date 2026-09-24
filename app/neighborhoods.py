@@ -15,7 +15,7 @@ CANONICAL_NEIGHBORHOODS = (
     "Sabtenga", "Gampela", "Kamsonghin", "Samandin", "Gounghin Sud",
     "Gandin", "Kouritenga", "Mankougoudou", "Paspanga", "Ouidi", "Larlé",
     "Kologh Naba", "Dapoya", "Dapoya 2", "Nemnin", "Niogsin", "Hamdalaye",
-    "Gounghin Nord", "Baoghin", "Camp Militaire", "Sabtoana", "Baossa",
+    "Gounghin", "Gounghin Nord", "Baoghin", "Camp Militaire", "Sabtoana", "Baossa",
     "Naababpougo", "Kienbaoghin", "Zongo", "Koumdayonré", "Nonsin",
     "Rimkièta", "Kouba", "Sonré", "Tampouy", "Kilwin", "Tanghin", "Sambin",
     "Somgandé", "Zone Industrielle", "Nioko 2", "Bendogo", "Toukin", "Zogona",
@@ -29,11 +29,12 @@ CANONICAL_NEIGHBORHOODS = (
     "Cité Abbé Simard", "Cité Bonheur", "Cité Azimo", "Cité Railtel",
     "Cité Bolesse", "Zone Commerciale", "Centre Ville", "Paglayiri",
     "Bilibambili", "Mogho Naaba", "Kuinima", "Bindougousso", "Zéca", "Baskuy",
+    "Bogodogo", "Boulmiougou", "Tanghin-Dassouri",
     "Pabré", "Koubri", "Komsilga", "Ouagadougou", "Karpala", "Lougsi",
 )
 
-PERIPHERAL_COMMUNES = frozenset({"Loumbila", "Saaba", "Pabré", "Koubri", "Komsilga"})
-ADMINISTRATIVE_AREAS = frozenset({"Baskuy", "Nongr-Massom"})
+PERIPHERAL_COMMUNES = frozenset({"Loumbila", "Saaba", "Pabré", "Koubri", "Komsilga", "Tanghin-Dassouri"})
+ADMINISTRATIVE_AREAS = frozenset({"Baskuy", "Nongr-Massom", "Bogodogo", "Boulmiougou"})
 BROAD_AREAS = frozenset({"Centre Ville", "Zone Industrielle", "Zone Commerciale"})
 CITY_LEVEL_AREAS = frozenset({"Ouagadougou"})
 
