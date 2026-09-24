@@ -4,7 +4,7 @@ from __future__ import annotations
 import re
 from typing import Any, TYPE_CHECKING
 
-from app.text_features import extract_document_status
+from app.text_features import extract_document_status, normalize_text
 
 if TYPE_CHECKING:
     from app.search_engine import SearchCandidate
