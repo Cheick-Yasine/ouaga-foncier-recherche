@@ -142,7 +142,12 @@ def analyze_offer(publication: str, candidates: list[SearchCandidate], *, prefer
     if criteria.viability: description_parts.append(criteria.viability.replace("_", " "))
     if criteria.proximity: description_parts.extend(PROXIMITY_LABELS.get(p, p) for p in criteria.proximity.split("+"))
     criteria = replace(criteria, description=", ".join(description_parts))
-    eligible = [replace(c, neighborhood=local_neighborhood(c.text, c.neighborhood)) for c in candidates if c.age_days is None or c.age_days <= max_age_days]
+    # Les annonces existantes gardent strictement le quartier structuré dans Neon.
+    eligible = [
+        c
+        for c in candidates
+        if c.age_days is None or c.age_days <= max_age_days
+    ]
     others = [c for c in eligible if not _same_announcement(subject, c)]
     comparables = [c for c in others
         if parsed.neighborhood and (neighborhood_relation(parsed.neighborhood, c.neighborhood) or {}).get('meme_quartier')
