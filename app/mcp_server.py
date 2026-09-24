@@ -18,7 +18,8 @@ from app.search_engine import (
     rank_candidates,
 )
 from app.search_repository import load_recent_candidates
-from app.listing_scope import facebook_publication_url, within_ouagadougou
+from app.listing_scope import facebook_publication_url
+from app.neighborhoods import neighborhood_metadata
 from app.semantic_filter import apply_semantic_filter, sanitize_external_text
 
 mcp = FastMCP(
@@ -87,7 +88,11 @@ def _public_result(result) -> dict[str, Any]:
         or "Annonce immobilière",
         "url": f"{get_settings().public_app_url}/?annonce={public_announcement_id(candidate.identifier)}",
         "facebook_url": facebook_publication_url(candidate.url),
-        "dans_ouagadougou": within_ouagadougou(candidate.text, candidate.neighborhood),
+        "dans_ouagadougou": (
+            bool(neighborhood_metadata(candidate.neighborhood).get("in_scope"))
+            and neighborhood_metadata(candidate.neighborhood).get("zone_type")
+            != "commune_peripherique"
+        ),
         "description": sanitize_external_text(candidate.text),
         "date_publication": candidate.publication_label,
         "type_bien": candidate.property_type,
@@ -243,14 +248,14 @@ def comparer_annonces(
     if not 2 <= len(references) <= 3:
         return {"erreur": "Choisissez deux ou trois annonces à comparer."}
     from app.search_engine import RankedResult
-    from app.offer_analysis import local_neighborhood
     from app.offer_quality import land_family
     from app.text_features import normalize_text
     try:
         candidates = load_recent_candidates(None)
     except (DatabaseNotConfiguredError, psycopg.Error):
         return {"erreur": "La base d'annonces est temporairement indisponible."}
-    candidates = [replace(c, neighborhood=local_neighborhood(c.text, c.neighborhood)) for c in candidates]
+    # Les quartiers des annonces existantes viennent directement de Neon.
+    candidates = list(candidates)
     wanted = list(dict.fromkeys(references))
     matches = {public_announcement_id(c.identifier): c for c in candidates if public_announcement_id(c.identifier) in wanted}
     criteria = replace(parse_search_description(description or "Comparaison des annonces sélectionnées"), max_age_days=anciennete_jours)
