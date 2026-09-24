@@ -8,7 +8,7 @@ from typing import Any
 
 from app.search_engine import parse_search_description
 from app.text_features import normalize_text
-from app.listing_scope import city_only_request, within_ouagadougou, sale_eligible
+from app.listing_scope import city_only_request
 from app.neighborhoods import detect_neighborhoods, detect_out_of_scope_locality
 
 
@@ -85,10 +85,10 @@ def respect_search_scope(payload: dict[str, Any], city_only: bool, description: 
     rows = payload.get('results')
     kept = []
     for row in rows if isinstance(rows, list) else []:
-        if not isinstance(row, dict) or not sale_eligible(str(row.get('description') or '')):
+        if not isinstance(row, dict):
             continue
         in_city = row.get('dans_ouagadougou')
-        if city_only and not (in_city is True or (in_city is None and within_ouagadougou(str(row.get('description') or ''), row.get('quartier')))):
+        if city_only and in_city is not True:
             continue
         kept.append(row)
     criteria = dict(payload.get('criteres') or {})
