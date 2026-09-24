@@ -4,7 +4,7 @@ from __future__ import annotations
 import re
 from typing import Any, TYPE_CHECKING
 
-from app.text_features import extract_document_status, normalize_text
+from app.text_features import extract_document_status, extract_proximity_details, normalize_text
 
 if TYPE_CHECKING:
     from app.search_engine import SearchCandidate
@@ -40,96 +40,156 @@ AVAILABLE = re.compile(r'\b(?:disponible\w*|delivre\w*|en main|en possession|obt
 
 
 def document_evidence(candidate: SearchCandidate) -> tuple[str | None, str, str, float]:
-    """Lit uniquement le champ structuré ``statut_document`` de Neon."""
+    text = normalize_text(candidate.text)
+    document = extract_document_status(candidate.document_status, candidate.text)
+    document = None if document == 'non_precise' else document
+    windows = [text[max(0,m.start()-25):m.end()+65] for m in re.finditer(DOC_WORD, text)]
+    if ABSENT_DOC.search(text):
+        return document, 'absent', 'Document annoncé absent', 0.0
+    ancillary = re.search(r'\b(?:recepisse(?: de depot)?|croquis)\b', text)
+    if ancillary:
+        without_ancillary = re.sub(
+            r'\b(?:recepisse(?: de depot)?|croquis)\b',
+            ' ',
+            text,
+        )
+        remaining_document = extract_document_status(None, without_ancillary)
+        if remaining_document == 'non_precise':
+            kind = 'recepisse' if 'recepisse' in text else 'croquis'
+            return kind, 'piece_annexe', 'Pièce mentionnée, document foncier à préciser', 0.1
+    if windows and any(PENDING.search(w) for w in windows):
+        return document, 'en_cours', 'Démarche en cours, délivrance non confirmée', 0.15
+    if document:
+        if any(AVAILABLE.search(w) for w in windows):
+            return document, 'annonce_disponible', 'Disponibilité annoncée, à vérifier', 1.0
+        return document, 'mentionne', 'Mentionné, disponibilité à confirmer', 0.7
+    return None, 'non_precise', 'Document non précisé', 0.0
 
-    raw = candidate.document_status
-    if not raw:
-        return None, "non_precise", "Document non précisé", 0.0
 
-    document = extract_document_status(raw, "")
-    if document == "non_precise":
-        # Conserver la valeur structurée telle qu'elle existe en base lorsqu'elle
-        # n'a pas de code interne connu, sans revenir au texte de l'annonce.
-        return raw, "mentionne", f"{raw} mentionné", 0.7
-
-    return (
-        document,
-        "mentionne",
-        "Mentionné, disponibilité à confirmer",
-        0.7,
-    )
+def _utility(text: str, pattern: str, structured: bool) -> tuple[str, float]:
+    matches = list(re.finditer(pattern, text))
+    if not matches:
+        return ('mentionne', 0.6) if structured else ('non_precise', 0.0)
+    for match in matches:
+        before, after = text[max(0,match.start()-32):match.start()], text[match.end():match.end()+45]
+        if re.search(r'\b(?:sans|pas de|absence de|aucun|ni)(?:\s+\w+){0,4}\s*$', before) or re.match(r'\s+(?:absente?|indisponible|non disponible|non raccorde)', after):
+            return 'absent', 0.0
+    windows = [text[max(0,m.start()-22):m.start()].split('|')[-1] + text[m.start():m.end()+45].split('|')[0] for m in matches]
+    if any(re.search(r'\b(?:bientot|prevu|a venir|en cours|projet|en attente|pas encore|non encore)\b', w) for w in windows):
+        return 'prevu', 0.0
+    if any(re.search(r'\b(?:proche|proximite|non loin|a cote|a \d+ m|dans la zone)\b', w) for w in windows):
+        return 'proximite', 0.2
+    if any(re.search(r'\b(?:raccorde\w*|branche\w*|compteur\w*|disponible\w*|sur place)\b', w) for w in windows):
+        return 'annonce_disponible', 1.0
+    return 'mentionne', 0.6
 
 
 def offer_quality(candidate: SearchCandidate) -> dict[str, Any]:
-    """Construit les indicateurs uniquement depuis les colonnes structurées Neon.
-
-    Aucune information n'est ré-extraite depuis ``candidate.text``.
-    """
-
+    # Garder une séparation entre phrases pour ne pas rattacher « proche du
+    # goudron » à l'eau annoncée disponible dans la phrase précédente.
+    text = " | ".join(normalize_text(part) for part in re.split(r"[.!?;\n]+", candidate.text))
     document, state, doc_label, doc_score = document_evidence(candidate)
+    water, water_score = _utility(text, r'\b(?:eau|onea|forage)\b', candidate.viability in {'eau','eau_et_electricite'})
+    electricity, elec_score = _utility(text, r'\b(?:electricite|sonabel|courant|reseau electrique)\b', candidate.viability in {'electricite','eau_et_electricite'})
+    if re.search(r'\bnon viabilise\w*\b', text):
+        water_score = elec_score = 0.0
+        water = electricity = 'non_precise'
+    detected = extract_proximity_details(candidate.text)
+    proximities = set((candidate.proximity or '').split('+')) | set(detected.split('+'))
+    if re.search(r'\b(?:proche|proximite|non loin|a cote|face|apres)(?:\s+\w+){0,5}\s+marche\b', text):
+        proximities.add('marche')
+    proximities &= PROXIMITY_LABELS.keys()
+    # Une négation explicite ne rapporte jamais de points de proximité.
+    if re.search(r'\b(?:loin du|loin de|aucune proximite)\b', text) and not re.search(r'\bnon loin\b', text):
+        proximities.clear()
+    strengths: list[str] = []
+    warnings: list[str] = []
+    if state in {'mentionne','annonce_disponible'}:
+        strengths.append(DOCUMENT_LABELS.get(document, 'Document') + (' annoncé disponible' if state == 'annonce_disponible' else ' mentionné'))
+    else:
+        warnings.append(doc_label)
+    for name, status in (('Eau',water),('Électricité',electricity)):
+        if status == 'annonce_disponible': strengths.append(name + ' annoncée sur place')
+        elif status == 'mentionne': strengths.append(name + ' mentionnée (raccordement à confirmer)')
+        elif status == 'proximite': warnings.append(name + ' à proximité, raccordement non confirmé')
+        elif status == 'prevu': warnings.append(name + ' prévue, disponibilité non confirmée')
+        elif status == 'absent': warnings.append(name + ' annoncée absente')
+    if water == electricity == 'non_precise':
+        warnings.append('Eau et électricité non précisées')
+    strengths.extend(PROXIMITY_LABELS[p] for p in sorted(proximities))
+    if not proximities: warnings.append('Proximités non précisées')
+    if candidate.price_fcfa is None or candidate.area_m2 is None:
+        warnings.append('Prix au m² non calculable')
+    if re.search(r'\b(?:bas fond|bafon|inondable)\b', text): warnings.append('Bas-fond ou caractère inondable mentionné')
+    if re.search(r'\bnon loti\w*\b', text): warnings.append('Terrain annoncé non loti')
+    complete = state in {'mentionne', 'annonce_disponible'} and water in {'mentionne', 'annonce_disponible'} and electricity in {'mentionne', 'annonce_disponible'} and bool(proximities)
+    return {
+        'informations_completes': complete,
+        'document': document, 'document_etat': state, 'document_libelle': doc_label,
+        'eau_etat': water, 'electricite_etat': electricity,
+        'proximites': sorted(proximities), 'atouts': strengths, 'vigilances': warnings,
+        'indices': {'document':doc_score,'viabilite':(water_score+elec_score)/2,'proximite':min(len(proximities),2)/2},
+    }
+
+
+def offer_quality_from_neon(candidate: SearchCandidate) -> dict[str, Any]:
+    """Runtime : utilise uniquement les champs structurés chargés depuis Neon.
+
+    Le texte brut n'est jamais relu ici. Cette fonction est utilisée par la
+    recherche et l'assistant. ``offer_quality`` reste disponible uniquement
+    pour les scripts de préparation/audit qui analysent encore du texte brut.
+    """
+    raw_document = candidate.document_status
+    document = extract_document_status(raw_document, "") if raw_document else None
+    if document == "non_precise":
+        document = raw_document
+    document_state = "mentionne" if raw_document else "non_precise"
 
     viability = candidate.viability
-    water = (
-        "mentionne"
-        if viability in {"eau", "eau_et_electricite"}
-        else "non_precise"
-    )
-    electricity = (
-        "mentionne"
-        if viability in {"electricite", "eau_et_electricite"}
-        else "non_precise"
-    )
-
+    water = "mentionne" if viability in {"eau", "eau_et_electricite"} else "non_precise"
+    electricity = "mentionne" if viability in {"electricite", "eau_et_electricite"} else "non_precise"
     proximities = {
-        value
-        for value in (candidate.proximity or "").split("+")
+        value for value in (candidate.proximity or '').split('+')
         if value in PROXIMITY_LABELS
     }
 
     strengths: list[str] = []
     warnings: list[str] = []
-
-    if state == "mentionne":
+    if raw_document:
         strengths.append(DOCUMENT_LABELS.get(document, str(document)) + " mentionné")
     else:
-        warnings.append(doc_label)
-
+        warnings.append("Document non précisé")
     if water == "mentionne":
         strengths.append("Eau mentionnée")
     if electricity == "mentionne":
         strengths.append("Électricité mentionnée")
     if water == electricity == "non_precise":
-        warnings.append("Eau et électricité non précisées dans les champs structurés")
-
+        warnings.append("Eau et électricité non précisées")
     strengths.extend(PROXIMITY_LABELS[p] for p in sorted(proximities))
     if not proximities:
-        warnings.append("Proximités non précisées dans les champs structurés")
-
+        warnings.append("Proximités non précisées")
     if candidate.price_fcfa is None or candidate.area_m2 is None:
         warnings.append("Prix au m² non calculable")
 
     complete = (
-        state == "mentionne"
+        document_state == "mentionne"
         and water == "mentionne"
         and electricity == "mentionne"
         and bool(proximities)
     )
-
     return {
         "informations_completes": complete,
         "document": document,
-        "document_etat": state,
-        "document_libelle": doc_label,
+        "document_etat": document_state,
+        "document_libelle": "Mentionné, disponibilité à confirmer" if raw_document else "Document non précisé",
         "eau_etat": water,
         "electricite_etat": electricity,
         "proximites": sorted(proximities),
         "atouts": strengths,
         "vigilances": warnings,
         "indices": {
-            "document": doc_score,
-            "viabilite": (
-                int(water == "mentionne") + int(electricity == "mentionne")
-            ) / 2,
+            "document": 0.7 if raw_document else 0.0,
+            "viabilite": (int(water == "mentionne") + int(electricity == "mentionne")) / 2,
             "proximite": min(len(proximities), 2) / 2,
         },
     }
