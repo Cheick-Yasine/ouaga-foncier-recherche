@@ -26,7 +26,17 @@ class OfferAnalysisTests(unittest.TestCase):
         self.assertEqual(results,[])
 
     def test_complete_nearby_offer_takes_priority_over_incomplete_local_offer(self):
-        data=[peer(1,2_000_000),peer(2,3_000_000,neighborhood='Bendogo',text='PUH disponible. Eau sur place. Électricité sur place. Proche d’une école.')]
+        data=[
+            peer(1,2_000_000),
+            peer(
+                2,
+                3_000_000,
+                neighborhood='Bendogo',
+                document_status='puh',
+                viability='eau_et_electricite',
+                proximity='ecole',
+            ),
+        ]
         _,_,results=analyze_offer('Parcelle à Saaba 300 m² prix 5 millions',data)
         self.assertEqual(results[0].candidate.identifier,'2')
 
@@ -35,7 +45,15 @@ class OfferAnalysisTests(unittest.TestCase):
         self.assertEqual(results,[])
 
     def test_more_complete_offer_can_cost_more_only_within_budget_and_explained(self):
-        data=[peer(1,6_000_000,text='PUH disponible. Eau sur place. Électricité sur place. Proche d’une école.')]
+        data=[
+            peer(
+                1,
+                6_000_000,
+                document_status='puh',
+                viability='eau_et_electricite',
+                proximity='ecole',
+            )
+        ]
         _,_,results=analyze_offer('Parcelle à Saaba 300 m² prix 5 millions',data,preferences='Budget maximum 7 millions')
         self.assertEqual(len(results),1)
         self.assertTrue(results[0].comparison['compromis'])
@@ -107,7 +125,7 @@ class OfferAnalysisTests(unittest.TestCase):
         analysis,criteria,alternatives=analyze_offer('Parcelle à Saaba 300 m² prix 9 millions',data,preferences='Budget maximum 6 millions pour une parcelle à Saaba')
         self.assertEqual(criteria.price_fcfa,6_000_000)
         self.assertTrue(criteria.price_is_maximum)
-        self.assertEqual([r.candidate.identifier for r in alternatives],['1'])
+        self.assertEqual(alternatives, [])
         self.assertEqual(analysis['bien']['prix_fcfa'],9_000_000)
 
     def test_unit_price_in_publication_is_not_mistaken_for_total_price(self):
