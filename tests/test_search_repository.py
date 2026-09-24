@@ -221,9 +221,7 @@ def test_unwanted_property_type_is_rejected() -> None:
         now=datetime(2026, 9, 3, tzinfo=timezone.utc),
     )
 
-    # Si une ligne arrive dans la table finale, l'application lui fait confiance.
-    # L'exclusion des locations appartient à l'ETL.
-    assert _is_prepared_candidate(candidate) is True
+    assert _is_prepared_candidate(candidate) is False
 
 
 def test_sale_status_is_not_recomputed_from_text() -> None:
@@ -241,7 +239,9 @@ def test_sale_status_is_not_recomputed_from_text() -> None:
         now=datetime(2026, 9, 3, tzinfo=timezone.utc),
     )
 
-    assert _is_prepared_candidate(candidate) is False
+    # Si une ligne arrive dans la table finale, l'application fait confiance
+    # au filtrage vente/location effectué par l'ETL.
+    assert _is_prepared_candidate(candidate) is True
 
 
 def test_house_for_sale_is_kept() -> None:
