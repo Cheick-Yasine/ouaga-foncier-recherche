@@ -614,7 +614,7 @@ def score_candidate(
             else None
         )
     if criteria.viability:
-        quality = offer_quality(candidate)
+        quality = offer_quality_from_neon(candidate)
         expected_utilities = {"eau"} if criteria.viability == "eau" else {"electricite"} if criteria.viability == "electricite" else {"eau", "electricite"}
         components["viabilite"] = float(all(quality[name + "_etat"] in {"mentionne", "annonce_disponible"} for name in expected_utilities))
 
