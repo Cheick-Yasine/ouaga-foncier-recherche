@@ -26,3 +26,21 @@ def test_ouagadougou_is_scope_information_not_precise_neighborhood() -> None:
     result = resolve_neighborhood("Disponible à Ouagadougou", None)
     assert result.canonical == "Ouagadougou"
     assert result.precision == "ville_seulement"
+
+def test_precise_gounghin_in_text_overrides_city_fallback() -> None:
+    result = resolve_neighborhood(
+        "Une parcelle de 670m2 en vente à Gounghin vers l'École Nationale de la Police",
+        "Ouagadougou",
+    )
+
+    assert result.canonical == "Gounghin"
+    assert result.source == "texte_nettoye"
+    assert result.precision == "quartier"
+
+
+def test_generic_etl_locations_are_known_by_search_reference() -> None:
+    assert resolve_neighborhood("Terrain à Nioko", "Ouagadougou").canonical == "Nioko"
+    assert resolve_neighborhood("Parcelle à Bogodogo", "Ouagadougou").canonical == "Bogodogo"
+    assert resolve_neighborhood("Maison à Boulmiougou", "Ouagadougou").canonical == "Boulmiougou"
+    assert resolve_neighborhood("Terrain à Tanghin-Dassouri", "Ouagadougou").canonical == "Tanghin-Dassouri"
+
