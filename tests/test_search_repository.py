@@ -39,8 +39,8 @@ def test_row_is_mapped_to_search_candidate() -> None:
     assert candidate.neighborhood == "Saaba"
     assert candidate.price_fcfa == 5_000_000
     assert candidate.area_m2 == 300
-    assert candidate.viability == "eau"
-    assert candidate.document_status == "puh"
+    assert candidate.viability is None
+    assert candidate.document_status == "PUH"
     assert candidate.age_days == 2
     assert candidate.publication_label == "Il y a 2 heures"
     assert candidate.collected_at == "2026-09-01T12:00:00+00:00"
@@ -69,6 +69,29 @@ def test_precise_gounghin_wins_over_ouaga_hashtag() -> None:
     )
 
     assert candidate.neighborhood == "Gounghin"
+
+
+def test_neon_neighborhood_wins_even_if_text_mentions_another_place() -> None:
+    now = datetime(2026, 9, 24, 18, tzinfo=timezone.utc)
+    candidate = _candidate_from_row(
+        {
+            "id": "source-of-truth",
+            "type_bien": "Parcelle",
+            "type_bien_normalise": "parcelle",
+            "quartier_zone": "Gounghin",
+            "superficie_m2": 670,
+            "prix_fcfa": 100_000_000,
+            "statut_document": "PUH",
+            "texte_nettoye": "Parcelle à Ouagadougou #Ouaga",
+            "premiere_collecte": now,
+        },
+        now=now,
+    )
+
+    assert candidate.neighborhood == "Gounghin"
+    assert candidate.price_fcfa == 100_000_000
+    assert candidate.area_m2 == 670
+    assert candidate.document_status == "PUH"
 
 
 def test_missing_numeric_value_is_preserved() -> None:
@@ -117,11 +140,10 @@ def test_price_per_hectare_uses_minimum_sale_block() -> None:
         now=now,
     )
 
-    assert candidate.price_fcfa == 35_000_000
-    assert candidate.area_m2 == 100_000
-    assert candidate.pricing_note == (
-        "Prix calculé pour le lot minimum de 10 hectare(s)"
-    )
+    # L'application ne recalcule plus les valeurs structurées de Neon.
+    assert candidate.price_fcfa == 3_500_000
+    assert candidate.area_m2 == 970_000
+    assert candidate.pricing_note is None
 
 
 def test_price_per_hectare_without_minimum_uses_one_hectare() -> None:
@@ -143,11 +165,11 @@ def test_price_per_hectare_without_minimum_uses_one_hectare() -> None:
     )
 
     assert candidate.price_fcfa == 2_250_000
-    assert candidate.area_m2 == 10_000
-    assert candidate.pricing_note == "Prix et superficie présentés pour 1 hectare"
+    assert candidate.area_m2 == 200_000
+    assert candidate.pricing_note is None
 
 
-def test_candidate_outside_geographic_scope_is_rejected() -> None:
+def test_candidate_location_is_not_reinterpreted_by_application() -> None:
     candidate = _candidate_from_row(
         {
             "id": "outside",
@@ -162,8 +184,8 @@ def test_candidate_outside_geographic_scope_is_rejected() -> None:
         now=datetime(2026, 9, 3, tzinfo=timezone.utc),
     )
 
-    assert candidate.neighborhood is None
-    assert _is_prepared_candidate(candidate) is False
+    assert candidate.neighborhood == "Bobo-Dioulasso"
+    assert _is_prepared_candidate(candidate) is True
 
 
 def test_candidate_in_periphery_is_kept() -> None:
@@ -199,10 +221,12 @@ def test_unwanted_property_type_is_rejected() -> None:
         now=datetime(2026, 9, 3, tzinfo=timezone.utc),
     )
 
-    assert _is_prepared_candidate(candidate) is False
+    # Si une ligne arrive dans la table finale, l'application lui fait confiance.
+    # L'exclusion des locations appartient à l'ETL.
+    assert _is_prepared_candidate(candidate) is True
 
 
-def test_house_for_rent_is_rejected() -> None:
+def test_sale_status_is_not_recomputed_from_text() -> None:
     candidate = _candidate_from_row(
         {
             "id": "rental-house",
