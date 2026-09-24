@@ -9,7 +9,7 @@ from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field, replace
 from app.offer_quality import land_family, offer_quality, document_evidence
 from app.neighborhoods import detect_neighborhoods, resolve_neighborhood
-from app.listing_scope import city_only_request, sale_eligible, within_ouagadougou
+from app.listing_scope import city_only_request, within_ouagadougou
 from app.normalization import normalize_property_type
 from app.text_features import (
     extract_document_status,
@@ -478,9 +478,6 @@ def score_candidate(
     weights: Mapping[str, float] = DEFAULT_WEIGHTS,
 ) -> RankedResult | None:
     """Calcule un score explicable ou exclut une contrainte impossible."""
-
-    if not sale_eligible(candidate.text):
-        return None
 
     requested_neighborhoods = _requested_neighborhoods(criteria)
     neighborhood_match = (
