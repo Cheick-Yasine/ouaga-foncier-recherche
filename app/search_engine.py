@@ -144,6 +144,11 @@ def parse_search_description(description: str) -> SearchCriteria:
         r"\1 ",
         numeric_text,
     )
+    numeric_text = re.sub(
+        r"(?i)(?<=\d)(?=(?:millions?|milliards?|fcfa|cfa)\b)",
+        " ",
+        numeric_text,
+    )
     normalized = normalize_text(numeric_text).replace("decimalmark", ".")
 
     area_range = re.search(
@@ -206,6 +211,13 @@ def parse_search_description(description: str) -> SearchCriteria:
         r"(\d(?:[\d ]*\d)?(?:\.\d+)?) (?:fcfa|f cfa|cfa)\b",
         text_without_area,
     )
+    shared_unit_price_range = re.search(
+        r"\b(?:prix|budget\s+)?entre\s+"
+        r"(\d(?:[\d ]*\d)?(?:\.\d+)?)\s+et\s+"
+        r"(\d(?:[\d ]*\d)?(?:\.\d+)?)\s*"
+        r"(millions?|milliards?|fcfa|f cfa|cfa)\b",
+        text_without_area,
+    )
     price_floor = re.search(
         r"\bprix (?:minimum|au moins) (\d(?:[\d ]*\d)?(?:\.\d+)?) "
         r"(?:fcfa|f cfa|cfa)\b",
@@ -216,9 +228,21 @@ def parse_search_description(description: str) -> SearchCriteria:
     price_max: float | None = None
     price: float | None = None
 
-    if price_range:
-        price_min = _parse_number(price_range.group(1))
-        price_max = _parse_number(price_range.group(2))
+    if price_range or shared_unit_price_range:
+        matched_range = price_range or shared_unit_price_range
+        price_min = _parse_number(matched_range.group(1))
+        price_max = _parse_number(matched_range.group(2))
+        if shared_unit_price_range:
+            unit = shared_unit_price_range.group(3)
+            multiplier = (
+                1_000_000_000
+                if unit.startswith("milliard")
+                else 1_000_000
+                if unit.startswith("million")
+                else 1
+            )
+            price_min *= multiplier
+            price_max *= multiplier
         if price_min > price_max:
             price_min, price_max = price_max, price_min
         price = (price_min + price_max) / 2
@@ -264,6 +288,7 @@ def parse_search_description(description: str) -> SearchCriteria:
     price_is_maximum = (
         price is not None
         and price_range is None
+        and shared_unit_price_range is None
         and price_floor is None
         and any(marker in normalized for marker in maximum_markers)
     )
