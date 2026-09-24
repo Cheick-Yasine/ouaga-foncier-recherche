@@ -14,16 +14,8 @@ from psycopg.rows import dict_row
 
 from app.config import Settings, get_settings
 from app.database import DatabaseNotConfiguredError
-from app.neighborhoods import resolve_neighborhood
-from app.listing_scope import sale_eligible
 from app.market_stats import publication_time
-from app.normalization import normalize_property_type
 from app.search_engine import SearchCandidate
-from app.text_features import (
-    extract_document_status,
-    extract_proximity_details,
-    extract_viability,
-)
 
 _CANDIDATE_CACHE_TTL_SECONDS = 300.0
 _candidate_cache: dict[
@@ -130,15 +122,16 @@ def _candidate_from_row(
     now: datetime,
     preserve_raw_neighborhood: bool = False,
 ) -> SearchCandidate:
+    """Construit un candidat uniquement à partir des colonnes structurées Neon.
+
+    Le texte reste disponible pour l'affichage et la similarité textuelle, mais
+    il ne sert plus à recalculer quartier, type, document, prix ou superficie.
+    Neon est la source de vérité pour ces champs.
+    """
     text = (
         _optional_text(row.get("texte_nettoye"))
         or _optional_text(row.get("resume_court"))
         or ""
-    )
-    raw_neighborhood = _optional_text(row.get("quartier_zone"))
-    neighborhood = resolve_neighborhood(
-        text,
-        raw_neighborhood,
     )
     collected_at = row.get("premiere_collecte")
     if collected_at is not None and collected_at.tzinfo is None:
@@ -148,42 +141,31 @@ def _candidate_from_row(
         if collected_at is not None
         else None
     )
-    proximity = extract_proximity_details(text)
-    viability = extract_viability(text)
-    document = extract_document_status(
-        _optional_text(row.get("statut_document")),
-        text,
+
+    raw_type = (
+        _optional_text(row.get("type_bien_normalise"))
+        or _optional_text(row.get("type_bien"))
     )
-    effective_price, effective_area, pricing_note = _effective_price_and_area(
-        text,
-        _optional_float(row.get("prix_fcfa")),
-        _optional_float(row.get("superficie_m2")),
-    )
+    property_type = raw_type.casefold() if raw_type else None
 
     return SearchCandidate(
         identifier=str(row["id"]),
         text=text,
-        property_type=normalize_property_type(
-            _optional_text(row.get("type_bien_normalise"))
-            or _optional_text(row.get("type_bien")),
-            text,
-        ),
-        neighborhood=(
-            neighborhood.canonical
-            if neighborhood.in_scope
-            else raw_neighborhood if preserve_raw_neighborhood else None
-        ),
-        price_fcfa=effective_price,
-        area_m2=effective_area,
-        proximity=None if proximity == "non_precisee" else proximity,
-        viability=None if viability == "non_precisee" else viability,
-        document_status=None if document == "non_precise" else document,
+        property_type=property_type,
+        neighborhood=_optional_text(row.get("quartier_zone")),
+        price_fcfa=_optional_float(row.get("prix_fcfa")),
+        area_m2=_optional_float(row.get("superficie_m2")),
+        # Ces deux champs ne sont pas encore des colonnes de public.annonces.
+        # On ne les reconstruit plus à partir du texte : absence = non précisé.
+        proximity=None,
+        viability=None,
+        document_status=_optional_text(row.get("statut_document")),
         age_days=age_days,
         url=_optional_text(row.get("url")),
         publication_label=_optional_text(row.get("date_publication")),
         collected_at=collected_at.isoformat() if collected_at else None,
         contact=_optional_text(row.get("contacts_whatsapp")),
-        pricing_note=pricing_note,
+        pricing_note=None,
     )
 
 
@@ -283,7 +265,6 @@ def load_market_candidates(
         candidate
         for candidate in candidates
         if candidate.property_type in _ALLOWED_PROPERTY_TYPES
-        and sale_eligible(candidate.text)
         and not (
             candidate.price_fcfa is None
             and candidate.area_m2 is None
@@ -475,24 +456,16 @@ def load_neighborhood_candidates(
             or _optional_text(row.get("resume_court"))
             or ""
         )
-        raw_neighborhood = _optional_text(row.get("quartier_zone"))
-        neighborhood = resolve_neighborhood(text, raw_neighborhood)
-        canonical_neighborhood = (
-            neighborhood.canonical
-            if neighborhood.in_scope
-            else raw_neighborhood
-        )
+        canonical_neighborhood = _optional_text(row.get("quartier_zone"))
         if canonical_neighborhood is None:
             continue
 
-        property_type = normalize_property_type(
+        raw_type = (
             _optional_text(row.get("type_bien_normalise"))
-            or _optional_text(row.get("type_bien")),
-            text,
+            or _optional_text(row.get("type_bien"))
         )
+        property_type = raw_type.casefold() if raw_type else None
         if property_type not in _ALLOWED_PROPERTY_TYPES:
-            continue
-        if not sale_eligible(text):
             continue
 
         prepared.append(
