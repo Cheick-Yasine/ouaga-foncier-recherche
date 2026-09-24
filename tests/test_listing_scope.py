@@ -91,7 +91,10 @@ class ListingScopeTests(unittest.TestCase):
         self.assertEqual({r.candidate.identifier for r in ranked}, {'urban', 'rent'})
         expanded = parse_search_description('Parcelle à Ouagadougou et dans ses environs')
         self.assertFalse(expanded.city_only)
-        self.assertEqual({r.candidate.identifier for r in rank_candidates(expanded, [urban, outer, rental])}, {'urban', 'outer'})
+        self.assertEqual(
+            {r.candidate.identifier for r in rank_candidates(expanded, [urban, outer, rental])},
+            {'urban', 'outer', 'rent'},
+        )
 
     def test_followup_keeps_city_until_user_changes_it(self):
         history = [SimpleNamespace(role='user', content='Une parcelle seulement à Ouaga'), SimpleNamespace(role='assistant', content='Vous pourriez aller à Saaba.')]
