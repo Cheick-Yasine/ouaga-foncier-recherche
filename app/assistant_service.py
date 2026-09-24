@@ -328,6 +328,129 @@ def _original_publication(message: str, history: Sequence[ChatMessage], proposed
 ASSISTANT_INSTRUCTIONS += "\nMontant demandé : privilégie les offres proches de ce montant. Un maximum reste un plafond strict. Pour une cible sans maximum, ne la transforme pas en plafond. Si les offres sont éloignées de plus de 20 %, indique cet écart simplement (par exemple 27 millions pour une demande de 50 millions) ; ne prétends pas qu’elles sont proches. Respecte les intervalles de superficie transmis par le formulaire.\n"
 
 
+
+def _format_fcfa(value: Any) -> str:
+    try:
+        amount = int(round(float(value)))
+    except (TypeError, ValueError, OverflowError):
+        return "prix non précisé"
+    return f"{amount:,}".replace(",", " ") + " FCFA"
+
+
+def _ground_price_search_answer(
+    message: str,
+    answer: str,
+    results: list[dict[str, Any]],
+    price_request: Any,
+) -> tuple[str, list[dict[str, Any]]]:
+    """Empêche le texte du LLM de contredire les prix réellement retournés.
+
+    Les cartes/tableaux utilisent déjà les résultats MCP. Cette couche garantit
+    que le texte conversationnel repose sur les mêmes montants, notamment après
+    une demande du type « 2 millions » ou « entre 1 et 2 millions ».
+    """
+    if price_request is None or price_request.price_is_maximum:
+        return answer, results
+
+    link_requested = bool(
+        re.search(r"(?i)\b(?:lien|facebook|publication|voir l['’]?annonce)\b", message)
+    )
+
+    def _price(row: dict[str, Any]) -> float | None:
+        value = row.get("prix_fcfa")
+        if isinstance(value, bool):
+            return None
+        try:
+            parsed = float(value)
+        except (TypeError, ValueError):
+            return None
+        return parsed if parsed > 0 else None
+
+    low = price_request.price_min_fcfa
+    high = price_request.price_max_fcfa
+    if low is not None or high is not None:
+        in_range = [
+            row
+            for row in results
+            if (
+                (price := _price(row)) is not None
+                and (low is None or price >= low)
+                and (high is None or price <= high)
+            )
+        ]
+        if not in_range:
+            if low is not None and high is not None:
+                grounded = (
+                    f"Je n’ai trouvé aucune annonce entre {_format_fcfa(low)} "
+                    f"et {_format_fcfa(high)} avec les critères actuels."
+                )
+            elif low is not None:
+                grounded = (
+                    f"Je n’ai trouvé aucune annonce à partir de "
+                    f"{_format_fcfa(low)} avec les critères actuels."
+                )
+            else:
+                grounded = (
+                    f"Je n’ai trouvé aucune annonce jusqu’à "
+                    f"{_format_fcfa(high)} avec les critères actuels."
+                )
+            return grounded, []
+
+        first = in_range[0]
+        grounded = (
+            f"J’ai trouvé {len(in_range)} offre"
+            f"{'s' if len(in_range) > 1 else ''} dans cette fourchette. "
+            f"La première est à {_format_fcfa(first.get('prix_fcfa'))}"
+        )
+        if first.get("quartier"):
+            grounded += f" à {first['quartier']}"
+        grounded += "."
+        if link_requested:
+            grounded += " Le bouton « Voir » ci-dessous ouvre la publication Facebook réelle."
+        return grounded, in_range
+
+    target = price_request.price_fcfa
+    if target is None:
+        return answer, results
+
+    priced = [row for row in results if _price(row) is not None]
+    if not priced:
+        return (
+            f"Je n’ai trouvé aucune annonce avec un prix vérifiable proche de "
+            f"{_format_fcfa(target)}.",
+            results,
+        )
+
+    nearest = min(priced, key=lambda row: abs(_price(row) - float(target)))
+    ordered = [nearest, *[row for row in results if row is not nearest]]
+    actual = _price(nearest)
+    exact = actual is not None and abs(actual - float(target)) < 1
+
+    if exact:
+        grounded = f"J’ai trouvé une annonce à {_format_fcfa(actual)}"
+        if nearest.get("quartier"):
+            grounded += f" à {nearest['quartier']}"
+        grounded += "."
+        if link_requested:
+            grounded += " Le bouton « Voir » ci-dessous ouvre directement la publication Facebook."
+        return grounded, ordered
+
+    grounded = (
+        f"Je n’ai trouvé aucune annonce exactement à {_format_fcfa(target)} "
+        f"parmi les résultats. L’offre la plus proche retournée est à "
+        f"{_format_fcfa(actual)}"
+    )
+    if nearest.get("quartier"):
+        grounded += f" à {nearest['quartier']}"
+    grounded += "."
+    if link_requested:
+        grounded += (
+            " Je ne présente donc pas cette offre comme une annonce à "
+            f"{_format_fcfa(target)} ; le bouton « Voir » correspond à son prix réel."
+        )
+    return grounded, ordered
+
+
 def normalize_structured_deal_message(message: str) -> bool:
     """Vrai pour le message généré par le formulaire « bonne affaire »."""
 
@@ -403,6 +526,13 @@ async def run_assistant(
             answer = (response.output_text or "").strip()
             if not answer:
                 answer = "Je n'ai pas pu préparer une réponse. Reformulez votre demande."
+            if mcp_used and latest_mode == "recherche" and price_request is not None:
+                answer, latest_results = _ground_price_search_answer(
+                    message,
+                    answer,
+                    latest_results,
+                    price_request,
+                )
             return AssistantOutcome(
                 answer=answer,
                 results=latest_results,
