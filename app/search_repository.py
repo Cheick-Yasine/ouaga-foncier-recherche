@@ -176,7 +176,6 @@ def _is_prepared_candidate(candidate: SearchCandidate) -> bool:
     return (
         candidate.neighborhood is not None
         and candidate.property_type in _ALLOWED_PROPERTY_TYPES
-        and sale_eligible(candidate.text)
         and not (
             candidate.price_fcfa is None
             and candidate.area_m2 is None
