@@ -248,7 +248,7 @@ def comparer_annonces(
     if not 2 <= len(references) <= 3:
         return {"erreur": "Choisissez deux ou trois annonces à comparer."}
     from app.search_engine import RankedResult
-    from app.offer_quality import land_family
+    from app.offer_quality import land_family_from_neon
     from app.text_features import normalize_text
     try:
         candidates = load_recent_candidates(None)
@@ -262,7 +262,7 @@ def comparer_annonces(
     results = [_public_result(RankedResult(matches[ref], 0.0, 0.0, {}, ("Annonce sélectionnée pour comparaison",))) for ref in wanted if ref in matches]
     selected = list(matches.values())
     same_neighborhood = len(selected) >= 2 and all(c.neighborhood for c in selected) and len({normalize_text(c.neighborhood) for c in selected}) == 1
-    comparable = same_neighborhood and len({land_family(c) for c in selected}) == 1
+    comparable = same_neighborhood and len({land_family_from_neon(c) for c in selected}) == 1
     information = "Compare ces annonces dans l'ordre demandé et explique les différences utiles."
     if not comparable:
         information += " Les quartiers sont distincts, non précisés ou les types de terrains différents : aucun repère de prix local ne peut être déduit de cette sélection."
