@@ -18,7 +18,7 @@ CANONICAL_NEIGHBORHOODS = (
     "Gounghin", "Gounghin Nord", "Baoghin", "Camp Militaire", "Sabtoana", "Baossa",
     "Naababpougo", "Kienbaoghin", "Zongo", "Koumdayonré", "Nonsin",
     "Rimkièta", "Kouba", "Sonré", "Tampouy", "Kilwin", "Tanghin", "Sambin",
-    "Somgandé", "Zone Industrielle", "Nioko 2", "Bendogo", "Toukin", "Zogona",
+    "Somgandé", "Zone Industrielle", "Nioko", "Nioko 2", "Bendogo", "Toukin", "Zogona",
     "Wemtenga", "Dagnoën", "Ronsin", "Kalgondin", "Pissy", "Kwaré",
     "Pacsnoma", "Yagma", "Silmiougou", "Wayalghin", "Kossodo", "Polesgo",
     "Dassasgho", "Nagrin", "Nongr-Massom", "Cissin", "Yamtenga", "Balkuy",
