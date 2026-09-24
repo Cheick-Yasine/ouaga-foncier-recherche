@@ -76,8 +76,8 @@ def _criteria_payload(criteria) -> dict[str, Any]:
 
 def _public_result(result) -> dict[str, Any]:
     candidate = result.candidate
-    from app.offer_quality import offer_quality
-    quality = offer_quality(candidate)
+    from app.offer_quality import offer_quality_from_neon
+    quality = offer_quality_from_neon(candidate)
     return {
         "id": public_announcement_id(candidate.identifier),
         "title": " à ".join(
