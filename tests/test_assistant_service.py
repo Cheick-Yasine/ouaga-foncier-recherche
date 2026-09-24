@@ -300,3 +300,86 @@ async def test_guided_deal_form_keeps_ranges_and_multiple_zones():
     assert parsed.area_min_m2 == 300
     assert parsed.area_max_m2 == 600
     assert parsed.document_status == "puh"
+
+@pytest.mark.anyio
+async def test_target_price_reply_uses_real_result_price_instead_of_hallucinating():
+    client = FakeClient([
+        tool_response({
+            "description": "Parcelle à Balkuy à 2 millions FCFA",
+            "criteres_obligatoires": ["quartier", "prix"],
+        }),
+        text_response(
+            "Parcelle à Balkuy : Prix 2 millions FCFA, superficie 250 m²."
+        ),
+    ])
+
+    async def execute(name, arguments):
+        return {
+            "criteres": {"quartier": "Balkuy", "prix_fcfa": 2_000_000},
+            "results": [{
+                "id": "balkuy-8m",
+                "quartier": "Balkuy",
+                "type_bien": "parcelle",
+                "prix_fcfa": 8_000_000,
+                "superficie_m2": 250,
+            }],
+        }
+
+    outcome = await run_assistant(
+        "Donne-moi le lien de la parcelle à Balkuy qui coûte 2 millions",
+        [],
+        max_age_days=90,
+        client=client,
+        tool_executor=execute,
+        settings=Settings(openai_api_key="test"),
+    )
+
+    assert "exactement à 2 000 000 FCFA" in outcome.answer
+    assert "8 000 000 FCFA" in outcome.answer
+    assert "bouton « Voir »" in outcome.answer
+    assert outcome.results[0]["prix_fcfa"] == 8_000_000
+
+
+@pytest.mark.anyio
+async def test_natural_price_range_never_returns_offer_outside_range():
+    client = FakeClient([
+        tool_response({
+            "description": "Parcelle à Balkuy",
+            "criteres_obligatoires": ["quartier", "prix"],
+        }),
+        text_response(
+            "Il y a quelques parcelles entre 1 et 2 millions."
+        ),
+    ])
+    received = {}
+
+    async def execute(name, arguments):
+        received.update(arguments)
+        return {
+            "criteres": {"quartier": "Balkuy"},
+            "results": [{
+                "id": "balkuy-8m",
+                "quartier": "Balkuy",
+                "type_bien": "parcelle",
+                "prix_fcfa": 8_000_000,
+                "superficie_m2": 250,
+            }],
+        }
+
+    outcome = await run_assistant(
+        "Mais y'en a-t-il qui sont entre 1 et 2millions ?",
+        [ChatMessage("user", "Je cherche une parcelle à Balkuy")],
+        max_age_days=90,
+        client=client,
+        tool_executor=execute,
+        settings=Settings(openai_api_key="test"),
+    )
+
+    from app.search_engine import parse_search_description
+
+    parsed = parse_search_description(received["description"])
+    assert parsed.price_min_fcfa == 1_000_000
+    assert parsed.price_max_fcfa == 2_000_000
+    assert outcome.results == []
+    assert "aucune annonce entre 1 000 000 FCFA et 2 000 000 FCFA" in outcome.answer
+
