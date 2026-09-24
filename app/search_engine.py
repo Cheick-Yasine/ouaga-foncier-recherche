@@ -7,9 +7,9 @@ import re
 from collections import Counter
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field, replace
-from app.offer_quality import land_family, offer_quality, document_evidence
-from app.neighborhoods import detect_neighborhoods, resolve_neighborhood
-from app.listing_scope import city_only_request, within_ouagadougou
+from app.offer_quality import offer_quality_from_neon, land_family_from_neon
+from app.neighborhoods import detect_neighborhoods, resolve_neighborhood, neighborhood_metadata
+from app.listing_scope import city_only_request
 from app.normalization import normalize_property_type
 from app.text_features import (
     extract_document_status,
@@ -497,7 +497,7 @@ def score_candidate(
     requested_documents = _requested_documents(criteria)
     candidate_documents = extract_document_statuses(
         candidate.document_status,
-        candidate.text,
+        "",
     )
     document_match = bool(
         requested_documents
@@ -536,8 +536,13 @@ def score_candidate(
             return None
         if criteria.area_max_m2 is not None and candidate.area_m2 > criteria.area_max_m2:
             return None
-    if criteria.city_only and not within_ouagadougou(candidate.text, candidate.neighborhood):
-        return None
+    if criteria.city_only:
+        metadata = neighborhood_metadata(candidate.neighborhood)
+        if (
+            not metadata.get("in_scope")
+            or metadata.get("zone_type") == "commune_peripherique"
+        ):
+            return None
     if (
         criteria.max_age_days is not None
         and candidate.age_days is not None
@@ -593,8 +598,8 @@ def score_candidate(
                 else float(_normalized_equal(expected, observed))
             )
     if requested_documents:
-        _, document_state, _, _ = document_evidence(candidate)
-        acceptable_document_states = {"mentionne", "annonce_disponible"}
+        document_state = "mentionne" if candidate.document_status else "non_precise"
+        acceptable_document_states = {"mentionne"}
         if any(
             requested in {"recepisse", "croquis"}
             for requested in requested_documents
@@ -785,7 +790,7 @@ def _comparable_priority(criteria: SearchCriteria, result: RankedResult) -> floa
         match = numeric_similarity(criteria.area_m2, candidate.area_m2) if candidate.area_m2 else 0.0
         return float(match >= 0.8) if _is_good_deal_request(criteria) else round(match, 3)
     if _is_good_deal_request(criteria) and criteria.property_type in {None, "parcelle"}:
-        return float(candidate.property_type == "parcelle" and land_family(candidate) != "grand_terrain")
+        return float(candidate.property_type == "parcelle" and land_family_from_neon(candidate) != "grand_terrain")
     return 0.0
 
 
@@ -801,7 +806,7 @@ def _completeness_priority(quality: dict) -> tuple:
 
 def _recommendation_priority(criteria: SearchCriteria, result: RankedResult, quality: dict | None = None) -> tuple:
     """Ordre commun au moteur local et au filtre sémantique."""
-    quality = quality if quality is not None else offer_quality(result.candidate)
+    quality = quality if quality is not None else offer_quality_from_neon(result.candidate)
     return (
         _descriptive_priority(criteria, result),
         _price_match_priority(criteria, result),
@@ -840,7 +845,10 @@ def rank_candidates(
         if (result := score_candidate(criteria, candidate)) is not None
     ]
     good_deal = _is_good_deal_request(criteria)
-    qualities = {result.candidate.identifier: offer_quality(result.candidate) for result in results}
+    qualities = {
+        result.candidate.identifier: offer_quality_from_neon(result.candidate)
+        for result in results
+    }
     if good_deal:
         results = [replace(result, explanations=result.explanations + (
             " ; ".join(qualities[result.candidate.identifier]["atouts"])
