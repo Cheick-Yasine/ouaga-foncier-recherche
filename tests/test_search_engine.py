@@ -727,6 +727,49 @@ def test_price_range_is_parsed_and_enforced() -> None:
     assert score_candidate(criteria, above) is None
 
 
+def test_natural_price_range_in_millions_is_parsed_and_enforced() -> None:
+    criteria = parse_search_description(
+        "Y en a-t-il entre 1 et 2 millions ?"
+    )
+
+    assert criteria.price_min_fcfa == 1_000_000
+    assert criteria.price_max_fcfa == 2_000_000
+    assert criteria.price_fcfa == 1_500_000
+    assert criteria.price_is_maximum is False
+
+    below = SearchCandidate(
+        identifier="below-natural-range",
+        text="Parcelle à vendre",
+        property_type="parcelle",
+        price_fcfa=900_000,
+    )
+    inside = SearchCandidate(
+        identifier="inside-natural-range",
+        text="Parcelle à vendre",
+        property_type="parcelle",
+        price_fcfa=1_500_000,
+    )
+    above = SearchCandidate(
+        identifier="above-natural-range",
+        text="Parcelle à vendre",
+        property_type="parcelle",
+        price_fcfa=8_000_000,
+    )
+
+    assert score_candidate(criteria, below) is None
+    assert score_candidate(criteria, inside) is not None
+    assert score_candidate(criteria, above) is None
+
+
+def test_compact_natural_price_range_in_millions_is_parsed() -> None:
+    criteria = parse_search_description(
+        "mais y'a en t-il qui sont entre 1 et 2millions"
+    )
+
+    assert criteria.price_min_fcfa == 1_000_000
+    assert criteria.price_max_fcfa == 2_000_000
+
+
 def test_multiple_selected_neighborhoods_are_strict_alternatives() -> None:
     criteria = parse_search_description(
         "Trouve-moi une bonne affaire : parcelle en vente. "
