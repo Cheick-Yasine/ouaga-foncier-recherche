@@ -82,13 +82,13 @@ class ListingScopeTests(unittest.TestCase):
             )
         )
 
-    def test_hard_exclusions_precede_price_and_completeness(self):
+    def test_runtime_ranking_trusts_etl_sale_filter(self):
         urban = SearchCandidate('urban', 'Parcelle en vente à Karpala', neighborhood='Karpala', property_type='parcelle', price_fcfa=8_000_000, area_m2=300)
         outer = replace(urban, identifier='outer', text='Parcelle en vente à Saaba', neighborhood='Saaba', price_fcfa=1_000_000)
         rental = replace(urban, identifier='rent', text='Parcelle à louer à Karpala', price_fcfa=20_000)
         criteria = parse_search_description('Bonne affaire : parcelle uniquement à Ouagadougou, budget maximum 10 millions FCFA')
         ranked = rank_candidates(criteria, [outer, rental, urban])
-        self.assertEqual([r.candidate.identifier for r in ranked], ['urban'])
+        self.assertEqual({r.candidate.identifier for r in ranked}, {'urban', 'rent'})
         expanded = parse_search_description('Parcelle à Ouagadougou et dans ses environs')
         self.assertFalse(expanded.city_only)
         self.assertEqual({r.candidate.identifier for r in rank_candidates(expanded, [urban, outer, rental])}, {'urban', 'outer'})
@@ -102,10 +102,16 @@ class ListingScopeTests(unittest.TestCase):
         self.assertFalse(parse_search_description('Seulement des parcelles à Ouaga et dans ses environs').city_only)
 
     def test_guard_filters_mcp_rows_before_advice(self):
-        payload={'results':[{'id':'city','quartier':'Karpala','description':'Parcelle à Karpala'}, {'id':'outer','quartier':'Saaba'}, {'id':'rent','quartier':'Karpala','description':'Terrain en location'}]}
+        payload={'results':[
+            {'id':'city','quartier':'Karpala','description':'Parcelle à Karpala','dans_ouagadougou':True},
+            {'id':'outer','quartier':'Saaba','dans_ouagadougou':False},
+            {'id':'rent','quartier':'Karpala','description':'Terrain en location','dans_ouagadougou':True},
+        ]}
         result=respect_search_scope(payload, True, 'Uniquement à Ouagadougou')
-        self.assertEqual([r['id'] for r in result['results']], ['city'])
-        self.assertEqual(result['nombre_resultats'], 1)
+        # L'application utilise le champ structuré de portée ; elle ne relit
+        # plus le texte pour reclasser vente/location.
+        self.assertEqual([r['id'] for r in result['results']], ['city','rent'])
+        self.assertEqual(result['nombre_resultats'], 2)
         self.assertTrue(result['criteres']['ouagadougou_uniquement'])
 
     def test_source_links_are_original_facebook_urls(self):
