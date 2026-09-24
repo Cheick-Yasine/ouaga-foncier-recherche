@@ -46,6 +46,31 @@ def test_row_is_mapped_to_search_candidate() -> None:
     assert candidate.collected_at == "2026-09-01T12:00:00+00:00"
 
 
+def test_precise_gounghin_wins_over_ouaga_hashtag() -> None:
+    now = datetime(2026, 9, 24, 18, tzinfo=timezone.utc)
+    candidate = _candidate_from_row(
+        {
+            "id": "gounghin-post",
+            "url": "https://facebook.com/posts/gounghin",
+            "date_publication": "2026-09-22T12:00:00Z",
+            "type_bien": "Parcelle",
+            "type_bien_normalise": "parcelle",
+            "quartier_zone": "Gounghin",
+            "superficie_m2": 670,
+            "prix_fcfa": 100_000_000,
+            "statut_document": "PUH",
+            "texte_nettoye": (
+                "#GOUNGHIN Une parcelle de 670m2 en vente à Gounghin "
+                "vers l'École Nationale de la Police. #Ouagadougou #Ouaga"
+            ),
+            "premiere_collecte": now,
+        },
+        now=now,
+    )
+
+    assert candidate.neighborhood == "Gounghin"
+
+
 def test_missing_numeric_value_is_preserved() -> None:
     now = datetime(2026, 9, 3, 12, tzinfo=timezone.utc)
     candidate = _candidate_from_row(
