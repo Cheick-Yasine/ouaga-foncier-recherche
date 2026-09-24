@@ -194,6 +194,14 @@ def offer_quality_from_neon(candidate: SearchCandidate) -> dict[str, Any]:
         },
     }
 
+def land_family_from_neon(candidate: SearchCandidate) -> str:
+    """Classe un bien sans relire le texte brut."""
+    if candidate.property_type == 'maison':
+        return 'maison'
+    if (candidate.area_m2 or 0) > 2500:
+        return 'grand_terrain'
+    return candidate.property_type or 'foncier'
+
 def land_family(candidate: SearchCandidate) -> str:
     """Évite d'utiliser des hectares agricoles comme référence d'une petite parcelle."""
     if candidate.property_type == 'maison': return 'maison'
