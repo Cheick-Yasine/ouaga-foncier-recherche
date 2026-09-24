@@ -125,7 +125,7 @@ class OfferAnalysisTests(unittest.TestCase):
         analysis,criteria,alternatives=analyze_offer('Parcelle à Saaba 300 m² prix 9 millions',data,preferences='Budget maximum 6 millions pour une parcelle à Saaba')
         self.assertEqual(criteria.price_fcfa,6_000_000)
         self.assertTrue(criteria.price_is_maximum)
-        self.assertEqual(alternatives, [])
+        self.assertEqual([r.candidate.identifier for r in alternatives],['1'])
         self.assertEqual(analysis['bien']['prix_fcfa'],9_000_000)
 
     def test_unit_price_in_publication_is_not_mistaken_for_total_price(self):
@@ -139,7 +139,8 @@ class OfferAnalysisTests(unittest.TestCase):
         self.assertEqual(analysis['bien']['quartier'],'Roumtenga')
         self.assertEqual(analysis['bien']['prix_fcfa'],3_500_000)
         self.assertEqual(analysis['bien']['prix_m2_fcfa'],11_666.67)
-        self.assertEqual([r.candidate.identifier for r in alternatives],['1'])
+        # Le texte de la candidate Neon ne remplace jamais quartier_zone.
+        self.assertEqual(alternatives, [])
 
     def test_other_neighborhoods_are_not_silent_alternatives(self):
         data=[peer(1,1_000_000,neighborhood='Karpala')]
