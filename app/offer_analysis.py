@@ -7,7 +7,14 @@ from statistics import median
 import re
 from typing import Any
 
-from app.offer_quality import offer_quality, land_family, DOCUMENT_LABELS, PROXIMITY_LABELS
+from app.offer_quality import (
+    offer_quality,
+    offer_quality_from_neon,
+    land_family,
+    land_family_from_neon,
+    DOCUMENT_LABELS,
+    PROXIMITY_LABELS,
+)
 from app.text_features import normalize_text
 from app.neighborhoods import resolve_neighborhood, CITY_LEVEL_AREAS, BROAD_AREAS
 from app.neighborhood_geo import NEARBY_RADIUS_KM, location_for, neighborhood_relation
@@ -152,7 +159,7 @@ def analyze_offer(publication: str, candidates: list[SearchCandidate], *, prefer
     comparables = [c for c in others
         if parsed.neighborhood and (neighborhood_relation(parsed.neighborhood, c.neighborhood) or {}).get('meme_quartier')
         and parsed.property_type and c.property_type == parsed.property_type
-        and land_family(c) == land_family(subject)
+        and land_family_from_neon(c) == land_family(subject)
         and parsed.area_m2 and c.area_m2 and 0.75 * parsed.area_m2 <= c.area_m2 <= 1.25 * parsed.area_m2
         and price_per_square_metre(c) is not None]
     # Même déduplication que la recherche, avant le calcul statistique.
@@ -200,11 +207,11 @@ def analyze_offer(publication: str, candidates: list[SearchCandidate], *, prefer
             continue
         if criteria.property_type and candidate.property_type != criteria.property_type:
             continue
-        if land_family(candidate) != land_family(subject):
+        if land_family_from_neon(candidate) != land_family(subject):
             continue
         if criteria.area_m2 and (not candidate.area_m2 or not .75 * criteria.area_m2 <= candidate.area_m2 <= 1.25 * criteria.area_m2):
             continue
-        candidate_quality = offer_quality(candidate)
+        candidate_quality = offer_quality_from_neon(candidate)
         option = _better_option(subject, candidate, quality, candidate_quality, criteria.price_fcfa)
         if not option:
             continue
@@ -217,7 +224,7 @@ def analyze_offer(publication: str, candidates: list[SearchCandidate], *, prefer
     ranked = rank_candidates(ranking_criteria, pool, limit=len(pool))
     # Une offre complète reste prioritaire. À complétude comparable, préférer
     # le quartier demandé à ses voisins et conserver le classement prix/qualité.
-    ranked.sort(key=lambda r: (not offer_quality(r.candidate)['informations_completes'],
+    ranked.sort(key=lambda r: (not offer_quality_from_neon(r.candidate)['informations_completes'],
                                not metadata[r.candidate.identifier]['meme_quartier']))
     alternatives = [OfferAlternative(**vars(r), comparison=metadata[r.candidate.identifier]) for r in ranked[:10]]
     analysis['zone_recherche'] = {
