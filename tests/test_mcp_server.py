@@ -214,3 +214,78 @@ def test_comparison_of_different_neighborhoods_does_not_claim_local_benchmark(mo
     payload=mcp_server.comparer_annonces(refs)
     assert [r['id'] for r in payload['results']]==refs
     assert payload['comparaison_locale_possible'] is False
+
+
+
+def test_multi_neighborhood_search_keeps_each_selected_zone_after_semantic_filter(
+    monkeypatch,
+) -> None:
+    candidates = [
+        SearchCandidate(
+            identifier="saaba-1",
+            text="Parcelle à Saaba avec bon accès",
+            property_type="parcelle",
+            neighborhood="Saaba",
+            price_fcfa=4_000_000,
+            area_m2=300,
+        ),
+        SearchCandidate(
+            identifier="saaba-2",
+            text="Parcelle à Saaba proche de la route",
+            property_type="parcelle",
+            neighborhood="Saaba",
+            price_fcfa=4_500_000,
+            area_m2=300,
+        ),
+        SearchCandidate(
+            identifier="karpala-1",
+            text="Parcelle à Karpala avec bon accès",
+            property_type="parcelle",
+            neighborhood="Karpala",
+            price_fcfa=5_000_000,
+            area_m2=300,
+        ),
+        SearchCandidate(
+            identifier="karpala-2",
+            text="Parcelle à Karpala proche de la route",
+            property_type="parcelle",
+            neighborhood="Karpala",
+            price_fcfa=5_500_000,
+            area_m2=300,
+        ),
+    ]
+    monkeypatch.setattr(
+        mcp_server,
+        "load_recent_candidates",
+        lambda _max_age: candidates,
+    )
+
+    def collapse_to_saaba(_criteria, ranked, *, settings):
+        only_saaba = [
+            result
+            for result in ranked
+            if result.candidate.neighborhood == "Saaba"
+        ]
+        return SemanticFilterOutcome(
+            only_saaba,
+            True,
+            "test-model",
+            False,
+        )
+
+    monkeypatch.setattr(
+        mcp_server,
+        "apply_semantic_filter",
+        collapse_to_saaba,
+    )
+
+    response = mcp_server.rechercher_annonces(
+        "Trouve-moi une bonne affaire : parcelle en vente. "
+        "Zones souhaitées : Saaba, Karpala. Uniquement dans ces zones.",
+        limit=4,
+        utiliser_filtre_llm=True,
+    )
+    returned = [row["quartier"] for row in response["results"]]
+
+    assert returned.count("Saaba") == 2
+    assert returned.count("Karpala") == 2
