@@ -241,3 +241,18 @@ def test_expert_boxplots_use_log_scale_and_hide_extreme_points() -> None:
     assert "grid-template-columns:minmax(0,1fr)" in dashboard
     assert ".ranking-period-control" in dashboard
     assert "border-top:1px solid var(--line)" in dashboard
+
+
+
+def test_price_expert_toggle_purges_plotly_and_keeps_toggle_delegated() -> None:
+    script = client.get("/static/discovery.js").text
+    css = client.get("/static/dashboard.css").text
+
+    assert "function clearPlotlyContainer(container)" in script
+    assert "Plotly.purge(container)" in script
+    assert "function togglePriceExpertMode()" in script
+    assert "document.addEventListener('click',event=>" in script
+    assert "closest('#price-expert-toggle')" in script
+    assert ".chart-fullscreen-card:fullscreen #weekly-price-chart > svg" in css
+    assert ".js-plotly-plot .plotly .modebar-btn svg" in css
+    assert "max-width:16px !important" in css
