@@ -297,7 +297,7 @@ function resultTable(results) {
       el('td','unit-price',unitPrice(r))
     );
 
-    const documentCell=el('td','',label(r.document || r.statut_document));
+    const documentCell=el('td','document-cell',label(r.document || r.statut_document));
     if(r.qualite?.document_etat && r.qualite.document_etat!=='non_precise'){
       documentCell.append(
         el('small','document-status',r.qualite.document_libelle)
