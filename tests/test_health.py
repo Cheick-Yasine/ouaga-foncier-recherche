@@ -175,3 +175,11 @@ def test_static_assets_are_not_served_from_stale_browser_cache() -> None:
         assert response.status_code == 200
         assert response.headers["cache-control"] == "no-store, max-age=0"
         assert response.headers["pragma"] == "no-cache"
+
+
+
+def test_contact_refresh_targets_contact_cell_not_a_fixed_column_index() -> None:
+    script = client.get("/static/app.js").text
+    assert "row.querySelector('.contact-cell')" in script
+    assert "row.children[6].replaceWith" not in script
+    assert "const documentCell=el('td','document-cell'" in script
