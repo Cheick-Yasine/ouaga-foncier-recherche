@@ -588,4 +588,5 @@ async def test_same_neighborhood_modifier_still_inherits_previous_budget():
     )
 
     assert "il s'agit d'une continuation" in client.responses.calls[0]["instructions"]
-    assert "6 millions" in received["description"]
+    from app.search_engine import parse_search_description
+    assert parse_search_description(received["description"]).price_fcfa == 6_000_000
