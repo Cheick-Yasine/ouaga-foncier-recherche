@@ -37,7 +37,6 @@ _PROXIMITY_PATTERNS = {
         r"|\b(?:sur|au bord de|en bordure de)\s+"
         r"(?:la |le |du )?(?:route bitumee|voie bitumee|goudron|bitume)\b"
     ),
-
 }
 _PAVED_ACCESS_PATTERN = re.compile(
     r"\b(?:accessible|acces|desservi|desservie)"
