@@ -226,3 +226,18 @@ def test_ranking_chart_has_an_independent_period_control() -> None:
     assert "loadNeighborhoodRanking(true)" in script
     assert "period:selectedRankingPeriod" in script
     assert "aggregation:'week'" in script
+
+
+
+def test_expert_boxplots_use_log_scale_and_hide_extreme_points() -> None:
+    script = client.get("/static/discovery.js").text
+    dashboard = client.get("/static/dashboard.css").text
+
+    assert "boxpoints:false" in script
+    assert "type:'log'" in script
+    assert "FCFA / m² · échelle logarithmique" in script
+    assert "valeurs extrêmes sont masquées" in script
+    assert ".ranking-heading" in dashboard
+    assert "grid-template-columns:minmax(0,1fr)" in dashboard
+    assert ".ranking-period-control" in dashboard
+    assert "border-top:1px solid var(--line)" in dashboard

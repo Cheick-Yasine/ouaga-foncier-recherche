@@ -413,3 +413,36 @@ body.chart-fullscreen-open {
     justify-content:flex-start;
   }
 }
+
+
+/* Correctifs de lisibilité : période du classement et boxplots experts. */
+.ranking-heading {
+  display:grid;
+  grid-template-columns:minmax(0,1fr);
+  align-items:start;
+  gap:12px;
+}
+
+.ranking-period-control {
+  justify-items:start;
+  width:100%;
+  padding-top:10px;
+  border-top:1px solid var(--line);
+}
+
+.ranking-period-buttons {
+  justify-content:flex-start;
+  width:100%;
+  max-width:none;
+  padding-right:48px;
+}
+
+.price-chart-card .expert-chart-detail {
+  max-width:920px;
+}
+
+@media(max-width:700px) {
+  .ranking-period-buttons {
+    padding-right:0;
+  }
+}
