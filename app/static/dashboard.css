@@ -398,6 +398,11 @@ body.chart-fullscreen-open {
   width:100%;
 }
 
+/* Chaque carte hebdomadaire garde sa propre hauteur, même si le mode expert agrandit le graphique voisin. */
+.weekly-grid {
+  align-items:start;
+}
+
 @media(max-width:900px) {
   .ranking-heading,
   .price-chart-toolbar {

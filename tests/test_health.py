@@ -229,6 +229,13 @@ def test_ranking_chart_has_an_independent_period_control() -> None:
 
 
 
+def test_weekly_cards_do_not_stretch_when_price_chart_gets_taller() -> None:
+    dashboard = client.get("/static/dashboard.css").text
+
+    assert ".weekly-grid" in dashboard
+    assert "align-items:start" in dashboard
+
+
 def test_expert_boxplots_use_log_scale_and_hide_extreme_points() -> None:
     script = client.get("/static/discovery.js").text
     dashboard = client.get("/static/dashboard.css").text
