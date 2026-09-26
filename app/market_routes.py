@@ -23,7 +23,7 @@ def market_stats() -> dict:
 
 @router.get('/neighborhood-trends')
 def market_neighborhood_trends(
-    period: Literal["7d", "14d", "1m", "2m", "3m", "1y", "max"] = "1m",
+    period: Literal["7d", "14d", "1m", "2m", "3m", "1y", "3y", "5y", "max"] = "1m",
     aggregation: Literal["day", "week"] = "day",
 ) -> dict:
     try:
