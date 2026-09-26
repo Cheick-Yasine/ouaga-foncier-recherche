@@ -122,6 +122,8 @@ def test_neighborhood_chart_uses_period_buttons_and_dynamic_fill() -> None:
     assert "['14d','14 j','14 derniers jours']" in script
     assert "['1m','1 m','Dernier mois']" in script
     assert "['1y','1 a','Dernière année']" in script
+    assert "['3y','3 a','3 dernières années']" in script
+    assert "['5y','5 a','5 dernières années']" in script
     assert "['max','Max','Toute la base']" in script
     assert "selectedAggregation==='week' && isSeven" in script
     assert "fill:isolatedNeighborhood ? 'tozeroy' : 'none'" in script
@@ -199,3 +201,28 @@ def test_market_charts_can_enter_fullscreen() -> None:
     assert "document.addEventListener('fullscreenchange'" in script
     assert ".chart-fullscreen-card:fullscreen" in dashboard
     assert ".chart-fullscreen-card.is-fullscreen-fallback" in dashboard
+
+
+
+def test_price_chart_has_mean_median_and_expert_boxplot_controls() -> None:
+    page = client.get("/").text
+    script = client.get("/static/discovery.js").text
+
+    assert 'id="price-stat-mean"' in page
+    assert 'id="price-stat-median"' in page
+    assert 'id="price-expert-toggle"' in page
+    assert "priceStatistic==='median' ? 'prix_m2_mediane' : 'prix_m2_moyen'" in script
+    assert "type:'box'" in script
+    assert "boxmean:true" in script
+    assert "prix_m2_values" in script
+
+
+def test_ranking_chart_has_an_independent_period_control() -> None:
+    script = client.get("/static/discovery.js").text
+
+    assert "let rankingTrends=null" in script
+    assert "let selectedRankingPeriod='1m'" in script
+    assert "button.dataset.rankingPeriod=value" in script
+    assert "loadNeighborhoodRanking(true)" in script
+    assert "period:selectedRankingPeriod" in script
+    assert "aggregation:'week'" in script
