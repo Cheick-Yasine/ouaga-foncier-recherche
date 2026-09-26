@@ -166,3 +166,12 @@ def test_results_table_shows_publication_date_and_text_without_rank() -> None:
     assert "publicationDateText(r.date_publication)" in script
     assert "publicationTextCell(r)" in script
     assert "result.description" in script
+
+
+
+def test_static_assets_are_not_served_from_stale_browser_cache() -> None:
+    for path in ("/static/app.js", "/static/styles.css"):
+        response = client.get(path)
+        assert response.status_code == 200
+        assert response.headers["cache-control"] == "no-store, max-age=0"
+        assert response.headers["pragma"] == "no-cache"
