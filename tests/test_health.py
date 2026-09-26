@@ -183,3 +183,19 @@ def test_contact_refresh_targets_contact_cell_not_a_fixed_column_index() -> None
     assert "row.querySelector('.contact-cell')" in script
     assert "row.children[6].replaceWith" not in script
     assert "const documentCell=el('td','document-cell'" in script
+
+
+
+def test_market_charts_can_enter_fullscreen() -> None:
+    script = client.get("/static/discovery.js").text
+    dashboard = client.get("/static/dashboard.css").text
+
+    assert "enableChartFullscreen(" in script
+    assert "$('#weekly-count-chart')?.closest('.weekly-card')" in script
+    assert "$('#weekly-price-chart')?.closest('.weekly-card')" in script
+    assert "enableChartFullscreen(neighborhoodCard" in script
+    assert "enableChartFullscreen(rankingCard" in script
+    assert "card.requestFullscreen || card.webkitRequestFullscreen" in script
+    assert "document.addEventListener('fullscreenchange'" in script
+    assert ".chart-fullscreen-card:fullscreen" in dashboard
+    assert ".chart-fullscreen-card.is-fullscreen-fallback" in dashboard
