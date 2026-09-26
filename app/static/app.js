@@ -223,7 +223,10 @@ function contactCell(r) {
 }
 let contactsRequest = null;
 function redrawContacts() {
-  messages.querySelectorAll('tr[data-result-id]').forEach(row=>row.children[6].replaceWith(contactCell({id:row.dataset.resultId})));
+  messages.querySelectorAll('tr[data-result-id]').forEach(row=>{
+    const cell=row.querySelector('.contact-cell');
+    if(cell) cell.replaceWith(contactCell({id:row.dataset.resultId}));
+  });
 }
 async function refreshContacts() {
   redrawContacts();
