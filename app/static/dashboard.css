@@ -270,10 +270,10 @@ body.chart-fullscreen-open {
   right:24px;
 }
 
-.chart-fullscreen-card:fullscreen #weekly-count-chart svg,
-.chart-fullscreen-card:fullscreen #weekly-price-chart svg,
-.chart-fullscreen-card.is-fullscreen-fallback #weekly-count-chart svg,
-.chart-fullscreen-card.is-fullscreen-fallback #weekly-price-chart svg {
+.chart-fullscreen-card:fullscreen #weekly-count-chart > svg,
+.chart-fullscreen-card:fullscreen #weekly-price-chart > svg,
+.chart-fullscreen-card.is-fullscreen-fallback #weekly-count-chart > svg,
+.chart-fullscreen-card.is-fullscreen-fallback #weekly-price-chart > svg {
   width:100%;
   height:min(62vh,640px);
 }
@@ -445,4 +445,24 @@ body.chart-fullscreen-open {
   .ranking-period-buttons {
     padding-right:0;
   }
+}
+
+
+/* Plotly : ne jamais appliquer les dimensions des SVG plein écran aux SVG internes. */
+.js-plotly-plot .plotly .modebar-btn,
+.js-plotly-plot .plotly .modebar-btn svg {
+  box-sizing:border-box;
+}
+
+.js-plotly-plot .plotly .modebar-btn {
+  width:22px !important;
+  height:22px !important;
+  padding:3px 4px !important;
+}
+
+.js-plotly-plot .plotly .modebar-btn svg {
+  width:16px !important;
+  height:16px !important;
+  max-width:16px !important;
+  max-height:16px !important;
 }

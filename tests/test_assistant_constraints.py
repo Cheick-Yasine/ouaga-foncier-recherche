@@ -1,7 +1,14 @@
 import unittest
 from types import SimpleNamespace
 
-from app.assistant_constraints import conversation_budget, budget_description, respect_search_budget, conversation_numeric_request, price_range_description
+from app.assistant_constraints import (
+    budget_description,
+    conversation_budget,
+    conversation_numeric_request,
+    price_range_description,
+    respect_search_budget,
+    should_inherit_previous_criteria,
+)
 from app.search_engine import parse_search_description
 
 
@@ -84,3 +91,46 @@ def test_price_range_survives_conversation_rewrite():
     parsed = parse_search_description(rewritten)
     assert parsed.price_min_fcfa == 5_000_000
     assert parsed.price_max_fcfa == 25_000_000
+
+
+
+def test_independent_second_request_does_not_inherit_first_search_constraints():
+    history = [
+        message(
+            "user",
+            "Je cherche une parcelle à Saaba, budget maximum 6 millions, 300 m².",
+        )
+    ]
+
+    current = "Je cherche une maison à Karpala"
+
+    assert should_inherit_previous_criteria(current) is False
+    assert conversation_budget(current, history) is None
+    assert conversation_numeric_request(current, history, "prix") is None
+    assert conversation_numeric_request(current, history, "superficie") is None
+
+
+def test_real_followup_still_inherits_previous_constraints():
+    history = [
+        message(
+            "user",
+            "Je cherche une parcelle à Saaba, budget maximum 6 millions, 300 m².",
+        )
+    ]
+
+    current = "Et avec un PUH si possible ?"
+
+    assert should_inherit_previous_criteria(current) is True
+    assert conversation_budget(current, history) == 6_000_000
+    area = conversation_numeric_request(current, history, "superficie")
+    assert area is not None
+    assert area.area_m2 == 300
+
+
+def test_explicit_new_search_resets_context_even_inside_same_conversation():
+    history = [message("user", "Budget maximum 10 millions à Saaba")]
+
+    current = "Nouvelle recherche : je veux un terrain à Koubri"
+
+    assert should_inherit_previous_criteria(current) is False
+    assert conversation_budget(current, history) is None

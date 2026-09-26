@@ -249,6 +249,16 @@
     return false;
   }
 
+  function clearPlotlyContainer(container) {
+    if(
+      window.Plotly
+      && container.classList.contains('js-plotly-plot')
+    ){
+      try { Plotly.purge(container); } catch {}
+    }
+    container.replaceChildren();
+  }
+
   const marketGrid = $('.weekly-grid');
 
   const neighborhoodCard = element('article','weekly-card neighborhood-card');
@@ -470,7 +480,7 @@
 
   // Les deux graphiques historiques restent dans leur rendu d'origine.
   function drawChart(container, weeks, kind, metric) {
-    container.replaceChildren();
+    clearPlotlyContainer(container);
     if (!weeks.length) {
       container.append(element('p','chart-empty','Aucune donnée disponible.'));
       return;
@@ -577,7 +587,7 @@
   }
 
   function drawPriceBoxplots(container,weeks,kind) {
-    container.replaceChildren();
+    clearPlotlyContainer(container);
     if(!weeks.length){
       container.append(element('p','chart-empty','Aucune donnée disponible.'));
       return;
@@ -1180,9 +1190,22 @@
     drawPriceChart();
   });
 
-  $('#price-expert-toggle')?.addEventListener('click',()=>{
+  function togglePriceExpertMode() {
     priceExpertMode=!priceExpertMode;
+    syncPriceControls();
     drawPriceChart();
+    requestAnimationFrame(()=>{
+      $('#price-expert-toggle')?.focus({preventScroll:true});
+    });
+  }
+
+  document.addEventListener('click',event=>{
+    const target=event.target instanceof Element
+      ? event.target.closest('#price-expert-toggle')
+      : null;
+    if(!target) return;
+    event.preventDefault();
+    togglePriceExpertMode();
   });
 
   syncTrendControls();
