@@ -275,4 +275,4 @@ def test_guided_search_uses_multiselect_for_equipment_and_proximity() -> None:
     assert "{value:'centre_sante_hopital',label:'Centre de santé à proximité'}" in script
     assert "{value:'marche',label:'Marché à proximité'}" in script
     assert "values.getAll('details')" in client.get("/static/app.js").text
-    assert "detailQueries" in client.get("/static/app.js").text
+    assert "detailLabels" in client.get("/static/app.js").text
