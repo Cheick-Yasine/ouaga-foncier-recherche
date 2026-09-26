@@ -386,17 +386,32 @@ def _ground_search_advice(
     }
     detected_in_answer = set(detect_neighborhoods(answer))
     neighborhood_mismatch = bool(
-        detected_in_answer
+        result_neighborhoods
+        and detected_in_answer
         and not detected_in_answer.issubset(result_neighborhoods)
     )
-    unsafe_claim = bool(
-        re.search(
-            r"(?i)\b(?:garanti(?:e|r|t)?|sécurité foncière|securite fonciere|"
-            r"bon rapport qualité[- ]prix|bon rapport qualite[- ]prix|"
-            r"en plein développement|en plein developpement|"
-            r"infrastructures? (?:en cours|en développement|en developpement))\b",
-            answer,
-        )
+    normalized_answer = " ".join(answer.casefold().split())
+    unsafe_phrases = (
+        "sécurité foncière",
+        "securite fonciere",
+        "bon rapport qualité-prix",
+        "bon rapport qualite-prix",
+        "bon rapport qualité prix",
+        "bon rapport qualite prix",
+        "en plein développement",
+        "en plein developpement",
+        "infrastructure en cours",
+        "infrastructures en cours",
+        "infrastructure en développement",
+        "infrastructures en développement",
+        "infrastructure en developpement",
+        "infrastructures en developpement",
+    )
+    unsafe_claim = any(
+        phrase in normalized_answer
+        for phrase in unsafe_phrases
+    ) or bool(
+        re.search(r"(?i)\bgaranti(?:e|r|t|s|es)?\b", answer)
     )
 
     if not neighborhood_mismatch and not unsafe_claim:
