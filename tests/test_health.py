@@ -31,7 +31,17 @@ def test_root_serves_conversational_interface() -> None:
         def handle_data(self,data):
             if self.in_th: self.columns.append(data)
     parser=Headers(); parser.feed(response.text)
-    assert parser.columns == ["Rang","Localisation","Superficie","Prix","Prix / m²","Document","Contact","Actions"]
+    assert parser.columns == [
+        "Localisation",
+        "Date de publication",
+        "Texte de publication",
+        "Superficie",
+        "Prix",
+        "Prix / m²",
+        "Document",
+        "Contact",
+        "Actions",
+    ]
     sidebar=response.text.split('<aside',1)[1].split('</aside>',1)[0]
     assert 'id="saved-list"' not in sidebar
     assert 'id="alerts-list"' not in sidebar
@@ -143,3 +153,16 @@ def test_chat_intro_has_no_top_badge_or_kicker() -> None:
     page = client.get("/").text
     assert 'chat-intro-symbol' not in page
     assert 'chat-intro-kicker' not in page
+
+
+
+def test_results_table_shows_publication_date_and_text_without_rank() -> None:
+    page = client.get("/").text
+    script = client.get("/static/app.js").text
+
+    assert "<th scope=\"col\">Rang</th>" not in page
+    assert "Date de publication" in page
+    assert "Texte de publication" in page
+    assert "publicationDateText(r.date_publication)" in script
+    assert "publicationTextCell(r)" in script
+    assert "result.description" in script
