@@ -25,7 +25,7 @@
 
   const css = document.createElement('link');
   css.rel = 'stylesheet';
-  css.href = '/static/dashboard.css?v=20260919-period-controls-1';
+  css.href = '/static/dashboard.css?v=20260926-chart-fullscreen-1';
   document.head.append(css);
 
   function areaRange(value) {
@@ -321,6 +321,121 @@
   rankingCard.append(rankingCopy,rankingChart,rankingDetail);
   neighborhoodCard.insertAdjacentElement('afterend',rankingCard);
 
+  function activeFullscreenElement() {
+    return document.fullscreenElement || document.webkitFullscreenElement || null;
+  }
+
+  function cardIsFullscreen(card) {
+    return activeFullscreenElement()===card || card.classList.contains('is-fullscreen-fallback');
+  }
+
+  function fullscreenIcon(expanded) {
+    const svg=svgElement('svg',{
+      viewBox:'0 0 24 24',
+      'aria-hidden':'true',
+      focusable:'false'
+    });
+    const path=svgElement('path',{
+      d:expanded
+        ? 'M9 3v6H3M15 3v6h6M9 21v-6H3M15 21v-6h6'
+        : 'M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5'
+    });
+    svg.append(path);
+    return svg;
+  }
+
+  function refreshFullscreenButtons() {
+    document.querySelectorAll('.chart-fullscreen-card').forEach(card=>{
+      const button=card.querySelector('.chart-fullscreen-button');
+      if(!button) return;
+      const expanded=cardIsFullscreen(card);
+      button.replaceChildren(fullscreenIcon(expanded));
+      button.setAttribute(
+        'aria-label',
+        expanded ? 'Quitter le plein écran' : 'Afficher le graphique en plein écran'
+      );
+      button.title=expanded ? 'Quitter le plein écran' : 'Plein écran';
+    });
+  }
+
+  function resizeFullscreenCharts() {
+    refreshFullscreenButtons();
+    requestAnimationFrame(()=>{
+      if(trends) scheduleNeighborhoodDraw();
+      for(const id of ['neighborhood-trend-chart','neighborhood-ranking-chart']){
+        const chart=$('#'+id);
+        if(chart?.classList.contains('js-plotly-plot') && window.Plotly?.Plots){
+          Plotly.Plots.resize(chart);
+        }
+      }
+    });
+  }
+
+  async function toggleChartFullscreen(card) {
+    const current=activeFullscreenElement();
+    if(current===card){
+      const exit=document.exitFullscreen || document.webkitExitFullscreen;
+      if(exit){
+        try { await exit.call(document); } catch {}
+      }
+      return;
+    }
+
+    if(card.classList.contains('is-fullscreen-fallback')){
+      card.classList.remove('is-fullscreen-fallback');
+      document.body.classList.remove('chart-fullscreen-open');
+      resizeFullscreenCharts();
+      return;
+    }
+
+    const request=card.requestFullscreen || card.webkitRequestFullscreen;
+    if(request){
+      try {
+        await request.call(card);
+        return;
+      } catch {}
+    }
+
+    card.classList.add('is-fullscreen-fallback');
+    document.body.classList.add('chart-fullscreen-open');
+    resizeFullscreenCharts();
+  }
+
+  function enableChartFullscreen(card,label) {
+    if(!card || card.querySelector('.chart-fullscreen-button')) return;
+    card.classList.add('chart-fullscreen-card');
+    const button=element('button','chart-fullscreen-button');
+    button.type='button';
+    button.dataset.chartFullscreen='true';
+    button.append(fullscreenIcon(false));
+    button.setAttribute('aria-label','Afficher '+label+' en plein écran');
+    button.title='Plein écran';
+    button.addEventListener('click',()=>toggleChartFullscreen(card));
+    card.prepend(button);
+  }
+
+  enableChartFullscreen(
+    $('#weekly-count-chart')?.closest('.weekly-card'),
+    'le graphique des nouvelles annonces'
+  );
+  enableChartFullscreen(
+    $('#weekly-price-chart')?.closest('.weekly-card'),
+    'le graphique du prix au mètre carré'
+  );
+  enableChartFullscreen(neighborhoodCard,'le graphique d’évolution des quartiers');
+  enableChartFullscreen(rankingCard,'le classement des quartiers');
+
+  document.addEventListener('fullscreenchange',resizeFullscreenCharts);
+  document.addEventListener('webkitfullscreenchange',resizeFullscreenCharts);
+  document.addEventListener('keydown',event=>{
+    if(event.key!=='Escape') return;
+    const fallback=document.querySelector('.chart-fullscreen-card.is-fullscreen-fallback');
+    if(!fallback) return;
+    fallback.classList.remove('is-fullscreen-fallback');
+    document.body.classList.remove('chart-fullscreen-open');
+    resizeFullscreenCharts();
+  });
+
   let market=null;
   let trends=null;
   let selectedPeriod='1m';
@@ -555,7 +670,9 @@
 
     const layout={
       autosize:true,
-      height:370,
+      height:cardIsFullscreen(container.closest('.chart-fullscreen-card'))
+        ? Math.max(480,window.innerHeight-250)
+        : 370,
       margin:{l:48,r:18,t:18,b:62},
       paper_bgcolor:'rgba(0,0,0,0)',
       plot_bgcolor:'rgba(0,0,0,0)',
@@ -683,7 +800,9 @@
 
     const layout={
       autosize:true,
-      height:330,
+      height:cardIsFullscreen(container.closest('.chart-fullscreen-card'))
+        ? Math.max(460,window.innerHeight-220)
+        : 330,
       margin:{l:110,r:24,t:16,b:46},
       paper_bgcolor:'rgba(0,0,0,0)',
       plot_bgcolor:'rgba(0,0,0,0)',
