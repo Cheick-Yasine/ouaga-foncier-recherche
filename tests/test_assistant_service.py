@@ -511,3 +511,82 @@ async def test_short_followup_is_marked_as_continuation_context():
     )
 
     assert "il s'agit d'une continuation" in client.responses.calls[0]["instructions"]
+
+
+@pytest.mark.anyio
+async def test_new_neighborhood_question_does_not_reinject_previous_budget_or_area():
+    client = FakeClient([
+        tool_response({
+            "description": "Parcelle à Gounghin",
+            "criteres_obligatoires": ["quartier", "type_bien"],
+        }),
+        text_response("Je vais vérifier les parcelles disponibles à Gounghin."),
+    ])
+    received = {}
+
+    async def execute(name, arguments):
+        received.update(arguments)
+        return {
+            "criteres": {"quartier": "Gounghin"},
+            "results": [],
+        }
+
+    await run_assistant(
+        "Et une parcelle à Gounghin est-elle disponible ?",
+        [
+            ChatMessage(
+                "user",
+                "Trouve-moi une bonne affaire : parcelle en vente. "
+                "Zones souhaitées : Boassa, Dassasgho, Ouaga 2000. "
+                "Prix entre 5000000 et 20000000 FCFA. "
+                "Superficie entre 1 et 528 m².",
+            )
+        ],
+        max_age_days=30,
+        client=client,
+        tool_executor=execute,
+        settings=Settings(openai_api_key="test"),
+    )
+
+    assert "nouvelle demande autonome" in client.responses.calls[0]["instructions"]
+    assert "Boassa" not in received["description"]
+    assert "Dassasgho" not in received["description"]
+    assert "Ouaga 2000" not in received["description"]
+    assert "5000000" not in received["description"]
+    assert "528" not in received["description"]
+    assert "Gounghin" in received["description"]
+
+
+@pytest.mark.anyio
+async def test_same_neighborhood_modifier_still_inherits_previous_budget():
+    client = FakeClient([
+        tool_response({
+            "description": "Parcelle à Saaba avec école",
+            "criteres_obligatoires": ["quartier", "proximite"],
+        }),
+        text_response("Je vérifierais les annonces avec une école à Saaba."),
+    ])
+
+    received = {}
+
+    async def execute(name, arguments):
+        received.update(arguments)
+        return {"criteres": {}, "results": []}
+
+    await run_assistant(
+        "Et avec une école à Saaba ?",
+        [
+            ChatMessage(
+                "user",
+                "Je cherche une parcelle à Saaba, budget maximum 6 millions.",
+            )
+        ],
+        max_age_days=30,
+        client=client,
+        tool_executor=execute,
+        settings=Settings(openai_api_key="test"),
+    )
+
+    assert "il s'agit d'une continuation" in client.responses.calls[0]["instructions"]
+    from app.search_engine import parse_search_description
+    assert parse_search_description(received["description"]).price_fcfa == 6_000_000

@@ -134,3 +134,33 @@ def test_explicit_new_search_resets_context_even_inside_same_conversation():
 
     assert should_inherit_previous_criteria(current) is False
     assert conversation_budget(current, history) is None
+
+
+def test_new_neighborhood_property_question_does_not_inherit_old_search():
+    history = [
+        message(
+            "user",
+            "Je cherche une parcelle à Boassa, Dassasgho et Ouaga 2000, "
+            "entre 5 et 20 millions, de 1 à 528 m².",
+        )
+    ]
+
+    current = "Et une parcelle à Gounghin est-elle disponible ?"
+
+    assert should_inherit_previous_criteria(current, history) is False
+    assert conversation_budget(current, history) is None
+    assert conversation_numeric_request(current, history, "superficie") is None
+
+
+def test_same_neighborhood_modifier_can_still_inherit_context():
+    history = [
+        message(
+            "user",
+            "Je cherche une parcelle à Saaba, budget maximum 6 millions.",
+        )
+    ]
+
+    current = "Et avec une école à Saaba ?"
+
+    assert should_inherit_previous_criteria(current, history) is True
+    assert conversation_budget(current, history) == 6_000_000

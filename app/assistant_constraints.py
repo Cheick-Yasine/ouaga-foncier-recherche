@@ -31,12 +31,28 @@ _CONTINUATION_RE = re.compile(
     r"privilegie|privilégie|voici l[’']annonce|analyse cette annonce)\b"
 )
 
+_CONTEXT_KEEP_RE = re.compile(
+    r"(?i)\b(?:garde|conserve|maintien|maintient|toujours|meme|même|"
+    r"avec le meme|avec le même|dans les memes|dans les mêmes|"
+    r"ajoute|également|egalement|aussi|en plus|parmi|compare|comparons|"
+    r"élargis|elargis|affine|réduis|reduis|change|remplace)\b"
+)
 
-def should_inherit_previous_criteria(message: str) -> bool:
-    """Vrai uniquement quand le message actuel prolonge clairement la recherche.
+_NEW_PROPERTY_REQUEST_RE = re.compile(
+    r"(?i)^(?:et\s+)?(?:je\s+(?:cherche|veux)|trouve(?:-moi)?|"
+    r"(?:une?|des)\s+(?:parcelle|terrain|maison|villa)\b)"
+)
 
-    Une nouvelle demande autonome dans la même conversation ne doit pas hériter
-    silencieusement du budget, de la surface ou de la zone de la première.
+
+def should_inherit_previous_criteria(
+    message: str,
+    history: Sequence[Any] | None = None,
+) -> bool:
+    """Décide si le message actuel prolonge réellement la recherche.
+
+    Le simple mot « et » ne suffit pas. Une question qui introduit une nouvelle
+    zone ou un nouveau bien doit pouvoir devenir une recherche autonome, même
+    dans le même fil de conversation.
     """
 
     normalized = " ".join(message.split())
@@ -44,13 +60,28 @@ def should_inherit_previous_criteria(message: str) -> bool:
         return False
     if _RESET_CONTEXT_RE.search(normalized):
         return False
+    if _CONTEXT_KEEP_RE.search(normalized):
+        return True
+
+    if _NEW_PROPERTY_REQUEST_RE.search(normalized):
+        current_neighborhoods = set(detect_neighborhoods(normalized))
+        if not current_neighborhoods:
+            return False
+        previous_neighborhoods: set[str] = set()
+        for item in reversed(history or ()):
+            if item.role != "user":
+                continue
+            previous_neighborhoods.update(detect_neighborhoods(item.content))
+        if not previous_neighborhoods or current_neighborhoods.isdisjoint(previous_neighborhoods):
+            return False
+
     return bool(_CONTINUATION_RE.search(normalized))
 
 
 def conversation_numeric_request(message: str, history: Sequence[Any], field: str):
     """Retient les critères de l'acheteur, jamais ceux d'une annonce collée."""
     sources = [message]
-    if should_inherit_previous_criteria(message):
+    if should_inherit_previous_criteria(message, history):
         sources.extend(
             item.content
             for item in reversed(history)
