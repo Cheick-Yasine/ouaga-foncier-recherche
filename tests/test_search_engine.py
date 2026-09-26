@@ -871,3 +871,41 @@ def test_multiple_documents_accept_any_selected_document() -> None:
     assert score_candidate(criteria, with_puh) is not None
     assert score_candidate(criteria, with_title) is not None
     assert score_candidate(criteria, without_selected) is None
+
+
+
+def test_multiple_selected_neighborhoods_are_balanced_in_results() -> None:
+    criteria = parse_search_description(
+        "Trouve-moi une bonne affaire : parcelle en vente. "
+        "Zones souhaitées : Saaba, Karpala. Uniquement dans ces zones."
+    )
+    candidates = [
+        *[
+            SearchCandidate(
+                identifier=f"saaba-{index}",
+                text=f"Parcelle très intéressante à Saaba numéro {index}",
+                property_type="parcelle",
+                neighborhood="Saaba",
+                price_fcfa=4_000_000 + index * 100_000,
+                area_m2=300,
+            )
+            for index in range(6)
+        ],
+        *[
+            SearchCandidate(
+                identifier=f"karpala-{index}",
+                text=f"Parcelle disponible à Karpala numéro {index}",
+                property_type="parcelle",
+                neighborhood="Karpala",
+                price_fcfa=5_000_000 + index * 100_000,
+                area_m2=300,
+            )
+            for index in range(3)
+        ],
+    ]
+
+    results = rank_candidates(criteria, candidates, limit=4)
+    neighborhoods = [result.candidate.neighborhood for result in results]
+
+    assert neighborhoods.count("Saaba") == 2
+    assert neighborhoods.count("Karpala") == 2
