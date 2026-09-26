@@ -55,3 +55,11 @@ def test_four_complete_weeks_use_publication_boundaries_and_null_prices():
     assert weeks[0]['types']['parcelle']['prix_m2']==10000
     assert weeks[-1]['types']['parcelle']['prix_m2'] is None
     assert weeks[0]['types']['maison']['prix_m2'] is None
+
+
+def test_selected_proximity_phrases_are_parsed() -> None:
+    criteria = parse_search_description(
+        "Trouve-moi une bonne affaire : parcelle en vente. "
+        "Mes priorités : proche d'une école ; proche d'un marché."
+    )
+    assert criteria.proximity == "ecole+marche"
