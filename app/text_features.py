@@ -37,6 +37,10 @@ _PROXIMITY_PATTERNS = {
         r"|\b(?:sur|au bord de|en bordure de)\s+"
         r"(?:la |le |du )?(?:route bitumee|voie bitumee|goudron|bitume)\b"
     ),
+    "marche": re.compile(
+        rf"\b{_PROXIMITY_CUE}(?:\s+\w+){0,10}\s+marche\b"
+        rf"|\bmarche(?:\s+\w+){0,6}\s+{_PROXIMITY_CUE}\b"
+    ),
 }
 _PAVED_ACCESS_PATTERN = re.compile(
     r"\b(?:accessible|acces|desservi|desservie)"
