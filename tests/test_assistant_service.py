@@ -446,3 +446,68 @@ async def test_price_range_keeps_conversational_advice_when_results_are_valid():
         "Boassa",
         "Tengandogo",
     ]
+
+
+
+@pytest.mark.anyio
+async def test_new_self_contained_question_is_marked_as_independent_context():
+    client = FakeClient([
+        tool_response({
+            "description": "Maison à Karpala",
+            "criteres_obligatoires": ["quartier", "type_bien"],
+        }),
+        text_response("Je regarderais les offres disponibles à Karpala."),
+    ])
+    received = {}
+
+    async def execute(name, arguments):
+        received.update(arguments)
+        return {"criteres": {"quartier": "Karpala"}, "results": []}
+
+    await run_assistant(
+        "Je cherche une maison à Karpala",
+        [
+            ChatMessage(
+                "user",
+                "Je cherche une parcelle à Saaba avec un budget maximum de 6 millions.",
+            )
+        ],
+        max_age_days=30,
+        client=client,
+        tool_executor=execute,
+        settings=Settings(openai_api_key="test"),
+    )
+
+    assert "nouvelle demande autonome" in client.responses.calls[0]["instructions"]
+    assert "6 millions" not in received["description"]
+    assert "Saaba" not in received["description"]
+
+
+@pytest.mark.anyio
+async def test_short_followup_is_marked_as_continuation_context():
+    client = FakeClient([
+        tool_response({
+            "description": "Parcelle à Saaba avec PUH",
+            "criteres_obligatoires": ["quartier", "prix", "statut_document"],
+        }),
+        text_response("Je privilégierais les offres avec PUH."),
+    ])
+
+    async def execute(name, arguments):
+        return {"criteres": {}, "results": []}
+
+    await run_assistant(
+        "Et avec un PUH ?",
+        [
+            ChatMessage(
+                "user",
+                "Je cherche une parcelle à Saaba avec un budget maximum de 6 millions.",
+            )
+        ],
+        max_age_days=30,
+        client=client,
+        tool_executor=execute,
+        settings=Settings(openai_api_key="test"),
+    )
+
+    assert "il s'agit d'une continuation" in client.responses.calls[0]["instructions"]
