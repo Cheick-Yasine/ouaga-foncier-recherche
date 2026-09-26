@@ -635,20 +635,20 @@ $('#deal-form').addEventListener('submit',e=>{
       '. Au moins un de ces documents.'
     );
   }
-  const detailQueries={
-    eau:'eau',
-    electricite:'électricité',
-    ecole:"proche d'une école",
-    centre_sante_hopital:"proche d'un centre de santé",
-    voie_bitumee:"proche d'une voie bitumée",
-    voie_route:"proche d'une route",
-    acces_voie_bitumee:"avec accès à une voie bitumée",
-    marche:"proche d'un marché"
+  const detailLabels={
+    eau:'Eau',
+    electricite:'Électricité',
+    ecole:'École à proximité',
+    centre_sante_hopital:'Centre de santé à proximité',
+    voie_bitumee:'Voie bitumée à proximité',
+    voie_route:'Route à proximité',
+    acces_voie_bitumee:'Accès bitumé',
+    marche:'Marché à proximité'
   };
   if(details.length){
     parts.push(
-      'Mes priorités : '+
-      details.map(value=>detailQueries[value] || value).join(' ; ')+
+      'Équipements et proximités sélectionnés : '+
+      details.map(value=>detailLabels[value] || value).join(', ')+
       '.'
     );
   }
