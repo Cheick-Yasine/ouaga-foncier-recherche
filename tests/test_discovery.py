@@ -60,6 +60,7 @@ def test_four_complete_weeks_use_publication_boundaries_and_null_prices():
 def test_selected_proximity_phrases_are_parsed() -> None:
     criteria = parse_search_description(
         "Trouve-moi une bonne affaire : parcelle en vente. "
-        "Mes priorités : proche d'une école ; proche d'un marché."
+        "Équipements et proximités sélectionnés : "
+        "École à proximité, Marché à proximité."
     )
     assert criteria.proximity == "ecole+marche"
