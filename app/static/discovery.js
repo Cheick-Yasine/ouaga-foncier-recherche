@@ -267,6 +267,8 @@
     ['2m','2 m','2 derniers mois'],
     ['3m','3 m','3 derniers mois'],
     ['1y','1 a','Dernière année'],
+    ['3y','3 a','3 dernières années'],
+    ['5y','5 a','5 dernières années'],
     ['max','Max','Toute la base']
   ];
 
@@ -307,18 +309,33 @@
   marketGrid?.insertAdjacentElement('afterend',neighborhoodCard);
 
   const rankingCard=element('article','weekly-card neighborhood-card ranking-card');
+  const rankingHeader=element('div','ranking-heading');
   const rankingCopy=element('div','neighborhood-alt-heading');
   rankingCopy.append(
     element('span','chart-kicker','Classement des quartiers'),
     element('h3','','Où se concentre le plus d’offres ?'),
-    element('p','chart-subtitle','Le classement suit la même période que la courbe.')
+    element('p','chart-subtitle','Ce classement a sa propre période et ne dépend plus du graphique précédent.')
   );
+  const rankingPeriodControl=element('div','ranking-period-control');
+  rankingPeriodControl.append(element('span','trend-control-label','Période'));
+  const rankingPeriodButtons=element('div','trend-period-buttons ranking-period-buttons');
+  periodOptions.forEach(([value,label,title])=>{
+    const button=element('button','trend-pill',label);
+    button.type='button';
+    button.dataset.rankingPeriod=value;
+    button.title=title;
+    button.setAttribute('aria-pressed',String(value==='1m'));
+    rankingPeriodButtons.append(button);
+  });
+  rankingPeriodControl.append(rankingPeriodButtons);
+  rankingHeader.append(rankingCopy,rankingPeriodControl);
+
   const rankingChart=element('div','plotly-chart plotly-ranking');
   rankingChart.id='neighborhood-ranking-chart';
   rankingChart.append(element('p','chart-empty','Chargement du classement…'));
   const rankingDetail=element('p','plot-click-detail','Cliquez sur un quartier pour afficher son détail.');
   rankingDetail.id='neighborhood-ranking-detail';
-  rankingCard.append(rankingCopy,rankingChart,rankingDetail);
+  rankingCard.append(rankingHeader,rankingChart,rankingDetail);
   neighborhoodCard.insertAdjacentElement('afterend',rankingCard);
 
   function activeFullscreenElement() {
@@ -362,7 +379,7 @@
     refreshFullscreenButtons();
     requestAnimationFrame(()=>{
       if(trends) scheduleNeighborhoodDraw();
-      for(const id of ['neighborhood-trend-chart','neighborhood-ranking-chart']){
+      for(const id of ['weekly-price-chart','neighborhood-trend-chart','neighborhood-ranking-chart']){
         const chart=$('#'+id);
         if(chart?.classList.contains('js-plotly-plot') && window.Plotly?.Plots){
           Plotly.Plots.resize(chart);
@@ -438,12 +455,18 @@
 
   let market=null;
   let trends=null;
+  let rankingTrends=null;
   let selectedPeriod='1m';
   let selectedAggregation='day';
+  let selectedRankingPeriod='1m';
   let isolatedNeighborhood=null;
   let trendLoading=null;
+  let rankingLoading=null;
   let trendRequestId=0;
+  let rankingRequestId=0;
   let drawFrame=null;
+  let priceStatistic='mean';
+  let priceExpertMode=false;
 
   // Les deux graphiques historiques restent dans leur rendu d'origine.
   function drawChart(container, weeks, kind, metric) {
@@ -453,13 +476,15 @@
       return;
     }
     const values=weeks.map(w=>w.types?.[kind]?.[metric] ?? null);
-    const price=metric==='prix_m2';
+    const price=metric.startsWith('prix_m2');
     const finite=values.filter(v=>Number.isFinite(v));
     const maximum=Math.max(...finite,1);
     const svg=svgElement('svg',{
       viewBox:'0 0 520 180',
       role:'img',
-      'aria-label':price?'Évolution du prix moyen annoncé par mètre carré.':'Nombre d’annonces publiées par semaine.'
+      'aria-label':price
+        ? 'Évolution du prix '+(priceStatistic==='median'?'médian':'moyen')+' annoncé par mètre carré.'
+        : 'Nombre d’annonces publiées par semaine.'
     });
 
     for(const ratio of [0,0.5,1]){
@@ -501,7 +526,15 @@
 
     container.append(svg);
     const dates=element('div','chart-weeks');
-    const detail=element('p','chart-detail',price?'Prix demandés, en FCFA par m².':'Une annonce est comptée selon sa date de publication.');
+    const detail=element(
+      'p',
+      'chart-detail',
+      price
+        ? (priceStatistic==='median'
+            ? 'Médiane des prix demandés, en FCFA par m².'
+            : 'Moyenne des prix demandés, en FCFA par m².')
+        : 'Une annonce est comptée selon sa date de publication.'
+    );
     detail.setAttribute('aria-live','polite');
 
     weeks.forEach((week,index)=>{
@@ -529,10 +562,118 @@
     if(!finite.length) detail.textContent='Aucun prix au m² calculable sur ces semaines.';
   }
 
-  function currentNeighborhoodData() {
-    if(!trends) return null;
+  function syncPriceControls() {
+    const mean=$('#price-stat-mean');
+    const medianButton=$('#price-stat-median');
+    const expert=$('#price-expert-toggle');
+    if(!mean || !medianButton || !expert) return;
+
+    mean.setAttribute('aria-pressed',String(priceStatistic==='mean'));
+    medianButton.setAttribute('aria-pressed',String(priceStatistic==='median'));
+    expert.setAttribute('aria-pressed',String(priceExpertMode));
+    expert.textContent=priceExpertMode ? 'Quitter le mode expert' : 'Mode expert';
+    mean.disabled=priceExpertMode;
+    medianButton.disabled=priceExpertMode;
+  }
+
+  function drawPriceBoxplots(container,weeks,kind) {
+    container.replaceChildren();
+    if(!weeks.length){
+      container.append(element('p','chart-empty','Aucune donnée disponible.'));
+      return;
+    }
+    if(!plotlyReady(container)) return;
+
+    const x=[];
+    const y=[];
+    weeks.forEach(week=>{
+      const label=shortDate(week.debut)+' – '+shortDate(week.fin);
+      const values=week.types?.[kind]?.prix_m2_values || [];
+      values.forEach(value=>{
+        if(!Number.isFinite(value)) return;
+        x.push(label);
+        y.push(value);
+      });
+    });
+
+    if(!y.length){
+      container.replaceChildren(
+        element('p','chart-empty','Aucune distribution de prix au m² disponible.')
+      );
+      return;
+    }
+
+    const theme=plotTheme();
+    const trace={
+      type:'box',
+      x,
+      y,
+      name:'Prix / m²',
+      boxmean:true,
+      boxpoints:'outliers',
+      marker:{color:'#2563eb',size:5,opacity:0.65},
+      line:{color:'#2563eb',width:1.8},
+      fillcolor:'rgba(37,99,235,0.12)',
+      hovertemplate:
+        '<b>%{x}</b><br>%{y:,.0f} FCFA/m²<extra></extra>'
+    };
+    const layout={
+      autosize:true,
+      height:cardIsFullscreen(container.closest('.chart-fullscreen-card'))
+        ? Math.max(480,window.innerHeight-230)
+        : 360,
+      margin:{l:74,r:22,t:24,b:72},
+      paper_bgcolor:'rgba(0,0,0,0)',
+      plot_bgcolor:'rgba(0,0,0,0)',
+      font:{family:'Manrope, sans-serif',color:theme.text,size:12},
+      showlegend:false,
+      xaxis:{
+        title:{text:'Semaine',font:{size:11}},
+        tickfont:{color:theme.muted,size:10},
+        automargin:true
+      },
+      yaxis:{
+        title:{text:'FCFA / m²',font:{size:11}},
+        gridcolor:theme.grid,
+        zeroline:false,
+        tickfont:{color:theme.muted,size:10},
+        rangemode:'tozero'
+      },
+      uirevision:'price-box-'+kind
+    };
+
+    Plotly.react(container,[trace],layout,plotConfig());
+    const note=element(
+      'p',
+      'chart-detail expert-chart-detail',
+      'Mode expert : chaque boîte montre la distribution des prix au m². '+
+      'La ligne centrale est la médiane ; le repère de moyenne est aussi affiché.'
+    );
+    container.append(note);
+  }
+
+  function drawPriceChart() {
+    if(!market) return;
     const kind=$('#weekly-property').value;
-    const typeData=trends.types?.[kind];
+    const container=$('#weekly-price-chart');
+    if(!container) return;
+    syncPriceControls();
+    if(priceExpertMode){
+      drawPriceBoxplots(container,market.semaines || [],kind);
+      return;
+    }
+    drawChart(
+      container,
+      market.semaines || [],
+      kind,
+      priceStatistic==='median' ? 'prix_m2_mediane' : 'prix_m2_moyen'
+    );
+  }
+
+  function currentNeighborhoodData(source=trends) {
+    if(!source) return null;
+    const kind=$('#weekly-property').value;
+    const typeData=source.types?.[kind];
     return {
       kind,
       typeData,
@@ -548,6 +689,8 @@
       '2m':'2 derniers mois',
       '3m':'3 derniers mois',
       '1y':'dernière année',
+      '3y':'3 dernières années',
+      '5y':'5 dernières années',
       'max':'toute la base'
     })[value] || value;
   }
@@ -578,6 +721,15 @@
       button.setAttribute(
         'aria-pressed',
         String(button.dataset.aggregation===selectedAggregation)
+      );
+    });
+  }
+
+  function syncRankingControls() {
+    rankingPeriodButtons.querySelectorAll('[data-ranking-period]').forEach(button=>{
+      button.setAttribute(
+        'aria-pressed',
+        String(button.dataset.rankingPeriod===selectedRankingPeriod)
       );
     });
   }
@@ -753,7 +905,7 @@
     const detail=$('#neighborhood-ranking-detail');
     if(!container) return;
 
-    const data=currentNeighborhoodData();
+    const data=currentNeighborhoodData(rankingTrends);
     if(!data){
       container.replaceChildren(
         element('p','chart-empty','Chargement du classement…')
@@ -827,7 +979,7 @@
         automargin:true
       },
       uirevision:
-        'ranking-'+selectedPeriod+'-'+selectedAggregation+'-'+data.kind
+        'ranking-'+selectedRankingPeriod+'-'+data.kind
     };
 
     Plotly.react(container,[trace],layout,plotConfig()).then(()=>{
@@ -846,12 +998,14 @@
     });
 
     detail.textContent=
-      'Classement du '+longDate(trends.debut)+' au '+
-      longDate(trends.fin)+' · '+aggregationLabel(selectedAggregation)+'.';
+      'Classement du '+longDate(rankingTrends.debut)+' au '+
+      longDate(rankingTrends.fin)+' · '+
+      periodLabel(selectedRankingPeriod)+'.';
   }
 
   function drawNeighborhoodViews() {
     syncTrendControls();
+    syncRankingControls();
     drawNeighborhoodTrend();
     drawNeighborhoodRanking();
   }
@@ -873,12 +1027,7 @@
       kind,
       'annonces'
     );
-    drawChart(
-      $('#weekly-price-chart'),
-      market.semaines || [],
-      kind,
-      'prix_m2'
-    );
+    drawPriceChart();
     isolatedNeighborhood=null;
     scheduleNeighborhoodDraw();
   }
@@ -895,16 +1044,14 @@
       aggregation:selectedAggregation
     });
 
-    for(const id of [
-      'neighborhood-trend-chart',
-      'neighborhood-ranking-chart'
-    ]){
-      const container=$('#'+id);
-      if(container && !container.classList.contains('js-plotly-plot')){
-        container.replaceChildren(
-          element('p','chart-empty','Chargement des quartiers…')
-        );
-      }
+    const trendContainer=$('#neighborhood-trend-chart');
+    if(
+      trendContainer
+      && !trendContainer.classList.contains('js-plotly-plot')
+    ){
+      trendContainer.replaceChildren(
+        element('p','chart-empty','Chargement des quartiers…')
+      );
     }
 
     const request=fetch(
@@ -923,25 +1070,68 @@
       })
       .catch(()=>{
         if(requestId!==trendRequestId) return;
-        for(const id of [
-          'neighborhood-trend-chart',
-          'neighborhood-ranking-chart'
-        ]){
-          const container=$('#'+id);
-          container?.replaceChildren(
-            element(
-              'p',
-              'chart-empty',
-              'Les données par quartier ne sont pas disponibles pour le moment.'
-            )
-          );
-        }
+        $('#neighborhood-trend-chart')?.replaceChildren(
+          element(
+            'p',
+            'chart-empty',
+            'Les données par quartier ne sont pas disponibles pour le moment.'
+          )
+        );
       })
       .finally(()=>{
         if(requestId===trendRequestId) trendLoading=null;
       });
 
     trendLoading=request;
+    return request;
+  }
+
+  async function loadNeighborhoodRanking(force=false) {
+    if(rankingTrends && !force){
+      scheduleNeighborhoodDraw();
+      return;
+    }
+
+    const requestId=++rankingRequestId;
+    const params=new URLSearchParams({
+      period:selectedRankingPeriod,
+      aggregation:'week'
+    });
+    const container=$('#neighborhood-ranking-chart');
+    if(container && !container.classList.contains('js-plotly-plot')){
+      container.replaceChildren(
+        element('p','chart-empty','Chargement du classement…')
+      );
+    }
+
+    const request=fetch(
+      '/market/neighborhood-trends?'+params.toString(),
+      {cache:'no-store'}
+    )
+      .then(response=>{
+        if(!response.ok) throw Error();
+        return response.json();
+      })
+      .then(data=>{
+        if(requestId!==rankingRequestId) return;
+        rankingTrends=data;
+        scheduleNeighborhoodDraw();
+      })
+      .catch(()=>{
+        if(requestId!==rankingRequestId) return;
+        container?.replaceChildren(
+          element(
+            'p',
+            'chart-empty',
+            'Le classement des quartiers n’est pas disponible pour le moment.'
+          )
+        );
+      })
+      .finally(()=>{
+        if(requestId===rankingRequestId) rankingLoading=null;
+      });
+
+    rankingLoading=request;
     return request;
   }
 
@@ -968,10 +1158,38 @@
     loadNeighborhoodTrends(true);
   });
 
+  rankingPeriodButtons.addEventListener('click',event=>{
+    const button=event.target.closest('[data-ranking-period]');
+    if(!button) return;
+    selectedRankingPeriod=button.dataset.rankingPeriod;
+    syncRankingControls();
+    loadNeighborhoodRanking(true);
+  });
+
+  $('#price-stat-mean')?.addEventListener('click',()=>{
+    if(priceExpertMode) return;
+    priceStatistic='mean';
+    drawPriceChart();
+  });
+
+  $('#price-stat-median')?.addEventListener('click',()=>{
+    if(priceExpertMode) return;
+    priceStatistic='median';
+    drawPriceChart();
+  });
+
+  $('#price-expert-toggle')?.addEventListener('click',()=>{
+    priceExpertMode=!priceExpertMode;
+    drawPriceChart();
+  });
+
   syncTrendControls();
+  syncRankingControls();
+  syncPriceControls();
 
   const observer=new MutationObserver(()=>{
-    if(trends) scheduleNeighborhoodDraw();
+    if(trends || rankingTrends) scheduleNeighborhoodDraw();
+    if(market && priceExpertMode) drawPriceChart();
   });
   observer.observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
 
@@ -1391,10 +1609,12 @@
       market=stats;
       renderStats();
       loadNeighborhoodTrends();
+      loadNeighborhoodRanking();
     },
     clearStats(){
       market=null;
       trends=null;
+      rankingTrends=null;
       for(const id of ['weekly-count-chart','weekly-price-chart','neighborhood-trend-chart','neighborhood-ranking-chart']){
         $('#'+id)?.replaceChildren(element('p','chart-empty','Données indisponibles.'));
       }
