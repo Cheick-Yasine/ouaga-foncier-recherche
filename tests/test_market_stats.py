@@ -136,3 +136,73 @@ def test_neighborhood_week_aggregation_groups_selected_period() -> None:
     assert trends["periode"] == "14d"
     assert sum(point["annonces"] for point in points) == 6
     assert all(point["debut"] <= point["fin"] for point in points)
+
+
+
+def test_weekly_market_exposes_mean_median_and_values_for_expert_mode() -> None:
+    now = datetime(2026, 9, 6, 12, tzinfo=timezone.utc)
+    rows = [
+        SearchCandidate(
+            identifier=f"row-{index}",
+            text="Parcelle en vente à Karpala",
+            neighborhood="Karpala",
+            property_type="parcelle",
+            price_fcfa=price,
+            area_m2=100,
+            publication_label=(now - timedelta(days=8)).isoformat(),
+        )
+        for index, price in enumerate((1_000_000, 2_000_000, 9_000_000))
+    ]
+
+    stats = summarize_market(rows, now=now)
+    populated = next(
+        week["types"]["tous"]
+        for week in stats["semaines"]
+        if week["types"]["tous"]["prix_renseignes"]
+    )
+
+    assert populated["prix_m2_moyen"] == 40_000
+    assert populated["prix_m2_mediane"] == 20_000
+    assert populated["prix_m2_values"] == [10_000, 20_000, 90_000]
+    assert populated["prix_m2"] == populated["prix_m2_moyen"]
+
+
+def test_neighborhood_periods_accept_three_and_five_year_windows() -> None:
+    now = datetime(2026, 9, 19, 12, tzinfo=timezone.utc)
+    rows = [
+        SearchCandidate(
+            identifier="recent",
+            text="Parcelle en vente à Saaba",
+            neighborhood="Saaba",
+            property_type="parcelle",
+            publication_label=(now - timedelta(days=700)).isoformat(),
+        ),
+        SearchCandidate(
+            identifier="older",
+            text="Parcelle en vente à Karpala",
+            neighborhood="Karpala",
+            property_type="parcelle",
+            publication_label=(now - timedelta(days=1400)).isoformat(),
+        ),
+    ]
+
+    three_years = neighborhood_trends(
+        rows,
+        now=now,
+        period="3y",
+        aggregation="week",
+    )
+    five_years = neighborhood_trends(
+        rows,
+        now=now,
+        period="5y",
+        aggregation="week",
+    )
+
+    assert three_years["periode"] == "3y"
+    assert [item["nom"] for item in three_years["types"]["tous"]["quartiers"]] == ["Saaba"]
+    assert five_years["periode"] == "5y"
+    assert {item["nom"] for item in five_years["types"]["tous"]["quartiers"]} == {
+        "Saaba",
+        "Karpala",
+    }

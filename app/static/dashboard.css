@@ -184,3 +184,232 @@
     font-size:10px;
   }
 }
+
+
+/* Plein écran pour les graphiques du marché. */
+.chart-fullscreen-card {
+  position:relative;
+}
+
+.chart-fullscreen-card > .chart-kicker,
+.chart-fullscreen-card > h3,
+.neighborhood-heading,
+.neighborhood-alt-heading {
+  padding-right:44px;
+}
+
+.chart-fullscreen-button {
+  position:absolute;
+  top:16px;
+  right:16px;
+  z-index:8;
+  width:34px;
+  height:34px;
+  display:grid;
+  place-items:center;
+  padding:0;
+  border:1px solid var(--line);
+  border-radius:10px;
+  background:color-mix(in srgb,var(--surface) 94%,transparent);
+  color:var(--muted);
+  cursor:pointer;
+  box-shadow:0 4px 14px #10264b0a;
+  transition:background .15s ease,color .15s ease,border-color .15s ease;
+}
+
+.chart-fullscreen-button:hover,
+.chart-fullscreen-button:focus-visible {
+  color:var(--blue);
+  border-color:color-mix(in srgb,var(--blue) 35%,var(--line));
+  background:var(--blue-soft);
+}
+
+.chart-fullscreen-button svg {
+  width:17px;
+  height:17px;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.8;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+
+.chart-fullscreen-card:fullscreen,
+.chart-fullscreen-card.is-fullscreen-fallback {
+  box-sizing:border-box;
+  width:100vw;
+  height:100vh;
+  max-width:none;
+  max-height:none;
+  margin:0 !important;
+  padding:28px 34px 24px;
+  border:0;
+  border-radius:0;
+  background:var(--surface);
+  overflow:auto;
+}
+
+.chart-fullscreen-card:fullscreen {
+  position:fixed;
+  inset:0;
+}
+
+.chart-fullscreen-card.is-fullscreen-fallback {
+  position:fixed;
+  inset:0;
+  z-index:1000;
+}
+
+body.chart-fullscreen-open {
+  overflow:hidden;
+}
+
+.chart-fullscreen-card:fullscreen .chart-fullscreen-button,
+.chart-fullscreen-card.is-fullscreen-fallback .chart-fullscreen-button {
+  top:22px;
+  right:24px;
+}
+
+.chart-fullscreen-card:fullscreen #weekly-count-chart svg,
+.chart-fullscreen-card:fullscreen #weekly-price-chart svg,
+.chart-fullscreen-card.is-fullscreen-fallback #weekly-count-chart svg,
+.chart-fullscreen-card.is-fullscreen-fallback #weekly-price-chart svg {
+  width:100%;
+  height:min(62vh,640px);
+}
+
+.chart-fullscreen-card:fullscreen .chart-weeks,
+.chart-fullscreen-card.is-fullscreen-fallback .chart-weeks {
+  max-width:1050px;
+  margin:8px auto 0;
+}
+
+.chart-fullscreen-card:fullscreen .plotly-chart,
+.chart-fullscreen-card.is-fullscreen-fallback .plotly-chart {
+  min-height:calc(100vh - 260px);
+}
+
+.chart-fullscreen-card:fullscreen .plot-click-detail,
+.chart-fullscreen-card.is-fullscreen-fallback .plot-click-detail {
+  max-width:1100px;
+}
+
+@media(max-width:700px) {
+  .chart-fullscreen-button {
+    top:10px;
+    right:10px;
+    width:32px;
+    height:32px;
+  }
+
+  .chart-fullscreen-card:fullscreen,
+  .chart-fullscreen-card.is-fullscreen-fallback {
+    padding:18px 14px 20px;
+  }
+
+  .chart-fullscreen-card:fullscreen #weekly-count-chart svg,
+  .chart-fullscreen-card:fullscreen #weekly-price-chart svg,
+  .chart-fullscreen-card.is-fullscreen-fallback #weekly-count-chart svg,
+  .chart-fullscreen-card.is-fullscreen-fallback #weekly-price-chart svg {
+    height:min(54vh,520px);
+  }
+}
+
+
+/* Contrôles indépendants du graphique de prix et du classement. */
+.price-chart-toolbar,
+.ranking-heading {
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:16px;
+}
+
+.price-chart-toolbar {
+  margin:-4px 0 14px;
+}
+
+.price-stat-control {
+  display:flex;
+  gap:5px;
+  padding:3px;
+  border:1px solid var(--line);
+  border-radius:10px;
+  background:var(--surface-2);
+}
+
+.price-stat-control .trend-pill[aria-pressed="true"] {
+  color:white;
+  border-color:var(--blue);
+  background:var(--blue);
+}
+
+.price-stat-control .trend-pill:disabled {
+  cursor:not-allowed;
+  opacity:.45;
+}
+
+.expert-mode-button {
+  padding:8px 11px;
+  border:1px solid var(--line);
+  border-radius:9px;
+  background:var(--surface);
+  color:var(--ink);
+  font:inherit;
+  font-size:11px;
+  font-weight:700;
+  cursor:pointer;
+}
+
+.expert-mode-button:hover {
+  color:var(--blue);
+  border-color:color-mix(in srgb,var(--blue) 32%,var(--line));
+  background:var(--blue-soft);
+}
+
+.expert-mode-button[aria-pressed="true"] {
+  color:white;
+  border-color:var(--blue);
+  background:var(--blue);
+}
+
+.ranking-heading {
+  align-items:flex-start;
+  margin-bottom:10px;
+}
+
+.ranking-period-control {
+  display:grid;
+  gap:7px;
+  justify-items:end;
+  flex:0 0 auto;
+}
+
+.ranking-period-buttons {
+  justify-content:flex-end;
+  max-width:470px;
+}
+
+.expert-chart-detail {
+  margin-top:8px;
+}
+
+.price-chart-card .js-plotly-plot {
+  width:100%;
+}
+
+@media(max-width:900px) {
+  .ranking-heading,
+  .price-chart-toolbar {
+    align-items:flex-start;
+    flex-direction:column;
+  }
+
+  .ranking-period-control {
+    justify-items:start;
+  }
+
+  .ranking-period-buttons {
+    justify-content:flex-start;
+  }
+}

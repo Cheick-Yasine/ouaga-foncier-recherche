@@ -4,7 +4,7 @@ from __future__ import annotations
 from collections import Counter
 from datetime import datetime, timedelta, timezone
 import re
-from statistics import fmean
+from statistics import fmean, median
 from typing import Iterable
 
 from app.listing_scope import market_scope_eligible, sale_eligible
@@ -88,8 +88,22 @@ def weekly_market(candidates, start):
         by_type = {}
         for kind in ('tous', 'parcelle', 'terrain', 'maison'):
             selected = rows if kind == 'tous' else [c for c in rows if c.property_type == kind]
-            prices = [p for c in selected if (p := price_per_square_metre(c)) is not None]
-            by_type[kind] = {'annonces': len(selected), 'prix_m2': round(fmean(prices), 2) if prices else None, 'prix_renseignes': len(prices)}
+            prices = [
+                p
+                for c in selected
+                if (p := price_per_square_metre(c)) is not None
+            ]
+            mean_price = round(fmean(prices), 2) if prices else None
+            median_price = round(median(prices), 2) if prices else None
+            by_type[kind] = {
+                'annonces': len(selected),
+                # Compatibilité avec le rendu historique : prix_m2 reste la moyenne.
+                'prix_m2': mean_price,
+                'prix_m2_moyen': mean_price,
+                'prix_m2_mediane': median_price,
+                'prix_m2_values': [round(value, 2) for value in prices],
+                'prix_renseignes': len(prices),
+            }
         weeks.append({'debut': begin.date().isoformat(), 'fin': (end-timedelta(days=1)).date().isoformat(), 'types': by_type})
     return weeks
 
@@ -159,6 +173,8 @@ def neighborhood_trends(
         "2m": 60,
         "3m": 90,
         "1y": 365,
+        "3y": 365 * 3,
+        "5y": 365 * 5,
         "max": None,
     }
     if period is not None and period not in period_days:
