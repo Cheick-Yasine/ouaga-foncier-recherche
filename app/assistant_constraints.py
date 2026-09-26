@@ -20,7 +20,8 @@ _RESET_CONTEXT_RE = re.compile(
 )
 
 _CONTINUATION_RE = re.compile(
-    r"(?i)^(?:mais|et|alors|donc)\b|"
+    r"(?i)^(?:mais|et|alors|donc|avec|sans|plus|moins|pres|près|proche|"
+    r"autour|dans|sur|pour)\b|"
     r"\b(?:garde|conserve|toujours|meme|même|reste|seulement|uniquement|"
     r"finalement|plutot|plutôt|change|remplace|ajoute|retire|supprime|oublie|"
     r"elargis|élargis|affine|reduis|réduis|augmente|baisse|"
