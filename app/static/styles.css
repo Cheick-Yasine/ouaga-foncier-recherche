@@ -543,7 +543,7 @@ h1 span {
 .comparison-table {
   border-collapse:collapse;
   width:100%;
-  min-width:980px;
+  min-width:1420px;
   text-align:left;
   font-size:.875rem
 }
@@ -586,6 +586,55 @@ h1 span {
   font-weight:400;
   white-space:nowrap;
   color:#536781
+}
+.publication-date {
+  min-width:116px;
+  white-space:nowrap;
+  color:var(--muted);
+  font-size:.8rem
+}
+.publication-text-cell {
+  width:320px;
+  max-width:360px !important;
+  min-width:280px
+}
+.publication-text,
+.publication-summary,
+.publication-full {
+  margin:0;
+  line-height:1.55;
+  overflow-wrap:anywhere
+}
+.publication-text,
+.publication-summary {
+  color:var(--ink);
+  font-size:.8rem
+}
+.publication-details {
+  max-width:340px
+}
+.publication-summary {
+  cursor:pointer;
+  list-style-position:outside
+}
+.publication-summary:hover {
+  color:var(--blue)
+}
+.publication-full {
+  margin-top:.65rem;
+  padding:.65rem .75rem;
+  border-left:2px solid var(--line);
+  background:var(--surface-2);
+  color:var(--muted);
+  font-size:.77rem
+}
+.publication-empty {
+  color:var(--muted);
+  font-size:.78rem;
+  font-style:italic
+}
+.location-cell {
+  min-width:130px
 }
 .rank-badge {
   display:inline-grid;
