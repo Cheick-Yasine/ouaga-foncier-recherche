@@ -223,7 +223,10 @@ function contactCell(r) {
 }
 let contactsRequest = null;
 function redrawContacts() {
-  messages.querySelectorAll('tr[data-result-id]').forEach(row=>row.children[6].replaceWith(contactCell({id:row.dataset.resultId})));
+  messages.querySelectorAll('tr[data-result-id]').forEach(row=>{
+    const cell=row.querySelector('.contact-cell');
+    if(cell) cell.replaceWith(contactCell({id:row.dataset.resultId}));
+  });
 }
 async function refreshContacts() {
   redrawContacts();
@@ -294,7 +297,7 @@ function resultTable(results) {
       el('td','unit-price',unitPrice(r))
     );
 
-    const documentCell=el('td','',label(r.document || r.statut_document));
+    const documentCell=el('td','document-cell',label(r.document || r.statut_document));
     if(r.qualite?.document_etat && r.qualite.document_etat!=='non_precise'){
       documentCell.append(
         el('small','document-status',r.qualite.document_libelle)
