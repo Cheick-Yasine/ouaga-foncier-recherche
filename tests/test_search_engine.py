@@ -909,3 +909,54 @@ def test_multiple_selected_neighborhoods_are_balanced_in_results() -> None:
 
     assert neighborhoods.count("Saaba") == 2
     assert neighborhoods.count("Karpala") == 2
+
+
+
+def test_multi_neighborhood_results_are_displayed_by_price_per_square_metre() -> None:
+    criteria = parse_search_description(
+        "Trouve-moi une bonne affaire : parcelle en vente. "
+        "Zones souhaitées : Saaba, Karpala. Uniquement dans ces zones."
+    )
+    candidates = [
+        SearchCandidate(
+            identifier="saaba-expensive-unit",
+            text="Parcelle à Saaba",
+            property_type="parcelle",
+            neighborhood="Saaba",
+            price_fcfa=6_000_000,
+            area_m2=300,
+        ),
+        SearchCandidate(
+            identifier="karpala-cheap-unit",
+            text="Parcelle à Karpala",
+            property_type="parcelle",
+            neighborhood="Karpala",
+            price_fcfa=7_000_000,
+            area_m2=500,
+        ),
+        SearchCandidate(
+            identifier="saaba-cheapest-unit",
+            text="Grande parcelle à Saaba",
+            property_type="parcelle",
+            neighborhood="Saaba",
+            price_fcfa=8_000_000,
+            area_m2=800,
+        ),
+        SearchCandidate(
+            identifier="karpala-missing-area",
+            text="Parcelle à Karpala",
+            property_type="parcelle",
+            neighborhood="Karpala",
+            price_fcfa=3_000_000,
+            area_m2=None,
+        ),
+    ]
+
+    results = rank_candidates(criteria, candidates, limit=4)
+
+    assert [result.candidate.identifier for result in results] == [
+        "saaba-cheapest-unit",
+        "karpala-cheap-unit",
+        "saaba-expensive-unit",
+        "karpala-missing-area",
+    ]
