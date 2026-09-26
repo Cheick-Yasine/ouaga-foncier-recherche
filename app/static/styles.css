@@ -1666,7 +1666,7 @@ select,.modal,.modal input,.comparison-shell,.assistant-composer,.secondary-butt
   background:var(--blue-soft);
   outline:none
 }
-#deal-zone-values,#deal-document-values{display:none}
+#deal-zone-values,#deal-document-values,#deal-details-values{display:none}
 
 @media(max-width:600px){
   .range-panel-heading{align-items:flex-start;flex-direction:column;gap:4px}

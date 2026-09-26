@@ -591,7 +591,9 @@ $('#deal-form').addEventListener('submit',e=>{
   e.preventDefault();
   const values=new FormData(e.currentTarget);
   const zones=values.getAll('zones').map(value=>String(value).trim()).filter(Boolean);
-  const details=String(values.get('details') || '').trim();
+  const details=values.getAll('details')
+    .map(value=>String(value).trim())
+    .filter(Boolean);
   const documents=values.getAll('documents')
     .map(value=>String(value).trim())
     .filter(Boolean);
@@ -633,7 +635,23 @@ $('#deal-form').addEventListener('submit',e=>{
       '. Au moins un de ces documents.'
     );
   }
-  if(details) parts.push('Mes priorités : '+details+'.');
+  const detailLabels={
+    eau:'Eau',
+    electricite:'Électricité',
+    ecole:'École à proximité',
+    centre_sante_hopital:'Centre de santé à proximité',
+    voie_bitumee:'Voie bitumée à proximité',
+    voie_route:'Route à proximité',
+    acces_voie_bitumee:'Accès bitumé',
+    marche:'Marché à proximité'
+  };
+  if(details.length){
+    parts.push(
+      'Équipements et proximités sélectionnés : '+
+      details.map(value=>detailLabels[value] || value).join(', ')+
+      '.'
+    );
+  }
 
   $('#deal-dialog').close();
   startConversation();

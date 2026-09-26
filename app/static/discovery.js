@@ -1481,6 +1481,127 @@
     },120);
   });
 
+  const detailOptions=[
+    {value:'eau',label:'Eau'},
+    {value:'electricite',label:'Électricité'},
+    {value:'ecole',label:'École à proximité'},
+    {value:'centre_sante_hopital',label:'Centre de santé à proximité'},
+    {value:'voie_bitumee',label:'Voie bitumée à proximité'},
+    {value:'voie_route',label:'Route à proximité'},
+    {value:'acces_voie_bitumee',label:'Accès bitumé'},
+    {value:'marche',label:'Marché à proximité'}
+  ];
+  const detailSearch=$('#deal-details-search');
+  const detailMenu=$('#deal-details-menu');
+  const detailChips=$('#deal-details-chips');
+  const detailValues=$('#deal-details-values');
+  const selectedDetails=[];
+
+  function syncDetailValues() {
+    detailValues.replaceChildren();
+    for(const item of selectedDetails){
+      const hidden=document.createElement('input');
+      hidden.type='hidden';
+      hidden.name='details';
+      hidden.value=item.value;
+      detailValues.append(hidden);
+    }
+    $('#details-status').textContent=selectedDetails.length
+      ? selectedDetails.length+' équipement'+(selectedDetails.length>1?'s/proximités':'/proximité')+' sélectionné'+(selectedDetails.length>1?'s':'')+'.'
+      : 'Aucun équipement ou proximité sélectionné : sans préférence.';
+  }
+
+  function renderDetailChips() {
+    detailChips.querySelectorAll('.multi-chip').forEach(node=>node.remove());
+    selectedDetails.forEach(item=>{
+      const chip=element('span','multi-chip');
+      chip.append(document.createTextNode(item.label));
+      const remove=element('button','multi-chip-remove','×');
+      remove.type='button';
+      remove.setAttribute('aria-label','Retirer '+item.label);
+      remove.addEventListener('click',()=>{
+        const index=selectedDetails.findIndex(
+          selected=>selected.value===item.value
+        );
+        if(index>=0) selectedDetails.splice(index,1);
+        renderDetailChips();
+        renderDetailMenu();
+        detailSearch.focus();
+      });
+      chip.append(remove);
+      detailChips.insertBefore(chip,detailSearch);
+    });
+    syncDetailValues();
+  }
+
+  function matchingDetails() {
+    const query=fold(detailSearch.value.trim());
+    return detailOptions
+      .filter(item=>!selectedDetails.some(
+        selected=>selected.value===item.value
+      ))
+      .filter(item=>!query || fold(item.label).includes(query))
+      .slice(0,30);
+  }
+
+  function addDetail(item) {
+    if(!item || selectedDetails.some(
+      selected=>selected.value===item.value
+    )) return;
+    selectedDetails.push(item);
+    detailSearch.value='';
+    renderDetailChips();
+    renderDetailMenu();
+  }
+
+  function renderDetailMenu() {
+    detailMenu.replaceChildren();
+    const matches=matchingDetails();
+    for(const item of matches){
+      const option=element('button','deal-multiselect-option',item.label);
+      option.type='button';
+      option.setAttribute('role','option');
+      option.setAttribute('aria-selected','false');
+      option.addEventListener('mousedown',event=>event.preventDefault());
+      option.addEventListener('click',()=>addDetail(item));
+      detailMenu.append(option);
+    }
+    detailMenu.hidden=!(
+      document.activeElement===detailSearch && matches.length
+    );
+    detailSearch.setAttribute(
+      'aria-expanded',
+      String(!detailMenu.hidden)
+    );
+  }
+
+  detailSearch.addEventListener('focus',renderDetailMenu);
+  detailSearch.addEventListener('input',renderDetailMenu);
+  detailSearch.addEventListener('keydown',event=>{
+    if(event.key==='Enter'){
+      event.preventDefault();
+      const first=matchingDetails()[0];
+      if(first) addDetail(first);
+    } else if(
+      event.key==='Backspace'
+      && !detailSearch.value
+      && selectedDetails.length
+    ){
+      selectedDetails.pop();
+      renderDetailChips();
+      renderDetailMenu();
+    } else if(event.key==='Escape'){
+      detailMenu.hidden=true;
+      detailSearch.setAttribute('aria-expanded','false');
+    }
+  });
+  detailSearch.addEventListener('blur',()=>{
+    setTimeout(()=>{
+      detailMenu.hidden=true;
+      detailSearch.setAttribute('aria-expanded','false');
+    },120);
+  });
+
   let neighborhoods=null;
   let loading=null;
   const zoneSearch=$('#deal-zone-search');
@@ -1614,6 +1735,11 @@
   });
 
   function resetDealControls() {
+    selectedDetails.splice(0,selectedDetails.length);
+    detailSearch.value='';
+    renderDetailChips();
+    detailMenu.hidden=true;
+
     selectedZones.splice(0,selectedZones.length);
     zoneSearch.value='';
     renderZoneChips();

@@ -65,6 +65,26 @@ _GOOD_DEAL_MARKERS = (
     "bons deals",
 )
 
+_SELECTED_DETAIL_ALIASES = {
+    "eau": "eau",
+    "electricite": "electricite",
+    "ecole": "ecole",
+    "ecole a proximite": "ecole",
+    "centre de sante": "centre_sante_hopital",
+    "centre de sante a proximite": "centre_sante_hopital",
+    "voie bitumee": "voie_bitumee",
+    "voie bitumee a proximite": "voie_bitumee",
+    "route": "voie_route",
+    "route a proximite": "voie_route",
+    "acces bitume": "acces_voie_bitumee",
+    "marche": "marche",
+    "marche a proximite": "marche",
+}
+
+_SELECTED_DETAILS_RE = re.compile(
+    r"(?i)\béquipements?\s+et\s+proximités?\s+sélectionné[s]?\s*:\s*([^\.\n]+)"
+)
+
 
 @dataclass(frozen=True)
 class SearchCriteria:
@@ -327,8 +347,43 @@ def parse_search_description(description: str) -> SearchCriteria:
         )
     )
 
-    proximity = extract_proximity_details(description)
+    selected_details_match = _SELECTED_DETAILS_RE.search(description)
+    selected_details: tuple[str, ...] = ()
+    if selected_details_match:
+        detected_details = []
+        for raw_detail in re.split(
+            r"\s*,\s*|\s*;\s*",
+            selected_details_match.group(1),
+        ):
+            canonical = _SELECTED_DETAIL_ALIASES.get(
+                normalize_text(raw_detail)
+            )
+            if canonical and canonical not in detected_details:
+                detected_details.append(canonical)
+        selected_details = tuple(detected_details)
+
+    if selected_details:
+        proximity_values = tuple(
+            value
+            for value in selected_details
+            if value not in {"eau", "electricite"}
+        )
+        proximity = "+".join(sorted(proximity_values)) or "non_precisee"
+    else:
+        proximity = extract_proximity_details(description)
+
     viability = extract_viability(description)
+    if selected_details:
+        has_water = "eau" in selected_details
+        has_electricity = "electricite" in selected_details
+        if has_water and has_electricity:
+            viability = "eau_et_electricite"
+        elif has_water:
+            viability = "eau"
+        elif has_electricity:
+            viability = "electricite"
+        else:
+            viability = "non_precisee"
     document_match = re.search(
         r"(?i)\bdocuments?\s+souhait[eé]s?\s*:\s*([^\.\n]+)",
         description,

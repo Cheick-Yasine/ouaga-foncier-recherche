@@ -256,3 +256,23 @@ def test_price_expert_toggle_purges_plotly_and_keeps_toggle_delegated() -> None:
     assert ".chart-fullscreen-card:fullscreen #weekly-price-chart > svg" in css
     assert ".js-plotly-plot .plotly .modebar-btn svg" in css
     assert "max-width:16px !important" in css
+
+
+def test_guided_search_uses_multiselect_for_equipment_and_proximity() -> None:
+    page = client.get("/").text
+    script = client.get("/static/discovery.js").text
+
+    assert 'id="deal-details-select"' in page
+    assert 'id="deal-details-search"' in page
+    assert 'id="deal-details-menu"' in page
+    assert 'id="deal-details-values"' in page
+    assert 'name="details"' not in page
+    assert "const selectedDetails=[]" in script
+    assert "const detailOptions=[" in script
+    assert "{value:'eau',label:'Eau'}" in script
+    assert "{value:'electricite',label:'Électricité'}" in script
+    assert "{value:'ecole',label:'École à proximité'}" in script
+    assert "{value:'centre_sante_hopital',label:'Centre de santé à proximité'}" in script
+    assert "{value:'marche',label:'Marché à proximité'}" in script
+    assert "values.getAll('details')" in client.get("/static/app.js").text
+    assert "detailLabels" in client.get("/static/app.js").text
