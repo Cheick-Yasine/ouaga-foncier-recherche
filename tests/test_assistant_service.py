@@ -446,3 +446,57 @@ async def test_price_range_keeps_conversational_advice_when_results_are_valid():
         "Boassa",
         "Tengandogo",
     ]
+
+
+
+@pytest.mark.anyio
+async def test_search_advice_cannot_recommend_neighborhood_absent_from_results():
+    client = FakeClient([
+        tool_response({
+            "description": "Parcelle à Ouagadougou",
+            "criteres_obligatoires": [],
+        }),
+        text_response(
+            "Je te conseille Kouba car le quartier offre un bon rapport qualité-prix "
+            "et est en plein développement. Cela garantit un certain niveau de sécurité foncière."
+        ),
+    ])
+
+    async def execute(name, arguments):
+        return {
+            "criteres": {"quartier": None},
+            "results": [{
+                "id": "kamboinsin-1",
+                "quartier": "Kamboinsin",
+                "type_bien": "parcelle",
+                "prix_fcfa": 260_000_000,
+                "prix_m2_fcfa": 11_818.18,
+                "superficie_m2": 22_000,
+                "document": "puh",
+                "statut_document": "puh",
+                "qualite": {
+                    "informations_completes": False,
+                    "document": "puh",
+                    "document_etat": "mentionne",
+                    "vigilances": [
+                        "Eau et électricité non précisées",
+                        "Proximités non précisées",
+                    ],
+                },
+            }],
+        }
+
+    outcome = await run_assistant(
+        "Je cherche une parcelle à Ouagadougou",
+        [],
+        max_age_days=30,
+        client=client,
+        tool_executor=execute,
+        settings=Settings(openai_api_key="test"),
+    )
+
+    assert "Kouba" not in outcome.answer
+    assert "Kamboinsin" in outcome.answer
+    assert "11 818" in outcome.answer
+    assert "sécurité foncière" not in outcome.answer.casefold()
+    assert "à vérifier" in outcome.answer or "à confirmer" in outcome.answer
