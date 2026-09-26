@@ -9,11 +9,11 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/styles.css?v=20260926-table-publication-2">
+  <link rel="stylesheet" href="/static/styles.css?v=20260926-equip-proximity-1">
   <script src="/static/waiting.js?v=20260906-waiting-1" defer></script>
   <script src="https://cdn.plot.ly/plotly-4.0.0.min.js" charset="utf-8" defer></script>
-  <script src="/static/discovery.js?v=20260926-expert-toggle-2" defer></script>
-  <script src="/static/app.js?v=20260926-contact-column-fix-1" defer></script>
+  <script src="/static/discovery.js?v=20260926-equip-proximity-1" defer></script>
+  <script src="/static/app.js?v=20260926-equip-proximity-1" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#assistant-input">Aller à la conversation</a>
@@ -239,7 +239,16 @@
   <input id="deal-area-max-value" name="area_max" type="hidden" value="">
 </div>
 
-<label class="deal-wide">Équipements et proximités<textarea name="details" maxlength="1000" placeholder="Ex. eau, électricité, école, voie bitumée à proximité…"></textarea></label>
+<label class="deal-wide">Équipements et proximités
+<div id="deal-details-select" class="deal-multiselect">
+  <div id="deal-details-chips" class="deal-multiselect-input">
+    <input id="deal-details-search" type="search" autocomplete="off" placeholder="Rechercher puis sélectionner un équipement ou une proximité…" aria-label="Rechercher un équipement ou une proximité" aria-controls="deal-details-menu" aria-expanded="false">
+  </div>
+  <div id="deal-details-menu" class="deal-multiselect-menu" role="listbox" aria-multiselectable="true" hidden></div>
+  <div id="deal-details-values"></div>
+</div>
+<small id="details-status" class="field-note" role="status">Aucun équipement ou proximité sélectionné : sans préférence.</small>
+</label>
 </div>
 <label class="deal-nearby"><input name="nearby" type="checkbox"> Inclure aussi les zones proches des quartiers sélectionnés</label>
 <button type="submit" class="primary-button">Trouver des offres</button></form></dialog>
