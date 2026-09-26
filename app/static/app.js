@@ -76,6 +76,34 @@ function startConversation() {
   closeSidebar();
 }
 function dateText(date) { const d = new Date(date); return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('fr-FR', {day:'numeric',month:'short'}); }
+function publicationDateText(date) {
+  if (!date) return 'Non précisée';
+  const d = new Date(date);
+  return Number.isNaN(d.getTime())
+    ? String(date)
+    : d.toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'});
+}
+function publicationTextCell(result) {
+  const cell=el('td','publication-text-cell');
+  const text=String(result.description || '').trim();
+  if(!text){
+    cell.append(el('span','publication-empty','Texte non disponible'));
+    return cell;
+  }
+  const excerpt=text.length>170 ? text.slice(0,167).trimEnd()+'…' : text;
+  if(text.length<=170){
+    const paragraph=el('p','publication-text',text);
+    paragraph.title=text;
+    cell.append(paragraph);
+    return cell;
+  }
+  const details=el('details','publication-details');
+  const summary=el('summary','publication-summary',excerpt);
+  const full=el('p','publication-full',text);
+  details.append(summary,full);
+  cell.append(details);
+  return cell;
+}
 function isSaved(id) { return read('saved').some(x => x.id === id); }
 function requireLogin(action, message) {
   if (currentUser) { action(); return; }
@@ -233,23 +261,58 @@ function formattedReply(text) {
   return box;
 }
 function resultTable(results) {
-  const fragment = $('#comparison-template').content.cloneNode(true), body = fragment.querySelector('tbody');
-  results.forEach((r,i) => {
-    const row = el('tr'); row.dataset.resultId = r.id;
-    const values = [i+1,r.quartier || 'Non précisée',area(r.superficie_m2),number(r.prix_fcfa,' FCFA'),unitPrice(r),label(r.document || r.statut_document)];
-    values.forEach((value,j) => { const td = el('td',j===3 ? 'money' : j===4 ? 'unit-price' : ''); if (j===0) td.append(el('span','rank-badge',value)); else td.textContent=value;
-      if (j===1 && r.comparaison_annonce) {
-        const relation=r.comparaison_annonce;
-        td.append(el('small','location-distance',relation.distance_libelle));
-        if (!relation.meme_quartier && safeUrl(relation.carte_url)) {
-          const link=el('a','location-map','Voir sur la carte'); link.href=safeUrl(relation.carte_url); link.target='_blank'; link.rel='noopener noreferrer';
-          link.setAttribute('aria-label','Voir '+(r.quartier || 'ce quartier')+' sur la carte (nouvel onglet)'); td.append(link);
-        }
+  const fragment=$('#comparison-template').content.cloneNode(true);
+  const body=fragment.querySelector('tbody');
+
+  results.forEach(r=>{
+    const row=el('tr');
+    row.dataset.resultId=r.id;
+
+    const locationCell=el('td','location-cell',r.quartier || 'Non précisée');
+    if(r.comparaison_annonce){
+      const relation=r.comparaison_annonce;
+      locationCell.append(el('small','location-distance',relation.distance_libelle));
+      if(!relation.meme_quartier && safeUrl(relation.carte_url)){
+        const link=el('a','location-map','Voir sur la carte');
+        link.href=safeUrl(relation.carte_url);
+        link.target='_blank';
+        link.rel='noopener noreferrer';
+        link.setAttribute(
+          'aria-label',
+          'Voir '+(r.quartier || 'ce quartier')+' sur la carte (nouvel onglet)'
+        );
+        locationCell.append(link);
       }
-      if (j===5 && r.qualite?.document_etat && r.qualite.document_etat !== 'non_precise') td.append(el('small','document-status',r.qualite.document_libelle)); row.append(td); });
-    row.append(contactCell(r)); const cell=el('td'), actions=el('div','table-actions');
-    actions.append(sourceLink(r),saveButton(r)); cell.append(actions); row.append(cell); body.append(row);
+    }
+    row.append(locationCell);
+
+    row.append(
+      el('td','publication-date',publicationDateText(r.date_publication)),
+      publicationTextCell(r),
+      el('td','',area(r.superficie_m2)),
+      el('td','money',number(r.prix_fcfa,' FCFA')),
+      el('td','unit-price',unitPrice(r))
+    );
+
+    const documentCell=el('td','',label(r.document || r.statut_document));
+    if(r.qualite?.document_etat && r.qualite.document_etat!=='non_precise'){
+      documentCell.append(
+        el('small','document-status',r.qualite.document_libelle)
+      );
+    }
+    row.append(documentCell);
+
+    row.append(contactCell(r));
+
+    const actionCell=el('td');
+    const actions=el('div','table-actions');
+    actions.append(sourceLink(r),saveButton(r));
+    actionCell.append(actions);
+    row.append(actionCell);
+
+    body.append(row);
   });
+
   return fragment;
 }
 function appendMessage(entry) {
