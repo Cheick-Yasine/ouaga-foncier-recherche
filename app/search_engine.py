@@ -824,6 +824,91 @@ def _recommendation_priority(criteria: SearchCriteria, result: RankedResult, qua
     )
 
 
+def balance_neighborhood_results(
+    criteria: SearchCriteria,
+    results: Iterable[RankedResult],
+    *,
+    limit: int,
+) -> list[RankedResult]:
+    """Répartit les résultats entre les quartiers explicitement sélectionnés.
+
+    Le classement interne de chaque quartier est conservé. Quand plusieurs
+    quartiers sont demandés, on alterne entre eux afin qu'un quartier très
+    fourni ne monopolise pas tout le tableau. Les zones non sélectionnées
+    peuvent seulement compléter la liste lorsque la recherche n'est pas stricte.
+    """
+
+    ordered = list(results)
+    if limit <= 0:
+        return []
+
+    requested = tuple(dict.fromkeys(_requested_neighborhoods(criteria)))
+    if len(requested) < 2:
+        return ordered[:limit]
+
+    normalized_requested = [
+        (name, normalize_text(name))
+        for name in requested
+    ]
+    buckets: dict[str, list[RankedResult]] = {
+        normalized: []
+        for _, normalized in normalized_requested
+    }
+    leftovers: list[RankedResult] = []
+
+    for result in ordered:
+        candidate_name = normalize_text(result.candidate.neighborhood or "")
+        matched = next(
+            (
+                normalized
+                for _, normalized in normalized_requested
+                if candidate_name == normalized
+            ),
+            None,
+        )
+        if matched is None:
+            leftovers.append(result)
+        else:
+            buckets[matched].append(result)
+
+    selected: list[RankedResult] = []
+    used_ids: set[str] = set()
+    offsets = {normalized: 0 for _, normalized in normalized_requested}
+
+    while len(selected) < limit:
+        progressed = False
+        for _, normalized in normalized_requested:
+            bucket = buckets[normalized]
+            offset = offsets[normalized]
+            if offset >= len(bucket):
+                continue
+            result = bucket[offset]
+            offsets[normalized] += 1
+            progressed = True
+            if result.candidate.identifier in used_ids:
+                continue
+            selected.append(result)
+            used_ids.add(result.candidate.identifier)
+            if len(selected) >= limit:
+                break
+        if not progressed:
+            break
+
+    for result in ordered:
+        if len(selected) >= limit:
+            break
+        if result.candidate.identifier in used_ids:
+            continue
+        if criteria.neighborhoods_strict:
+            candidate_name = normalize_text(result.candidate.neighborhood or "")
+            if candidate_name not in buckets:
+                continue
+        selected.append(result)
+        used_ids.add(result.candidate.identifier)
+
+    return selected[:limit]
+
+
 def rank_candidates(
     criteria: SearchCriteria,
     candidates: Iterable[SearchCandidate],
@@ -855,5 +940,12 @@ def rank_candidates(
             or "Informations limitées : documents et équipements à préciser",
         )) for result in results]
 
-    results.sort(key=lambda result: _recommendation_priority(criteria, result, qualities[result.candidate.identifier]), reverse=True)
-    return results[:limit]
+    results.sort(
+        key=lambda result: _recommendation_priority(
+            criteria,
+            result,
+            qualities[result.candidate.identifier],
+        ),
+        reverse=True,
+    )
+    return balance_neighborhood_results(criteria, results, limit=limit)
