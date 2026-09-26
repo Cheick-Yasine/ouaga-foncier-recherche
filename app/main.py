@@ -39,6 +39,17 @@ app.include_router(auth_router)
 app.include_router(announcement_router)
 app.include_router(market_router)
 
+
+@app.middleware("http")
+async def prevent_stale_static_assets(request, call_next):
+    """Évite de mélanger un nouvel index.html avec un ancien JS/CSS en cache."""
+    response = await call_next(request)
+    if request.url.path.startswith("/static/"):
+        response.headers["Cache-Control"] = "no-store, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+    return response
+
+
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
