@@ -383,3 +383,66 @@ async def test_natural_price_range_never_returns_offer_outside_range():
     assert outcome.results == []
     assert "aucune annonce entre 1 000 000 FCFA et 2 000 000 FCFA" in outcome.answer
 
+
+
+
+@pytest.mark.anyio
+async def test_price_range_keeps_conversational_advice_when_results_are_valid():
+    client = FakeClient([
+        tool_response({
+            "description": "Parcelle à Boassa et Tengandogo entre 4 et 20 millions",
+            "criteres_obligatoires": ["prix"],
+        }),
+        text_response(
+            "Je regarderais d'abord l'offre la mieux documentée, même si elle n'est "
+            "pas la moins chère. Dans cette sélection, le vrai point faible est "
+            "l'absence de document précisé sur plusieurs annonces. Je vérifierais "
+            "donc le document avant de comparer seulement les prix."
+        ),
+    ])
+
+    async def execute(name, arguments):
+        return {
+            "criteres": {
+                "quartiers": ["Boassa", "Tengandogo"],
+                "prix_min_fcfa": 4_000_000,
+                "prix_max_fcfa": 20_000_000,
+            },
+            "results": [
+                {
+                    "id": "boassa-1",
+                    "quartier": "Boassa",
+                    "type_bien": "parcelle",
+                    "prix_fcfa": 12_000_000,
+                    "superficie_m2": 300,
+                    "document": "non_precise",
+                },
+                {
+                    "id": "tengandogo-1",
+                    "quartier": "Tengandogo",
+                    "type_bien": "parcelle",
+                    "prix_fcfa": 10_000_000,
+                    "superficie_m2": 300,
+                    "document": "puh",
+                },
+            ],
+        }
+
+    outcome = await run_assistant(
+        "Trouve-moi une bonne affaire : parcelle en vente. "
+        "Zones souhaitées : Boassa, Tengandogo. "
+        "Prix entre 4000000 et 20000000 FCFA.",
+        [],
+        max_age_days=30,
+        client=client,
+        tool_executor=execute,
+        settings=Settings(openai_api_key="test"),
+    )
+
+    assert "Je regarderais d'abord" in outcome.answer
+    assert "le vrai point faible" in outcome.answer
+    assert "J’ai trouvé 2 offres dans cette fourchette" not in outcome.answer
+    assert [row["quartier"] for row in outcome.results] == [
+        "Boassa",
+        "Tengandogo",
+    ]

@@ -830,12 +830,12 @@ def balance_neighborhood_results(
     *,
     limit: int,
 ) -> list[RankedResult]:
-    """Répartit les résultats entre les quartiers explicitement sélectionnés.
+    """Garantit les quartiers choisis puis affiche les offres par prix au m².
 
-    Le classement interne de chaque quartier est conservé. Quand plusieurs
-    quartiers sont demandés, on alterne entre eux afin qu'un quartier très
-    fourni ne monopolise pas tout le tableau. Les zones non sélectionnées
-    peuvent seulement compléter la liste lorsque la recherche n'est pas stricte.
+    La sélection reste équilibrée pour qu'un quartier très fourni ne fasse pas
+    disparaître les autres quartiers demandés. Une fois les offres retenues,
+    leur ordre d'affichage est global : prix au m² croissant, indépendamment du
+    quartier. Les annonces sans prix au m² vérifiable sont placées à la fin.
     """
 
     ordered = list(results)
@@ -906,7 +906,20 @@ def balance_neighborhood_results(
         selected.append(result)
         used_ids.add(result.candidate.identifier)
 
-    return selected[:limit]
+    selected = selected[:limit]
+    selected.sort(
+        key=lambda result: (
+            price_per_square_metre(result.candidate) is None,
+            price_per_square_metre(result.candidate)
+            if price_per_square_metre(result.candidate) is not None
+            else float("inf"),
+            result.candidate.price_fcfa
+            if result.candidate.price_fcfa is not None
+            else float("inf"),
+            -result.score,
+        )
+    )
+    return selected
 
 
 def rank_candidates(

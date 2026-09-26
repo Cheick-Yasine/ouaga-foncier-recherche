@@ -143,8 +143,12 @@ promesse générale de bonne affaire ou une connaissance supposée des prix loca
 S'il n'y a aucune offre complète, dis ce qui manque et propose une piste utile,
 sans présenter une annonce incomplète comme une recommandation. S'il n'y a aucun
 résultat dans le budget, dis-le clairement et conseille un autre quartier ou une
-surface plus petite, sans augmenter le budget de toi-même. Ne pose pas de
-question avant de proposer : l'utilisateur peut affiner ensuite.
+surface plus petite, sans augmenter le budget de toi-même. Si une fourchette de
+prix est demandée et que des offres existent, ne te contente jamais d'annoncer
+un nombre de résultats ou le prix de la première : donne d'abord ton avis de
+conseiller sur ce que tu regarderais, le compromis principal et la prochaine
+vérification utile. Ne pose pas de question avant de proposer : l'utilisateur
+peut affiner ensuite.
 Aucune liste d'annonces, aucun récapitulatif des critères, aucun tableau Markdown,
 aucun nombre de résultats, aucune formule creuse. Ne répète pas les détails de la
 carte ni tous ses atouts ; le texte apporte ton conseil et la raison de ton choix.
@@ -396,18 +400,11 @@ def _ground_price_search_answer(
                 )
             return grounded, []
 
-        first = in_range[0]
-        grounded = (
-            f"J’ai trouvé {len(in_range)} offre"
-            f"{'s' if len(in_range) > 1 else ''} dans cette fourchette. "
-            f"La première est à {_format_fcfa(first.get('prix_fcfa'))}"
-        )
-        if first.get("quartier"):
-            grounded += f" à {first['quartier']}"
-        grounded += "."
-        if link_requested:
-            grounded += " Le bouton « Voir » ci-dessous ouvre la publication Facebook réelle."
-        return grounded, in_range
+        # Les résultats ont déjà été bornés par la fourchette réelle.
+        # Conserver ici la réponse du LLM permet de garder l'avis et le conseil
+        # conversationnels demandés par l'interface, au lieu de les remplacer
+        # par une phrase mécanique du type « J'ai trouvé N offres ».
+        return answer, in_range
 
     target = price_request.price_fcfa
     if target is None:
