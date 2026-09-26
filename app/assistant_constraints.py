@@ -12,9 +12,50 @@ from app.listing_scope import city_only_request
 from app.neighborhoods import detect_neighborhoods, detect_out_of_scope_locality
 
 
+_RESET_CONTEXT_RE = re.compile(
+    r"(?i)\b(?:nouvelle recherche|autre recherche|nouveau projet|autre projet|"
+    r"independamment|indépendamment|repars de zero|repars de zéro|"
+    r"oublie (?:tout|la recherche precedente|la recherche précédente)|"
+    r"ne tiens pas compte de (?:la recherche|ce que j'ai dit avant))\b"
+)
+
+_CONTINUATION_RE = re.compile(
+    r"(?i)^(?:mais|et|alors|donc)\b|"
+    r"\b(?:garde|conserve|toujours|meme|même|reste|seulement|uniquement|"
+    r"finalement|plutot|plutôt|change|remplace|ajoute|retire|supprime|oublie|"
+    r"elargis|élargis|affine|reduis|réduis|augmente|baisse|"
+    r"mon budget|ma superficie|ce quartier|cette zone|ces criteres|ces critères|"
+    r"ces annonces|cette annonce|celle-ci|celui-ci|la premiere|la première|"
+    r"la deuxieme|la deuxième|compare|comparons|parmi|priorite|priorité|"
+    r"privilegie|privilégie|voici l[’']annonce|analyse cette annonce)\b"
+)
+
+
+def should_inherit_previous_criteria(message: str) -> bool:
+    """Vrai uniquement quand le message actuel prolonge clairement la recherche.
+
+    Une nouvelle demande autonome dans la même conversation ne doit pas hériter
+    silencieusement du budget, de la surface ou de la zone de la première.
+    """
+
+    normalized = " ".join(message.split())
+    if not normalized:
+        return False
+    if _RESET_CONTEXT_RE.search(normalized):
+        return False
+    return bool(_CONTINUATION_RE.search(normalized))
+
+
 def conversation_numeric_request(message: str, history: Sequence[Any], field: str):
     """Retient les critères de l'acheteur, jamais ceux d'une annonce collée."""
-    for source in [message, *(item.content for item in reversed(history) if item.role == 'user')]:
+    sources = [message]
+    if should_inherit_previous_criteria(message):
+        sources.extend(
+            item.content
+            for item in reversed(history)
+            if item.role == 'user'
+        )
+    for source in sources:
         own = re.split(r"(?i)(?:voici\s+l[’'](?:annonce|publication)|(?:annonce|publication)\s*(?:à analyser)?)\s*:", source, maxsplit=1)[0]
         if field == 'prix' and re.search(r'\bsans (?:budget|plafond|limite)|\b(?:retire|enleve|supprime|oublie).{0,20}(?:budget|prix|plafond)', normalize_text(own)):
             return None
@@ -72,7 +113,14 @@ def area_description(description: str, criteria) -> str:
 
 
 def conversation_city_only(message: str, history: Sequence[Any]) -> bool:
-    for source in [message, *(item.content for item in reversed(history) if item.role == 'user')]:
+    sources = [message]
+    if should_inherit_previous_criteria(message):
+        sources.extend(
+            item.content
+            for item in reversed(history)
+            if item.role == 'user'
+        )
+    for source in sources:
         own_text = re.split(r"(?i)(?:voici\s+l[’'](?:annonce|publication)|(?:annonce|publication)\s*(?:à analyser)?)\s*:", source, maxsplit=1)[0]
         if detect_neighborhoods(own_text) or detect_out_of_scope_locality(own_text):
             return city_only_request(own_text)
@@ -103,7 +151,13 @@ def conversation_budget(message: str, history: Sequence[Any]) -> float | None:
     Les réponses du modèle et les montants d'une publication introduite par
     « Voici l'annonce : » ne définissent pas le budget de l'acheteur.
     """
-    sources = [message, *(item.content for item in reversed(history) if item.role == 'user')]
+    sources = [message]
+    if should_inherit_previous_criteria(message):
+        sources.extend(
+            item.content
+            for item in reversed(history)
+            if item.role == 'user'
+        )
     for source in sources:
         own_text = re.split(r"(?i)(?:voici\s+l[’'](?:annonce|publication)|(?:annonce|publication)\s*(?:à analyser)?)\s*:", source, maxsplit=1)[0]
         if re.search(r"\b(?:sans (?:limite de budget|plafond|budget maximum)|(?:retire|enleve|supprime|oublie).{0,20}(?:limite|plafond|budget))\b", normalize_text(own_text)):
