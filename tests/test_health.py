@@ -175,3 +175,19 @@ def test_static_assets_are_not_served_from_stale_browser_cache() -> None:
         assert response.status_code == 200
         assert response.headers["cache-control"] == "no-store, max-age=0"
         assert response.headers["pragma"] == "no-cache"
+
+
+
+def test_market_charts_can_enter_fullscreen() -> None:
+    script = client.get("/static/discovery.js").text
+    dashboard = client.get("/static/dashboard.css").text
+
+    assert "enableChartFullscreen(" in script
+    assert "$('#weekly-count-chart')?.closest('.weekly-card')" in script
+    assert "$('#weekly-price-chart')?.closest('.weekly-card')" in script
+    assert "enableChartFullscreen(neighborhoodCard" in script
+    assert "enableChartFullscreen(rankingCard" in script
+    assert "card.requestFullscreen || card.webkitRequestFullscreen" in script
+    assert "document.addEventListener('fullscreenchange'" in script
+    assert ".chart-fullscreen-card:fullscreen" in dashboard
+    assert ".chart-fullscreen-card.is-fullscreen-fallback" in dashboard
