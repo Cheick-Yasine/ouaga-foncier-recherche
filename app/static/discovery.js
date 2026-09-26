@@ -590,7 +590,7 @@
       const label=shortDate(week.debut)+' – '+shortDate(week.fin);
       const values=week.types?.[kind]?.prix_m2_values || [];
       values.forEach(value=>{
-        if(!Number.isFinite(value)) return;
+        if(!Number.isFinite(value) || value<=0) return;
         x.push(label);
         y.push(value);
       });
@@ -610,44 +610,46 @@
       y,
       name:'Prix / m²',
       boxmean:true,
-      boxpoints:'outliers',
-      marker:{color:'#2563eb',size:5,opacity:0.65},
-      line:{color:'#2563eb',width:1.8},
-      fillcolor:'rgba(37,99,235,0.12)',
-      hovertemplate:
-        '<b>%{x}</b><br>%{y:,.0f} FCFA/m²<extra></extra>'
+      boxpoints:false,
+      quartilemethod:'linear',
+      hoveron:'boxes',
+      marker:{color:'#2563eb'},
+      line:{color:'#2563eb',width:2},
+      fillcolor:'rgba(37,99,235,0.14)'
     };
     const layout={
       autosize:true,
       height:cardIsFullscreen(container.closest('.chart-fullscreen-card'))
-        ? Math.max(480,window.innerHeight-230)
-        : 360,
-      margin:{l:74,r:22,t:24,b:72},
+        ? Math.max(520,window.innerHeight-230)
+        : 390,
+      margin:{l:82,r:22,t:28,b:76},
       paper_bgcolor:'rgba(0,0,0,0)',
       plot_bgcolor:'rgba(0,0,0,0)',
       font:{family:'Manrope, sans-serif',color:theme.text,size:12},
       showlegend:false,
+      boxgap:0.38,
       xaxis:{
         title:{text:'Semaine',font:{size:11}},
         tickfont:{color:theme.muted,size:10},
         automargin:true
       },
       yaxis:{
-        title:{text:'FCFA / m²',font:{size:11}},
+        type:'log',
+        title:{text:'FCFA / m² · échelle logarithmique',font:{size:11}},
         gridcolor:theme.grid,
         zeroline:false,
         tickfont:{color:theme.muted,size:10},
-        rangemode:'tozero'
+        tickformat:'~s'
       },
-      uirevision:'price-box-'+kind
+      uirevision:'price-box-log-'+kind
     };
 
     Plotly.react(container,[trace],layout,plotConfig());
     const note=element(
       'p',
       'chart-detail expert-chart-detail',
-      'Mode expert : chaque boîte montre la distribution des prix au m². '+
-      'La ligne centrale est la médiane ; le repère de moyenne est aussi affiché.'
+      'Mode expert : les valeurs extrêmes sont masquées pour garder les boîtes lisibles. '+
+      'L’axe vertical est logarithmique ; la ligne centrale est la médiane et le repère de moyenne reste affiché.'
     );
     container.append(note);
   }
