@@ -17,6 +17,7 @@ from openai import AsyncOpenAI
 from app.config import Settings, get_settings
 from app.assistant_constraints import conversation_budget, budget_description, respect_search_budget, conversation_city_only, respect_search_scope, conversation_numeric_request, target_price_description, price_range_description, area_description
 from app.semantic_filter import sanitize_external_text
+from app.neighborhoods import detect_neighborhoods
 
 
 LOGGER = logging.getLogger("uvicorn.error")
@@ -140,6 +141,11 @@ puis donne un conseil concret adapté aux informations disponibles. Relie ensuit
 cet avis à l'offre retenue : explique pourquoi elle mérite d'être regardée ou quel
 compromis elle demande. Appuie ton avis sur les résultats réels, pas sur une
 promesse générale de bonne affaire ou une connaissance supposée des prix locaux.
+Ne conseille jamais un quartier qui n'apparaît pas dans les résultats retournés.
+Ne dis jamais qu'un quartier est « en développement », qu'il a un « bon rapport
+qualité-prix » ou que des infrastructures y sont en cours sans donnée explicite
+de l'outil. Un document seulement mentionné ne garantit jamais une sécurité
+foncière : dis toujours que sa disponibilité et son authenticité restent à vérifier.
 S'il n'y a aucune offre complète, dis ce qui manque et propose une piste utile,
 sans présenter une annonce incomplète comme une recommandation. S'il n'y a aucun
 résultat dans le budget, dis-le clairement et conseille un autre quartier ou une
@@ -341,6 +347,111 @@ def _format_fcfa(value: Any) -> str:
     return f"{amount:,}".replace(",", " ") + " FCFA"
 
 
+
+def _friendly_document_label(value: Any) -> str | None:
+    if not isinstance(value, str) or not value.strip():
+        return None
+    normalized = value.strip().casefold()
+    labels = {
+        "puh": "PUH",
+        "apfr": "APFR",
+        "titre_foncier": "titre foncier",
+        "attestation_possession": "attestation de possession",
+        "attestation_attribution": "attestation d’attribution",
+        "fiche_attribution": "fiche d’attribution",
+        "acte_vente": "acte de vente",
+    }
+    return labels.get(normalized, value.replace("_", " "))
+
+
+def _ground_search_advice(
+    answer: str,
+    results: list[dict[str, Any]],
+    criteria: dict[str, Any],
+) -> str:
+    """Empêche un conseil de citer un autre quartier ou d'inventer un avantage.
+
+    Le LLM reste libre d'être conversationnel tant qu'il s'appuie sur les
+    résultats. En cas de contradiction visible, on produit un conseil court à
+    partir des champs structurés réellement affichés dans le tableau.
+    """
+
+    if not results:
+        return answer
+
+    result_neighborhoods = {
+        str(row.get("quartier")).strip()
+        for row in results
+        if row.get("quartier")
+    }
+    detected_in_answer = set(detect_neighborhoods(answer))
+    neighborhood_mismatch = bool(
+        detected_in_answer
+        and not detected_in_answer.issubset(result_neighborhoods)
+    )
+    unsafe_claim = bool(
+        re.search(
+            r"(?i)\b(?:garanti(?:e|r|t)?|sécurité foncière|securite fonciere|"
+            r"bon rapport qualité[- ]prix|bon rapport qualite[- ]prix|"
+            r"en plein développement|en plein developpement|"
+            r"infrastructures? (?:en cours|en développement|en developpement))\b",
+            answer,
+        )
+    )
+
+    if not neighborhood_mismatch and not unsafe_claim:
+        return answer
+
+    first = results[0]
+    neighborhood = first.get("quartier")
+    price_m2 = first.get("prix_m2_fcfa")
+    quality = first.get("qualite") if isinstance(first.get("qualite"), dict) else {}
+    document = _friendly_document_label(
+        first.get("document") or first.get("statut_document")
+    )
+    complete = bool(quality.get("informations_completes"))
+
+    lead = "Parmi les annonces réellement trouvées"
+    if neighborhood:
+        lead += f", je regarderais d’abord celle de {neighborhood}"
+    else:
+        lead += ", je regarderais d’abord la première offre du tableau"
+
+    details: list[str] = []
+    try:
+        numeric_price_m2 = float(price_m2)
+    except (TypeError, ValueError):
+        numeric_price_m2 = 0.0
+    if numeric_price_m2 > 0:
+        details.append(
+            f"son prix est d’environ {_format_fcfa(numeric_price_m2)}/m²"
+        )
+    if document:
+        details.append(f"un {document} est mentionné")
+
+    if details:
+        lead += " parce que " + " et ".join(details)
+    lead += "."
+
+    if complete:
+        caution = (
+            "Je vérifierais quand même le document et la localisation exacte avant "
+            "toute décision, car l’annonce ne constitue pas une vérification foncière."
+        )
+    else:
+        caution = (
+            "Je ne la considérerais pas encore comme une offre suffisamment sécurisée : "
+            "certaines informations utiles restent à confirmer, notamment le document, "
+            "l’eau, l’électricité ou les proximités selon ce qui manque dans l’annonce."
+        )
+
+    advice = (
+        "Avant d’aller plus loin, je comparerais les autres offres sur le prix au m² "
+        "et je vérifierais d’abord les pièces annoncées plutôt que de me fier au seul prix."
+    )
+    return f"{lead} {caution} {advice}"
+
+
 def _ground_price_search_answer(
     message: str,
     answer: str,
@@ -523,12 +634,18 @@ async def run_assistant(
             answer = (response.output_text or "").strip()
             if not answer:
                 answer = "Je n'ai pas pu préparer une réponse. Reformulez votre demande."
-            if mcp_used and latest_mode == "recherche" and price_request is not None:
-                answer, latest_results = _ground_price_search_answer(
-                    message,
+            if mcp_used and latest_mode == "recherche":
+                if price_request is not None:
+                    answer, latest_results = _ground_price_search_answer(
+                        message,
+                        answer,
+                        latest_results,
+                        price_request,
+                    )
+                answer = _ground_search_advice(
                     answer,
                     latest_results,
-                    price_request,
+                    latest_criteria,
                 )
             return AssistantOutcome(
                 answer=answer,
