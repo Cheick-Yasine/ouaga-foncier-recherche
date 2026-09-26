@@ -13,6 +13,7 @@ from app.config import get_settings
 from app.database import DatabaseNotConfiguredError
 from app.public_references import public_announcement_id
 from app.search_engine import (
+    balance_neighborhood_results,
     parse_search_description,
     price_per_square_metre,
     rank_candidates,
@@ -178,12 +179,35 @@ def rechercher_annonces(
     ranked = rank_candidates(criteria, candidates, limit=local_limit)
     if utiliser_filtre_llm:
         semantic = apply_semantic_filter(criteria, ranked, settings=settings)
-        selected = semantic.results[:safe_limit]
+        semantic_ids = {
+            result.candidate.identifier
+            for result in semantic.results
+        }
+        # Le filtre sémantique reste prioritaire, mais on conserve les meilleurs
+        # résultats locaux des quartiers sélectionnés afin qu'un seul quartier
+        # ne monopolise pas tout le tableau.
+        selection_pool = [
+            *semantic.results,
+            *[
+                result
+                for result in ranked
+                if result.candidate.identifier not in semantic_ids
+            ],
+        ]
+        selected = balance_neighborhood_results(
+            criteria,
+            selection_pool,
+            limit=safe_limit,
+        )
         semantic_used = semantic.used
         semantic_model = semantic.model
         semantic_fallback = semantic.fallback
     else:
-        selected = ranked[:safe_limit]
+        selected = balance_neighborhood_results(
+            criteria,
+            ranked,
+            limit=safe_limit,
+        )
         semantic_used = False
         semantic_model = None
         semantic_fallback = False
