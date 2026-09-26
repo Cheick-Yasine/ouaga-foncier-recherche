@@ -12,7 +12,7 @@
   <link rel="stylesheet" href="/static/styles.css?v=20260926-table-publication-2">
   <script src="/static/waiting.js?v=20260906-waiting-1" defer></script>
   <script src="https://cdn.plot.ly/plotly-4.0.0.min.js" charset="utf-8" defer></script>
-  <script src="/static/discovery.js?v=20260926-chart-fullscreen-1" defer></script>
+  <script src="/static/discovery.js?v=20260926-expert-independent-1" defer></script>
   <script src="/static/app.js?v=20260926-contact-column-fix-1" defer></script>
 </head>
 <body>
@@ -73,7 +73,18 @@
             <div class="section-heading"><div><h2 id="market-title">Le marché, semaine après semaine</h2><p class="subtle">4 semaines terminées · Ouagadougou et environs · Ventes</p></div><label class="chart-filter">Afficher<select id="weekly-property"><option value="tous" selected>Tous les biens</option><option value="parcelle">Parcelles</option><option value="terrain">Terrains</option><option value="maison">Maisons</option></select></label></div>
             <div class="weekly-grid">
               <article class="weekly-card"><span class="chart-kicker">Les nouvelles annonces</span><h3>Combien d’offres chaque semaine ?</h3><div id="weekly-count-chart"></div></article>
-              <article class="weekly-card"><span class="chart-kicker">Les prix demandés</span><h3>Quel prix moyen pour 1 m² ?</h3><div id="weekly-price-chart"></div></article>
+              <article class="weekly-card price-chart-card">
+                <span class="chart-kicker">Les prix demandés</span>
+                <h3>Comment évolue le prix au m² ?</h3>
+                <div class="price-chart-toolbar" aria-label="Options du graphique de prix">
+                  <div class="price-stat-control" role="group" aria-label="Statistique de prix">
+                    <button id="price-stat-mean" type="button" class="trend-pill" aria-pressed="true">Moyenne</button>
+                    <button id="price-stat-median" type="button" class="trend-pill" aria-pressed="false">Médiane</button>
+                  </div>
+                  <button id="price-expert-toggle" type="button" class="expert-mode-button" aria-pressed="false">Mode expert</button>
+                </div>
+                <div id="weekly-price-chart"></div>
+              </article>
             </div>
             <p class="chart-explainer">Les courbes portent sur les annonces collectées. Les prix varient aussi selon les biens proposés ; ils ne mesurent pas à eux seuls une hausse ou une baisse du marché.</p>
             <div class="stats-caption"><p id="stats-status" role="status">Chargement des chiffres de la plateforme…</p><button id="retry-stats" class="text-button" type="button" hidden>Réessayer</button></div>
