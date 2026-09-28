@@ -2390,3 +2390,11 @@ select,.modal,.modal input,.comparison-shell,.assistant-composer,.secondary-butt
   margin-top:0 !important;
   height:100% !important;
 }
+
+
+/* HAKIMO — la croix ne doit pas recouvrir le bouton Agrandir. */
+#deal-dialog .deal-dialog-close{
+  top:64px !important;
+  right:12px !important;
+  z-index:50 !important;
+}
