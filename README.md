@@ -43,12 +43,10 @@ Ouvrez ensuite le fichier `.env`, ajoutez l’URL PostgreSQL fournie par Neon et
 
 > Ne publiez jamais la véritable valeur de `DATABASE_URL` dans GitHub, une capture d'écran ou un message.
 
-## Lancer l’application en local
-
-L’application et le MCP utilisent **le même port**. Il n’est plus nécessaire de lancer deux serveurs.
+## Lancer l'API
 
 ```powershell
-uvicorn app.combined:http_app --reload --host 127.0.0.1 --port 8000
+uvicorn app.main:app --reload
 ```
 
 Adresses utiles :
@@ -57,7 +55,6 @@ Adresses utiles :
 - documentation interactive : http://127.0.0.1:8000/docs
 - santé de l'API : http://127.0.0.1:8000/health
 - test de Neon : http://127.0.0.1:8000/health/database
-- MCP : http://127.0.0.1:8000/mcp
 
 ## Assistant GPT → MCP → Neon
 
@@ -75,12 +72,15 @@ Configuration locale :
 OPENAI_API_KEY=votre_cle_locale
 ASSISTANT_MODEL=gpt-5.6-luna
 DATABASE_URL=postgresql://...
-MCP_SERVER_URL=http://127.0.0.1:8000/mcp
+MCP_SERVER_URL=http://127.0.0.1:8001/mcp
 ```
 
-Lancer l’application et le MCP dans un seul serveur :
+Lancer le MCP et le site dans deux terminaux :
 ```bash
-python -m uvicorn app.combined:http_app --reload --host 127.0.0.1 --port 8000
+python -m uvicorn app.mcp_server:http_app --host 127.0.0.1 --port 8001
+```
+```bash
+python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
 Sur Render, `app.combined:http_app` héberge déjà le site et le MCP.
