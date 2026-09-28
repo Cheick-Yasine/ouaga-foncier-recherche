@@ -1801,8 +1801,8 @@
       if(!discoveryMap){
         discoveryMap=window.L.map(container,{
           zoomControl:true,
-          scrollWheelZoom:false,
-          doubleClickZoom:false,
+          scrollWheelZoom:true,
+          doubleClickZoom:true,
           preferCanvas:true
         });
         window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
@@ -1810,6 +1810,28 @@
           attribution:'&copy; OpenStreetMap contributors'
         }).addTo(discoveryMap);
         discoveryMap.setView(OUAGA_CENTER,OUAGA_ZOOM);
+        $('#deal-map-fullscreen')?.addEventListener('click',async()=>{
+          const panel=$('.deal-map-panel');
+          if(!panel) return;
+          try {
+            if(document.fullscreenElement){
+              await document.exitFullscreen();
+            } else if(panel.requestFullscreen){
+              await panel.requestFullscreen();
+            }
+          } catch(error) {
+            console.warn('Mode agrandi indisponible :',error);
+            panel.classList.toggle('is-map-expanded');
+          }
+        });
+        document.addEventListener('fullscreenchange',()=>{
+          const button=$('#deal-map-fullscreen');
+          if(!button) return;
+          const expanded=document.fullscreenElement?.classList.contains('deal-map-panel');
+          button.textContent=expanded?'Réduire':'Agrandir';
+          button.setAttribute('aria-label',expanded?'Réduire la carte':'Agrandir la carte');
+          setTimeout(()=>discoveryMap?.invalidateSize(true),120);
+        });
         $('#deal-map-reset')?.addEventListener('click',()=>{
           discoveryMap.setView(OUAGA_CENTER,OUAGA_ZOOM,{animate:true});
           const title=$('#deal-map-title');
