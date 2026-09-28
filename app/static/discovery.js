@@ -1672,7 +1672,7 @@
 
   function selectMapZone(name, options={}) {
     if(!discoveryMap) return;
-    const location=await ensureLocationForZone(name);
+    const location=ensureLocationForZone(name);
     if(!location) {
       const title=$('#deal-map-title');
       if(title) title.textContent=name || 'Carte de Ouagadougou';
