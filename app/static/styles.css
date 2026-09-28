@@ -1859,12 +1859,7 @@ select,.modal,.modal input,.comparison-shell,.assistant-composer,.secondary-butt
   flex:1; min-height:390px; width:100%; background:#e8edf3;
 }
 .deal-map .leaflet-control-attribution { font-size:9px; }
-.deal-map-marker {
-  display:grid; place-items:center; width:34px; height:34px; border-radius:50%;
-  background:var(--surface); border:3px solid var(--primary);
-  box-shadow:0 4px 14px #07132835;
-  color:var(--primary); font-weight:800; font-size:.75rem;
-}
+
 .deal-map-marker.selected {
   width:42px; height:42px; border-width:4px; background:var(--primary); color:#fff;
   box-shadow:0 0 0 7px var(--blue-soft),0 8px 24px #07132845;
