@@ -2214,3 +2214,109 @@ select,.modal,.modal input,.comparison-shell,.assistant-composer,.secondary-butt
     min-height: 500px;
   }
 }
+
+
+/* HAKIMO — configuration finale : la carte occupe toute la partie droite.
+   Les 6 quartiers proches sont un petit panneau superposé à la carte. */
+#deal-dialog .deal-map-panel{
+  position:relative !important;
+  overflow:hidden !important;
+}
+
+#deal-dialog .deal-map{
+  position:absolute !important;
+  inset:0 !important;
+  width:100% !important;
+  height:100% !important;
+  min-height:0 !important;
+  z-index:1 !important;
+}
+
+#deal-dialog .deal-map-toolbar{
+  position:absolute !important;
+  top:0 !important;
+  left:0 !important;
+  right:0 !important;
+  z-index:10 !important;
+  margin:0 !important;
+  background:rgba(255,255,255,.94) !important;
+  backdrop-filter:blur(8px) !important;
+  box-shadow:0 2px 12px rgba(0,0,0,.10) !important;
+}
+
+#deal-dialog .deal-nearby-panel{
+  position:absolute !important;
+  left:18px !important;
+  right:18px !important;
+  bottom:18px !important;
+  z-index:20 !important;
+  flex:none !important;
+  max-height:none !important;
+  padding:.65rem .8rem .75rem !important;
+  border:1px solid rgba(0,0,0,.12) !important;
+  border-radius:14px !important;
+  background:rgba(255,255,255,.94) !important;
+  backdrop-filter:blur(10px) !important;
+  box-shadow:0 8px 28px rgba(0,0,0,.16) !important;
+}
+
+#deal-dialog .deal-nearby-heading{
+  margin-bottom:.45rem !important;
+}
+
+#deal-dialog .deal-nearby-heading h3{
+  font-size:.82rem !important;
+}
+
+#deal-dialog .deal-nearby-list{
+  grid-template-columns:repeat(6,minmax(0,1fr)) !important;
+  gap:.4rem !important;
+}
+
+#deal-dialog .deal-nearby-card{
+  min-height:38px !important;
+  padding:.48rem .55rem !important;
+  border-radius:9px !important;
+}
+
+#deal-dialog .deal-nearby-card-name{
+  font-size:.68rem !important;
+}
+
+#deal-dialog .deal-nearby-card-distance{
+  font-size:.6rem !important;
+}
+
+#deal-dialog .deal-map-attribution{
+  position:absolute !important;
+  left:0 !important;
+  right:0 !important;
+  bottom:0 !important;
+  z-index:15 !important;
+  pointer-events:none !important;
+  background:rgba(255,255,255,.72) !important;
+}
+
+/* En plein écran : les quartiers proches restent compacts. */
+#deal-dialog .deal-map-panel:fullscreen .deal-nearby-panel{
+  max-height:none !important;
+  overflow:visible !important;
+}
+
+@media(max-width:1100px){
+  #deal-dialog .deal-nearby-list{
+    grid-template-columns:repeat(3,minmax(0,1fr)) !important;
+  }
+}
+
+@media(max-width:600px){
+  #deal-dialog .deal-nearby-panel{
+    left:8px !important;
+    right:8px !important;
+    bottom:8px !important;
+  }
+
+  #deal-dialog .deal-nearby-list{
+    grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+  }
+}
