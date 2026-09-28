@@ -34,6 +34,10 @@ class NeighborhoodGeoTests(unittest.TestCase):
         self.assertEqual(tanghin['source_id'], 2354986)
         self.assertGreater(tanghin['latitude'], 12.39)
         self.assertEqual(location_for('Kossodo')['source_id'], 2359017)
+        # Karpala existe dans GeoNames et OSM : OSM doit être retenu.
+        karpala = location_for('Karpala')
+        self.assertEqual(karpala['source'], 'OpenStreetMap')
+        self.assertEqual(karpala['source_id'], 27863585)
         self.assertIsNone(location_for('Sabtenga'))  # Two villages: unresolved.
 
     def test_radius_filter_uses_unrounded_distance(self):
