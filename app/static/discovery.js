@@ -1678,13 +1678,75 @@
 
     const title=$('#deal-map-title');
     if(title) title.textContent=location.name;
-    mapStatus('Quartier sélectionné · explorez les rues et quartiers voisins sur la carte.');
+    renderNearbyNeighborhoods(location.name);
+    mapStatus('Quartier sélectionné · choisissez un quartier autour pour recentrer la carte.');
+  }
+
+  function distanceKm(a,b) {
+    if(!a || !b) return Infinity;
+    const radius=6371;
+    const lat1=Number(a.latitude)*Math.PI/180;
+    const lat2=Number(b.latitude)*Math.PI/180;
+    const dLat=lat2-lat1;
+    const dLon=(Number(b.longitude)-Number(a.longitude))*Math.PI/180;
+    const h=Math.sin(dLat/2)**2
+      +Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLon/2)**2;
+    return 2*radius*Math.asin(Math.sqrt(Math.min(1,h)));
+  }
+
+  function formatDistance(value) {
+    if(!Number.isFinite(value)) return '';
+    if(value < 1) return Math.round(value*1000)+' m';
+    return value.toFixed(value < 10 ? 1 : 0).replace('.',',')+' km';
+  }
+
+  function renderNearbyNeighborhoods(selectedName) {
+    const title=$('#deal-nearby-title');
+    const count=$('#deal-nearby-count');
+    const list=$('#deal-nearby-list');
+    if(!title || !count || !list) return;
+
+    const selected=locationForZone(selectedName);
+    if(!selected){
+      title.textContent='Choisissez un quartier';
+      count.textContent='';
+      list.replaceChildren(element('p','deal-nearby-empty','Les quartiers proches apparaîtront ici après votre sélection.'));
+      return;
+    }
+
+    const nearby=(discoveryLocations || [])
+      .filter(item=>fold(item.name)!==fold(selected.name))
+      .map(item=>({...item,distance:distanceKm(selected,item)}))
+      .filter(item=>Number.isFinite(item.distance))
+      .sort((a,b)=>a.distance-b.distance)
+      .slice(0,6);
+
+    title.textContent='Autour de '+selected.name;
+    count.textContent=nearby.length ? nearby.length+' quartiers proches' : '';
+    list.replaceChildren();
+
+    if(!nearby.length){
+      list.append(element('p','deal-nearby-empty','Aucun quartier proche disponible dans le référentiel.'));
+      return;
+    }
+
+    nearby.forEach(item=>{
+      const button=element('button','deal-nearby-card');
+      button.type='button';
+      button.dataset.neighborhood=item.name;
+      button.innerHTML='<span class="deal-nearby-card-name"></span><span class="deal-nearby-card-distance"></span>';
+      button.querySelector('.deal-nearby-card-name').textContent=item.name;
+      button.querySelector('.deal-nearby-card-distance').textContent=formatDistance(item.distance);
+      button.addEventListener('click',()=>{
+        addZone(item.name);
+        mapStatus('Quartier sélectionné · les quartiers proches ont été recalculés.');
+      });
+      list.append(button);
+    });
   }
 
   function renderDiscoveryMap() {
-    // Aucun marqueur personnalisé : le fond OpenStreetMap reste volontairement
-    // proche d’une carte web classique, avec ses propres noms de rues et quartiers.
-    if(!discoveryMap) return;
+    renderNearbyNeighborhoods(selectedZones.at(-1));
   }
 
   async function loadDiscoveryLocations() {
@@ -1739,7 +1801,8 @@
       if(!discoveryMap){
         discoveryMap=window.L.map(container,{
           zoomControl:true,
-          scrollWheelZoom:true,
+          scrollWheelZoom:false,
+          doubleClickZoom:false,
           preferCanvas:true
         });
         window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
@@ -1751,7 +1814,7 @@
           discoveryMap.setView(OUAGA_CENTER,OUAGA_ZOOM,{animate:true});
           const title=$('#deal-map-title');
           if(title) title.textContent='Carte de Ouagadougou';
-          mapStatus('Sélectionnez un quartier pour zoomer dessus.');
+          mapStatus('Sélectionnez un quartier pour afficher les quartiers autour.');
         });
       }
 
