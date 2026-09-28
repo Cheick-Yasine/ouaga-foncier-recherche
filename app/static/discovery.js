@@ -1662,11 +1662,28 @@
     return discoveryLocations.find(item=>fold(item.name)===key) || null;
   }
 
-  function selectMapZone(name, options={}) {
+  async function ensureLocationForZone(name) {
+    const existing=locationForZone(name);
+    if(existing) return existing;
+    if(!name) return null;
+    try {
+      const response=await fetch('/market/neighborhood-location?name='+encodeURIComponent(name),{cache:'no-store'});
+      if(!response.ok) return null;
+      const point=await response.json();
+      if(!point || !Number.isFinite(Number(point.latitude)) || !Number.isFinite(Number(point.longitude))) return null;
+      discoveryLocations=[...(discoveryLocations || []).filter(item=>fold(item.name)!==fold(point.name)),point];
+      return point;
+    } catch { return null; }
+  }
+
+  async function selectMapZone(name, options={}) {
     if(!discoveryMap) return;
-    const location=locationForZone(name);
+    const location=await ensureLocationForZone(name);
     if(!location) {
-      mapStatus('La localisation de ce quartier n’est pas disponible sur la carte.');
+      const title=$('#deal-map-title');
+      if(title) title.textContent=name || 'Carte de Ouagadougou';
+      mapStatus('Ce quartier est dans votre liste, mais sa position cartographique n’est pas encore référencée.');
+      renderNearbyNeighborhoods(null);
       return;
     }
 
@@ -1846,7 +1863,7 @@
       await loadDiscoveryLocations();
 
       const selected=selectedZones.at(-1);
-      if(selected) selectMapZone(selected);
+      if(selected) void selectMapZone(selected);
       else mapStatus('Sélectionnez un quartier pour zoomer dessus.');
     } catch(error) {
       console.error('Erreur carte Dénicher :',error);
@@ -1857,7 +1874,7 @@
   function refreshDiscoveryMapSelection() {
     if(!discoveryMap) return;
     const selected=selectedZones.at(-1);
-    if(selected) selectMapZone(selected,{zoom:15});
+    if(selected) void selectMapZone(selected,{zoom:15});
     else {
       discoveryMap.setView(OUAGA_CENTER,OUAGA_ZOOM,{animate:true});
       renderNearbyNeighborhoods(null);
@@ -1869,7 +1886,7 @@
 
   function addZone(name) {
     if(!name || selectedZones.includes(name)) {
-      if(name) selectMapZone(name);
+      if(name) void selectMapZone(name);
       return;
     }
     selectedZones.push(name);
