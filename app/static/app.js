@@ -584,8 +584,11 @@ applyAppearance();
 showPage('home');
 init();
 
-$$('[data-deal]').forEach(b=>b.addEventListener('click',()=>{
-  $('#deal-form').reset(); window.HakimoDiscovery.resetForm(); $('#deal-dialog').showModal();
+$('[data-deal]').forEach(b=>b.addEventListener('click',()=>{
+  $('#deal-form').reset();
+  window.HakimoDiscovery.resetForm();
+  $('#deal-dialog').showModal();
+  window.HakimoDiscovery.openMap();
 }));
 $('#deal-form').addEventListener('submit',e=>{
   e.preventDefault();
