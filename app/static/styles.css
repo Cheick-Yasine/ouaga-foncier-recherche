@@ -2126,3 +2126,91 @@ select,.modal,.modal input,.comparison-shell,.assistant-composer,.secondary-butt
     min-height:410px!important;
   }
 }
+
+
+/* HAKIMO — carte Dénicher : affichage large et lisible.
+   Cette règle finale remplace les anciennes dimensions trop petites. */
+.deal-dialog {
+  width: min(1700px, calc(100vw - 1rem));
+  max-width: min(1700px, calc(100vw - 1rem));
+  height: min(1000px, calc(100dvh - 1rem));
+  max-height: calc(100dvh - 1rem);
+}
+
+.deal-layout {
+  grid-template-columns: minmax(430px, .82fr) minmax(620px, 1.18fr);
+}
+
+.deal-map-panel {
+  overflow: auto;
+}
+
+.deal-map {
+  flex: 0 0 clamp(500px, 62vh, 700px);
+  min-height: 500px;
+  width: 100%;
+}
+
+.deal-map-panel .deal-nearby-panel {
+  flex: 0 0 auto;
+}
+
+@media (max-width: 1100px) {
+  .deal-dialog {
+    width: calc(100vw - 1rem);
+    max-width: calc(100vw - 1rem);
+  }
+
+  .deal-layout {
+    grid-template-columns: minmax(360px, .8fr) minmax(520px, 1.2fr);
+  }
+
+  .deal-map {
+    flex-basis: clamp(480px, 60vh, 650px);
+    min-height: 480px;
+  }
+}
+
+@media (max-width: 980px) {
+  .deal-dialog {
+    height: calc(100dvh - 1rem);
+    max-height: calc(100dvh - 1rem);
+  }
+
+  .deal-layout {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(410px, auto) minmax(560px, 1fr);
+  }
+
+  .deal-map-panel {
+    min-height: 560px;
+    overflow: auto;
+  }
+
+  .deal-map {
+    flex-basis: 560px;
+    min-height: 560px;
+  }
+}
+
+@media (max-width: 600px) {
+  .deal-dialog {
+    width: calc(100vw - .5rem);
+    max-width: calc(100vw - .5rem);
+    height: calc(100dvh - .5rem);
+    max-height: calc(100dvh - .5rem);
+  }
+
+  .deal-layout {
+    grid-template-rows: auto minmax(500px, 1fr);
+  }
+
+  .deal-map-panel {
+    min-height: 500px;
+  }
+
+  .deal-map {
+    flex-basis: 500px;
+    min-height: 500px;
+  }
+}
