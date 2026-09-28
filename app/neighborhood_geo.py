@@ -27,6 +27,9 @@ _BROAD_KEYS = {neighborhood_key(n) for n in ADMINISTRATIVE_AREAS | BROAD_AREAS |
 @lru_cache(maxsize=1)
 def _locations() -> dict[str, dict[str, Any] | None]:
     index: dict[str, dict[str, Any] | None] = {}
+    # OSM est prioritaire lorsqu'un même lieu existe dans les deux jeux :
+    # sa géométrie est directement rattachée à une zone cartographiée.
+    # GeoNames reste le repli pour les lieux absents d'OSM.
     for filename in ("neighborhoods_geonames.json", "neighborhoods_osm.json"):
         data = json.loads((_DATA / filename).read_text(encoding="utf-8"))
         for entry in data["locations"]:
@@ -34,11 +37,11 @@ def _locations() -> dict[str, dict[str, Any] | None]:
                          license_url=data["license_url"], retrieved_at=data["retrieved_at"])
             for name in {entry["name"], *entry["aliases"]}:
                 key = neighborhood_key(name)
-                # A collision is unresolved, never silently assigned to one place.
-                if key in index and index[key] != point:
-                    index[key] = None
-                else:
+                if key not in index or index[key] is None:
                     index[key] = point
+                elif data["source"] == "OpenStreetMap":
+                    index[key] = point
+
     return index
 
 
