@@ -1700,15 +1700,17 @@
   }
 
   function distanceKm(a,b) {
+    // Distance géodésique à vol d'oiseau entre les deux repères WGS84.
+    // Même formule que le backend : Haversine, avec le rayon moyen terrestre WGS84.
     if(!a || !b) return Infinity;
-    const radius=6371;
+    const radius=6371.0088;
     const lat1=Number(a.latitude)*Math.PI/180;
     const lat2=Number(b.latitude)*Math.PI/180;
     const dLat=lat2-lat1;
     const dLon=(Number(b.longitude)-Number(a.longitude))*Math.PI/180;
     const h=Math.sin(dLat/2)**2
       +Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLon/2)**2;
-    return 2*radius*Math.asin(Math.sqrt(Math.min(1,h)));
+    return 2*radius*Math.asin(Math.sqrt(Math.min(1,Math.max(0,h))));
   }
 
   function formatDistance(value) {
