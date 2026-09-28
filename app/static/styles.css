@@ -1882,3 +1882,22 @@ select,.modal,.modal input,.comparison-shell,.assistant-composer,.secondary-butt
   .deal-form-panel { padding:.9rem; }
   .deal-map { min-height:300px; }
 }
+
+
+/* Dénicher — option quartiers autour : la carte sert de contexte, les cartes voisines servent à choisir. */
+.deal-map-panel{background:var(--surface-2)}
+.deal-map{flex:0 0 clamp(280px,42vh,410px);min-height:280px}
+.deal-map-panel .leaflet-control-zoom{box-shadow:0 4px 14px #10264b18;border:1px solid var(--line)}
+.deal-nearby-panel{padding:.9rem 1rem 1rem;border-top:1px solid var(--line);background:var(--surface)}
+.deal-nearby-heading{display:flex;align-items:flex-end;justify-content:space-between;gap:1rem;margin-bottom:.7rem}
+.deal-nearby-kicker{display:block;color:var(--blue);font-size:.63rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
+.deal-nearby-heading h3{margin:.18rem 0 0;font-size:.92rem;letter-spacing:-.015em}
+.deal-nearby-count{color:var(--muted);font-size:.66rem;white-space:nowrap}
+.deal-nearby-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.55rem}
+.deal-nearby-card{display:flex;align-items:center;justify-content:space-between;gap:.7rem;min-width:0;padding:.72rem .75rem;border:1px solid var(--line);border-radius:11px;background:var(--surface);color:var(--ink);text-align:left;font:inherit;cursor:pointer;transition:border-color .15s,background .15s,transform .15s}
+.deal-nearby-card:hover,.deal-nearby-card:focus-visible{border-color:var(--blue);background:var(--blue-soft);transform:translateY(-1px);outline:none}
+.deal-nearby-card-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.76rem;font-weight:700}
+.deal-nearby-card-distance{flex:none;color:var(--muted);font-size:.66rem;font-weight:600}
+.deal-nearby-empty{margin:0;padding:.55rem 0;color:var(--muted);font-size:.72rem;line-height:1.5}
+@media(max-width:980px){.deal-map{flex-basis:330px}.deal-nearby-list{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){.deal-map{flex-basis:280px}.deal-nearby-list{grid-template-columns:1fr 1fr}.deal-nearby-card{padding:.65rem}.deal-nearby-card-distance{font-size:.6rem}}
