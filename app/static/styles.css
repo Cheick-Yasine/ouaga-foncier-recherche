@@ -1901,3 +1901,19 @@ select,.modal,.modal input,.comparison-shell,.assistant-composer,.secondary-butt
 .deal-nearby-empty{margin:0;padding:.55rem 0;color:var(--muted);font-size:.72rem;line-height:1.5}
 @media(max-width:980px){.deal-map{flex-basis:330px}.deal-nearby-list{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:600px){.deal-map{flex-basis:280px}.deal-nearby-list{grid-template-columns:1fr 1fr}.deal-nearby-card{padding:.65rem}.deal-nearby-card-distance{font-size:.6rem}}
+
+
+/* Carte Dénicher : grande, zoomable et extensible. */
+.deal-map-toolbar-actions{display:flex;align-items:center;gap:.45rem;flex:none}
+.deal-map{flex:0 0 560px;min-height:500px}
+.deal-map-panel:fullscreen{width:100vw;height:100vh;border:0;background:var(--surface)}
+.deal-map-panel:fullscreen .deal-map{flex:1;min-height:0;height:auto}
+.deal-map-panel:fullscreen .deal-nearby-panel{max-height:230px;overflow:auto}
+.deal-map-panel.is-map-expanded{position:fixed;inset:.5rem;z-index:1000;background:var(--surface);box-shadow:0 20px 80px #07132855;border:1px solid var(--line)}
+.deal-map-panel.is-map-expanded .deal-map{flex:1;min-height:0}
+@media(max-width:980px){
+  .deal-map{flex-basis:500px;min-height:460px}
+}
+@media(max-width:600px){
+  .deal-map{flex-basis:430px;min-height:400px}
+}
