@@ -1,16 +1,19 @@
 services:
-  # === Application publique + MCP sur le même serveur HTTP ===
-  app:
+  # === API principale (FastAPI) ===
+  api:
     build: .
-    container_name: ouaga-foncier-app
+    container_name: ouaga-foncier-api
     ports:
-      # Un seul port hôte : l'API, le site et /mcp passent par le même port.
+      # Expose l'API uniquement en local sur le port 8015 pour le Nginx hôte
       - "127.0.0.1:8015:8000"
     env_file:
       - .env
     environment:
       APP_ENV: production
-      MCP_SERVER_URL: http://127.0.0.1:8000/mcp
+      MCP_SERVER_URL: http://mcp:8001/mcp
+    depends_on:
+      mcp:
+        condition: service_healthy
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
@@ -18,3 +21,29 @@ services:
       timeout: 5s
       retries: 3
       start_period: 15s
+
+  # === Serveur MCP (outil de recherche interne) ===
+  mcp:
+    build: .
+    container_name: ouaga-foncier-mcp
+    command: ["uvicorn", "app.mcp_server:http_app", "--host", "0.0.0.0", "--port", "8001"]
+    expose:
+      # Accessible uniquement au conteneur API via le réseau interne Docker
+      - "8001"
+    env_file:
+      - .env
+    environment:
+      APP_ENV: production
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import socket; s=socket.create_connection(('127.0.0.1', 8001), 3); s.close()"
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
