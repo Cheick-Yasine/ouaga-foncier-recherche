@@ -7,7 +7,7 @@ from app.database import DatabaseNotConfiguredError
 from app.market_stats import neighborhood_trends, summarize_market
 from app.search_repository import load_market_candidates, load_neighborhood_candidates
 from app.neighborhoods import KNOWN_NEIGHBORHOOD_ALIASES, neighborhood_key
-from app.neighborhood_geo import geocode_missing_neighborhood, location_for
+from app.neighborhood_geo import location_for
 
 router = APIRouter(prefix='/market', tags=['Accueil'])
 
@@ -47,14 +47,19 @@ def market_neighborhoods() -> list[str]:
 
 @router.get('/neighborhood-location')
 def market_neighborhood_location(name: str) -> dict | None:
-    """Retourne un repère embarqué ou géocodé à la demande après sélection."""
+    """Retourne uniquement le repère du référentiel cartographique embarqué.
+
+    La carte, les distances et les sélections utilisent ainsi exactement la
+    même paire latitude/longitude. Aucun géocodage à la volée ne peut injecter
+    un second point différent après l'affichage initial.
+    """
     canonical = next(
         (value for key, value in KNOWN_NEIGHBORHOOD_ALIASES.items()
          if neighborhood_key(key) == neighborhood_key(name)), None,
     )
     if not canonical:
         return None
-    point = location_for(canonical) or geocode_missing_neighborhood(canonical)
+    point = location_for(canonical)
     if not point:
         return None
     return {
