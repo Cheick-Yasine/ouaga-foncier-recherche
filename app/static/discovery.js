@@ -1664,21 +1664,13 @@
     return discoveryLocations.find(item=>fold(item.name)===key) || null;
   }
 
-  async function ensureLocationForZone(name) {
-    const existing=locationForZone(name);
-    if(existing) return existing;
-    if(!name) return null;
-    try {
-      const response=await fetch('/market/neighborhood-location?name='+encodeURIComponent(name),{cache:'no-store'});
-      if(!response.ok) return null;
-      const point=await response.json();
-      if(!point || !Number.isFinite(Number(point.latitude)) || !Number.isFinite(Number(point.longitude))) return null;
-      discoveryLocations=[...(discoveryLocations || []).filter(item=>fold(item.name)!==fold(point.name)),point];
-      return point;
-    } catch { return null; }
+  function ensureLocationForZone(name) {
+    // La carte utilise exclusivement les repères déjà chargés du référentiel.
+    // Aucun second géocodage ne doit introduire une autre paire de coordonnées.
+    return locationForZone(name);
   }
 
-  async function selectMapZone(name, options={}) {
+  function selectMapZone(name, options={}) {
     if(!discoveryMap) return;
     const location=await ensureLocationForZone(name);
     if(!location) {
