@@ -11,6 +11,9 @@ import json
 from math import asin, cos, radians, sin, sqrt
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlencode
+from urllib.request import Request, urlopen
+import time
 
 from app.neighborhoods import (
     ADMINISTRATIVE_AREAS, BROAD_AREAS, CITY_LEVEL_AREAS, neighborhood_key,
@@ -45,6 +48,53 @@ def location_for(name: str | None) -> dict[str, Any] | None:
         return None
     point = _locations().get(key)
     return dict(point) if point else None
+
+
+_NOMINATIM_LAST_REQUEST = 0.0
+
+
+@lru_cache(maxsize=256)
+def geocode_missing_neighborhood(name: str | None) -> dict[str, Any] | None:
+    """Géocode à la demande un quartier absent du référentiel embarqué."""
+    global _NOMINATIM_LAST_REQUEST
+    canonical = str(name or "").strip()
+    if not canonical or neighborhood_key(canonical) in _BROAD_KEYS:
+        return None
+    wait = 1.05 - (time.monotonic() - _NOMINATIM_LAST_REQUEST)
+    if wait > 0:
+        time.sleep(wait)
+    params = urlencode({
+        "q": f"{canonical}, Ouagadougou, Burkina Faso",
+        "format": "jsonv2", "limit": 1, "countrycodes": "bf", "addressdetails": 1,
+    })
+    request = Request(
+        f"https://nominatim.openstreetmap.org/search?{params}",
+        headers={
+            "User-Agent": "Hakimo-Ouaga-Foncier/1.0 (+https://ouaga-foncier-recherche)",
+            "Accept": "application/json",
+        },
+    )
+    try:
+        with urlopen(request, timeout=8) as response:
+            data = json.load(response)
+    except Exception:
+        return None
+    finally:
+        _NOMINATIM_LAST_REQUEST = time.monotonic()
+    if not isinstance(data, list) or not data:
+        return None
+    result = data[0]
+    try:
+        latitude, longitude = float(result["lat"]), float(result["lon"])
+    except (KeyError, TypeError, ValueError):
+        return None
+    return {
+        "name": canonical, "latitude": latitude, "longitude": longitude,
+        "source": "OpenStreetMap / Nominatim",
+        "attribution": "© OpenStreetMap contributors",
+        "license_url": "https://opendatacommons.org/licenses/odbl/1-0/",
+        "display_name": result.get("display_name", canonical),
+    }
 
 
 def distance_km(origin: str | None, destination: str | None) -> float | None:
