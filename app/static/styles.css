@@ -2398,3 +2398,28 @@ select,.modal,.modal input,.comparison-shell,.assistant-composer,.secondary-butt
   right:12px !important;
   z-index:50 !important;
 }
+
+
+/* HAKIMO — fermeture alignée sur la barre des contrôles de la carte. */
+#deal-dialog .deal-map-toolbar-actions .deal-dialog-close{
+  position:static !important;
+  top:auto !important;
+  right:auto !important;
+  z-index:auto !important;
+  min-width:36px !important;
+  min-height:40px !important;
+  width:36px !important;
+  height:40px !important;
+  padding:0 !important;
+  margin:0 !important;
+  display:inline-grid !important;
+  place-items:center !important;
+  background:transparent !important;
+  box-shadow:none !important;
+  border-radius:8px !important;
+  font-size:1.35rem !important;
+  line-height:1 !important;
+}
+#deal-dialog .deal-map-toolbar-actions .deal-dialog-close:hover{
+  background:var(--blue-soft) !important;
+}
