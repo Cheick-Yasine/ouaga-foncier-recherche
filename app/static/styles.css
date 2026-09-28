@@ -1917,3 +1917,22 @@ select,.modal,.modal input,.comparison-shell,.assistant-composer,.secondary-butt
 @media(max-width:600px){
   .deal-map{flex-basis:430px;min-height:400px}
 }
+
+/* Dénicher — carte réellement dominante dans la fenêtre. */
+.deal-dialog{width:min(1680px,calc(100vw - 1.5rem));max-width:1680px;height:min(940px,calc(100dvh - 1.5rem))}
+.deal-layout{grid-template-columns:minmax(390px,.72fr) minmax(700px,1.28fr)}
+.deal-map-panel{min-height:0}
+.deal-map{flex:1 1 auto;min-height:700px}
+.deal-nearby-panel{max-height:210px;overflow:auto}
+@media(max-width:1100px){
+  .deal-dialog{width:calc(100vw - 1rem);height:calc(100dvh - 1rem)}
+  .deal-layout{grid-template-columns:1fr;grid-template-rows:minmax(470px,.7fr) minmax(650px,1.3fr);overflow:auto}
+  .deal-form-panel{overflow:visible}
+  .deal-map-panel{border-left:0;border-top:1px solid var(--line);min-height:650px}
+  .deal-map{min-height:650px}
+}
+@media(max-width:600px){
+  .deal-dialog{width:calc(100vw - .4rem);height:calc(100dvh - .4rem)}
+  .deal-layout{grid-template-rows:auto 560px}
+  .deal-map-panel,.deal-map{min-height:560px}
+}
