@@ -1744,31 +1744,58 @@
 
   async function openDiscoveryMap() {
     const container=$('#deal-map');
-    if(!container || !window.L) return;
+    if(!container) return;
 
-    if(!discoveryMap){
-      discoveryMap=L.map(container,{zoomControl:true,scrollWheelZoom:true,preferCanvas:true});
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
-        maxZoom:19,
-        attribution:'&copy; OpenStreetMap contributors'
-      }).addTo(discoveryMap);
-      discoveryMap.setView(OUAGA_CENTER,OUAGA_ZOOM);
-      $('#deal-map-reset')?.addEventListener('click',()=>{
-        discoveryMap.setView(OUAGA_CENTER,OUAGA_ZOOM,{animate:true});
-        discoveryMapMarkers.forEach(marker=>marker.setIcon(mapIcon(false)));
-        const title=$('#deal-map-title');
-        if(title) title.textContent='Carte de Ouagadougou';
-        mapStatus('Sélectionnez un quartier pour zoomer dessus.');
-      });
+    // Le dialogue vient juste d'être affiché : attendre que le navigateur
+    // ait calculé sa largeur/hauteur avant d'initialiser Leaflet.
+    await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+
+    if(!window.L){
+      mapStatus('Chargement de la carte…');
+      // Leaflet est chargé en defer. Si le CDN a pris du retard, on réessaie
+      // brièvement au lieu d'abandonner définitivement l'initialisation.
+      for(let attempt=0; attempt<20 && !window.L; attempt++){
+        await new Promise(resolve=>setTimeout(resolve,100));
+      }
     }
 
-    setTimeout(()=>discoveryMap?.invalidateSize(),80);
-    mapStatus('Chargement des repères de quartiers…');
-    await loadDiscoveryLocations();
+    if(!window.L){
+      mapStatus('La carte interactive n’a pas pu être chargée. Vérifiez votre connexion.');
+      return;
+    }
 
-    const selected=selectedZones.at(-1);
-    if(selected) selectMapZone(selected);
-    else mapStatus('Sélectionnez un quartier pour zoomer dessus.');
+    try {
+      if(!discoveryMap){
+        discoveryMap=window.L.map(container,{
+          zoomControl:true,
+          scrollWheelZoom:true,
+          preferCanvas:true
+        });
+        window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+          maxZoom:19,
+          attribution:'&copy; OpenStreetMap contributors'
+        }).addTo(discoveryMap);
+        discoveryMap.setView(OUAGA_CENTER,OUAGA_ZOOM);
+        $('#deal-map-reset')?.addEventListener('click',()=>{
+          discoveryMap.setView(OUAGA_CENTER,OUAGA_ZOOM,{animate:true});
+          discoveryMapMarkers.forEach(marker=>marker.setIcon(mapIcon(false)));
+          const title=$('#deal-map-title');
+          if(title) title.textContent='Carte de Ouagadougou';
+          mapStatus('Sélectionnez un quartier pour zoomer dessus.');
+        });
+      }
+
+      setTimeout(()=>discoveryMap?.invalidateSize(true),120);
+      mapStatus('Chargement des repères de quartiers…');
+      await loadDiscoveryLocations();
+
+      const selected=selectedZones.at(-1);
+      if(selected) selectMapZone(selected);
+      else mapStatus('Sélectionnez un quartier pour zoomer dessus.');
+    } catch(error) {
+      console.error('Erreur carte Dénicher :',error);
+      mapStatus('Impossible d’afficher la carte pour le moment.');
+    }
   }
 
   function refreshDiscoveryMapSelection() {
