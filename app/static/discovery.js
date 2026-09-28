@@ -1647,7 +1647,9 @@
 
   let discoveryMap=null;
   let discoveryLocations=null;
+  let discoveryMapMarkers=null;
   let discoveryMapLoading=null;
+  let discoveryMapHasFitted=false;
   const OUAGA_CENTER=[12.3714,-1.5197];
   const OUAGA_ZOOM=12;
 
@@ -1687,11 +1689,9 @@
       return;
     }
 
-    discoveryMap.setView(
-      [location.latitude,location.longitude],
-      options.zoom ?? 15,
-      {animate:true}
-    );
+    discoveryMap.setView([location.latitude,location.longitude],options.zoom ?? 15,{animate:true});
+    discoveryMapHasFitted=true;
+    renderDiscoveryMap();
 
     const title=$('#deal-map-title');
     if(title) title.textContent=location.name;
@@ -1764,7 +1764,28 @@
     });
   }
 
+  function markerIcon(selected=false) {
+    if(!window.L) return null;
+    return window.L.divIcon({className:'deal-map-marker-wrap',html:'<span class="deal-map-marker-dot'+(selected?' selected':'')+'"></span>',iconSize:[24,24],iconAnchor:[12,12],popupAnchor:[0,-12]});
+  }
+
   function renderDiscoveryMap() {
+    if(!discoveryMap || !window.L || !Array.isArray(discoveryLocations)) return;
+    if(!discoveryMapMarkers) discoveryMapMarkers=window.L.layerGroup().addTo(discoveryMap);
+    else discoveryMapMarkers.clearLayers();
+    const selectedKey=fold(selectedZones.at(-1) || ''), bounds=[];
+    discoveryLocations.forEach(location=>{
+      const lat=Number(location.latitude), lon=Number(location.longitude);
+      if(!Number.isFinite(lat)||!Number.isFinite(lon)) return;
+      bounds.push([lat,lon]);
+      const marker=window.L.marker([lat,lon],{icon:markerIcon(fold(location.name)===selectedKey),title:location.name,riseOnHover:true,keyboard:true});
+      marker.bindTooltip(location.name,{direction:'top',offset:[0,-10],opacity:.95});
+      marker.bindPopup('<div class="deal-map-popup"><strong></strong><span>Quartier référencé</span></div>');
+      marker.on('popupopen',()=>{const strong=marker.getPopup().getElement()?.querySelector('strong');if(strong) strong.textContent=location.name;});
+      marker.on('click',()=>addZone(location.name));
+      discoveryMapMarkers.addLayer(marker);
+    });
+    if(bounds.length&&!discoveryMapHasFitted&&!selectedZones.length){discoveryMap.fitBounds(bounds,{padding:[28,28],maxZoom:12});discoveryMapHasFitted=true;}
     renderNearbyNeighborhoods(selectedZones.at(-1));
   }
 
@@ -1829,6 +1850,7 @@
           attribution:'&copy; OpenStreetMap contributors'
         }).addTo(discoveryMap);
         discoveryMap.setView(OUAGA_CENTER,OUAGA_ZOOM);
+        discoveryMap.whenReady(()=>setTimeout(()=>discoveryMap?.invalidateSize(true),80));
         $('#deal-map-fullscreen')?.addEventListener('click',async()=>{
           const panel=$('.deal-map-panel');
           if(!panel) return;
@@ -1853,6 +1875,8 @@
         });
         $('#deal-map-reset')?.addEventListener('click',()=>{
           discoveryMap.setView(OUAGA_CENTER,OUAGA_ZOOM,{animate:true});
+          discoveryMapHasFitted=true;
+          renderDiscoveryMap();
           const title=$('#deal-map-title');
           if(title) title.textContent='Carte de Ouagadougou';
           renderNearbyNeighborhoods(null);
@@ -1879,6 +1903,8 @@
     if(selected) void selectMapZone(selected,{zoom:15});
     else {
       discoveryMap.setView(OUAGA_CENTER,OUAGA_ZOOM,{animate:true});
+      discoveryMapHasFitted=true;
+      renderDiscoveryMap();
       renderNearbyNeighborhoods(null);
       const title=$('#deal-map-title');
       if(title) title.textContent='Carte de Ouagadougou';
