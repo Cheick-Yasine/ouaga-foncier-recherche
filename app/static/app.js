@@ -584,7 +584,7 @@ applyAppearance();
 showPage('home');
 init();
 
-$('[data-deal]').forEach(b=>b.addEventListener('click',()=>{
+$$('[data-deal]').forEach(b=>b.addEventListener('click',()=>{
   const form=$('#deal-form');
   const dialog=$('#deal-dialog');
 
