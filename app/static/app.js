@@ -585,10 +585,22 @@ showPage('home');
 init();
 
 $('[data-deal]').forEach(b=>b.addEventListener('click',()=>{
-  $('#deal-form').reset();
-  window.HakimoDiscovery.resetForm();
-  $('#deal-dialog').showModal();
-  window.HakimoDiscovery.openMap();
+  const form=$('#deal-form');
+  const dialog=$('#deal-dialog');
+
+  if(!form || !dialog) return;
+  form.reset();
+  dialog.showModal();
+
+  // L'ouverture du formulaire ne doit jamais dépendre de la carte.
+  // Si le module cartographique ou Leaflet rencontre un problème,
+  // le formulaire reste utilisable.
+  try {
+    window.HakimoDiscovery?.resetForm?.();
+    window.HakimoDiscovery?.openMap?.();
+  } catch(error) {
+    console.warn('Carte Dénicher indisponible :',error);
+  }
 }));
 $('#deal-form').addEventListener('submit',e=>{
   e.preventDefault();
