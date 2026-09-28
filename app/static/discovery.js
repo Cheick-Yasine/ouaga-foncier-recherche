@@ -1646,7 +1646,6 @@
   }
 
   let discoveryMap=null;
-  let discoveryMapMarkers=new Map();
   let discoveryLocations=null;
   let discoveryMapLoading=null;
   const OUAGA_CENTER=[12.3714,-1.5197];
