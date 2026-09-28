@@ -1814,6 +1814,7 @@
           discoveryMap.setView(OUAGA_CENTER,OUAGA_ZOOM,{animate:true});
           const title=$('#deal-map-title');
           if(title) title.textContent='Carte de Ouagadougou';
+          renderNearbyNeighborhoods(null);
           mapStatus('Sélectionnez un quartier pour afficher les quartiers autour.');
         });
       }
@@ -1837,6 +1838,7 @@
     if(selected) selectMapZone(selected,{zoom:15});
     else {
       discoveryMap.setView(OUAGA_CENTER,OUAGA_ZOOM,{animate:true});
+      renderNearbyNeighborhoods(null);
       const title=$('#deal-map-title');
       if(title) title.textContent='Carte de Ouagadougou';
       mapStatus('Sélectionnez un quartier pour zoomer dessus.');
