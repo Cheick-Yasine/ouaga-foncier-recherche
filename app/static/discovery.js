@@ -1657,16 +1657,6 @@
     if(node) node.textContent=text;
   }
 
-  function mapIcon(selected=false) {
-    return L.divIcon({
-      className:'',
-      html:'<span class="deal-map-marker'+(selected?' selected':'')+'">H</span>',
-      iconSize:selected?[42,42]:[34,34],
-      iconAnchor:selected?[21,21]:[17,17],
-      popupAnchor:[0,-18]
-    });
-  }
-
   function locationForZone(name) {
     if(!discoveryLocations || !name) return null;
     const key=fold(name);
@@ -1676,44 +1666,26 @@
   function selectMapZone(name, options={}) {
     if(!discoveryMap) return;
     const location=locationForZone(name);
-    discoveryMapMarkers.forEach((marker,markerName)=>{
-      marker.setIcon(mapIcon(markerName===name));
-    });
     if(!location) {
-      mapStatus('Aucun repère cartographique fiable pour cette zone.');
+      mapStatus('La localisation de ce quartier n’est pas disponible sur la carte.');
       return;
     }
-    discoveryMap.setView([location.latitude,location.longitude], options.zoom ?? 15, {animate:true});
-    const marker=discoveryMapMarkers.get(location.name);
-    marker?.openPopup();
-    mapStatus(location.name+' · repère de quartier approximatif');
+
+    discoveryMap.setView(
+      [location.latitude,location.longitude],
+      options.zoom ?? 15,
+      {animate:true}
+    );
+
     const title=$('#deal-map-title');
     if(title) title.textContent=location.name;
+    mapStatus('Quartier sélectionné · explorez les rues et quartiers voisins sur la carte.');
   }
 
   function renderDiscoveryMap() {
-    if(!discoveryMap || !discoveryLocations) return;
-    discoveryMapMarkers.forEach(marker=>marker.remove());
-    discoveryMapMarkers.clear();
-
-    discoveryLocations.forEach(location=>{
-      const marker=L.marker([location.latitude,location.longitude],{
-        icon:mapIcon(selectedZones.includes(location.name)),
-        title:location.name,
-        keyboard:true
-      }).addTo(discoveryMap);
-
-      marker.bindPopup(
-        '<div class="deal-map-popup"><strong>'+
-        location.name.replaceAll('&','&amp;').replaceAll('<','&lt;')+
-        '</strong><span>Repère approximatif du quartier</span></div>'
-      );
-      marker.on('click',()=>{
-        addZone(location.name);
-        selectMapZone(location.name);
-      });
-      discoveryMapMarkers.set(location.name,marker);
-    });
+    // Aucun marqueur personnalisé : le fond OpenStreetMap reste volontairement
+    // proche d’une carte web classique, avec ses propres noms de rues et quartiers.
+    if(!discoveryMap) return;
   }
 
   async function loadDiscoveryLocations() {
@@ -1778,7 +1750,6 @@
         discoveryMap.setView(OUAGA_CENTER,OUAGA_ZOOM);
         $('#deal-map-reset')?.addEventListener('click',()=>{
           discoveryMap.setView(OUAGA_CENTER,OUAGA_ZOOM,{animate:true});
-          discoveryMapMarkers.forEach(marker=>marker.setIcon(mapIcon(false)));
           const title=$('#deal-map-title');
           if(title) title.textContent='Carte de Ouagadougou';
           mapStatus('Sélectionnez un quartier pour zoomer dessus.');
@@ -1800,9 +1771,6 @@
 
   function refreshDiscoveryMapSelection() {
     if(!discoveryMap) return;
-    discoveryMapMarkers.forEach((marker,name)=>{
-      marker.setIcon(mapIcon(selectedZones.includes(name)));
-    });
     const selected=selectedZones.at(-1);
     if(selected) selectMapZone(selected,{zoom:15});
     else {
