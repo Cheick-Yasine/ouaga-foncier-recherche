@@ -9,9 +9,11 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/styles.css?v=20260926-equip-proximity-1">
+  <link rel="stylesheet" href="/static/styles.css?v=20260928-map-1">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <script src="/static/waiting.js?v=20260906-waiting-1" defer></script>
   <script src="https://cdn.plot.ly/plotly-4.0.0.min.js" charset="utf-8" defer></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
   <script src="/static/discovery.js?v=20260926-equip-proximity-1" defer></script>
   <script src="/static/app.js?v=20260926-equip-proximity-1" defer></script>
 </head>
@@ -184,7 +186,8 @@
     <div class="comparison-shell"><div class="table-scroll" tabindex="0" role="region" aria-label="Tableau comparatif des annonces"><table class="comparison-table"><caption class="sr-only">Comparaison des annonces sélectionnées</caption><thead><tr><th scope="col">Localisation</th><th scope="col">Date de publication</th><th scope="col">Texte de publication</th><th scope="col">Superficie</th><th scope="col">Prix</th><th scope="col">Prix / m²</th><th scope="col">Document</th><th scope="col">Contact</th><th scope="col">Actions</th></tr></thead><tbody></tbody></table></div></div>
   </template>
 <dialog id="deal-dialog" aria-labelledby="deal-title" class="deal-dialog">
-<form id="deal-form"><div class="dialog-heading"><h2 id="deal-title">Dénicher une bonne affaire</h2><button type="button" data-close="deal-dialog" class="icon-button" aria-label="Fermer">×</button></div>
+<form id="deal-form"><div class="dialog-heading"><div><h2 id="deal-title">Dénicher une bonne affaire</h2><p class="deal-map-lead">Choisissez vos critères à gauche. La carte vous aide à repérer les quartiers et se déplace automatiquement lorsque vous en sélectionnez un.</p></div><button type="button" data-close="deal-dialog" class="icon-button" aria-label="Fermer">×</button></div>
+<div class="deal-layout"><section class="deal-form-panel" aria-label="Critères de recherche">
 <p>Choisissez vos critères. Vous pouvez sélectionner plusieurs quartiers et définir directement une fourchette de prix et de superficie.</p>
 <div class="deal-fields">
 <label class="deal-top-field deal-type-field">Type de bien<select name="property"><option value="parcelle">Parcelle</option><option value="terrain">Terrain</option><option value="maison">Maison</option></select></label>
@@ -251,6 +254,6 @@
 </label>
 </div>
 <label class="deal-nearby"><input name="nearby" type="checkbox"> Inclure aussi les zones proches des quartiers sélectionnés</label>
-<button type="submit" class="primary-button">Trouver des offres</button></form></dialog>
+<button type="submit" class="primary-button">Trouver des offres</button></section><aside class="deal-map-panel" aria-label="Carte interactive des quartiers"><div class="deal-map-toolbar"><div><strong id="deal-map-title">Carte de Ouagadougou</strong><span id="deal-map-status">Sélectionnez un quartier pour zoomer dessus.</span></div><button id="deal-map-reset" type="button" class="secondary-button">Vue Ouaga</button></div><div id="deal-map" class="deal-map" role="application" aria-label="Carte interactive de Ouagadougou"></div><p class="deal-map-attribution">Repères de quartiers approximatifs · © OpenStreetMap · données géographiques du référentiel HAKIMO.</p></aside></div></form></dialog>
 </body>
 </html>

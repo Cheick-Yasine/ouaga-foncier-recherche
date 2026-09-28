@@ -1645,12 +1645,157 @@
     syncZoneValues();
   }
 
+  let discoveryMap=null;
+  let discoveryMapMarkers=new Map();
+  let discoveryLocations=null;
+  let discoveryMapLoading=null;
+  const OUAGA_CENTER=[12.3714,-1.5197];
+  const OUAGA_ZOOM=12;
+
+  function mapStatus(text) {
+    const node=$('#deal-map-status');
+    if(node) node.textContent=text;
+  }
+
+  function mapIcon(selected=false) {
+    return L.divIcon({
+      className:'',
+      html:'<span class="deal-map-marker'+(selected?' selected':'')+'">H</span>',
+      iconSize:selected?[42,42]:[34,34],
+      iconAnchor:selected?[21,21]:[17,17],
+      popupAnchor:[0,-18]
+    });
+  }
+
+  function locationForZone(name) {
+    if(!discoveryLocations || !name) return null;
+    const key=fold(name);
+    return discoveryLocations.find(item=>fold(item.name)===key) || null;
+  }
+
+  function selectMapZone(name, options={}) {
+    if(!discoveryMap) return;
+    const location=locationForZone(name);
+    discoveryMapMarkers.forEach((marker,markerName)=>{
+      marker.setIcon(mapIcon(markerName===name));
+    });
+    if(!location) {
+      mapStatus('Aucun repère cartographique fiable pour cette zone.');
+      return;
+    }
+    discoveryMap.setView([location.latitude,location.longitude], options.zoom ?? 15, {animate:true});
+    const marker=discoveryMapMarkers.get(location.name);
+    marker?.openPopup();
+    mapStatus(location.name+' · repère de quartier approximatif');
+    const title=$('#deal-map-title');
+    if(title) title.textContent=location.name;
+  }
+
+  function renderDiscoveryMap() {
+    if(!discoveryMap || !discoveryLocations) return;
+    discoveryMapMarkers.forEach(marker=>marker.remove());
+    discoveryMapMarkers.clear();
+
+    discoveryLocations.forEach(location=>{
+      const marker=L.marker([location.latitude,location.longitude],{
+        icon:mapIcon(selectedZones.includes(location.name)),
+        title:location.name,
+        keyboard:true
+      }).addTo(discoveryMap);
+
+      marker.bindPopup(
+        '<div class="deal-map-popup"><strong>'+
+        location.name.replaceAll('&','&amp;').replaceAll('<','&lt;')+
+        '</strong><span>Repère approximatif du quartier</span></div>'
+      );
+      marker.on('click',()=>{
+        addZone(location.name);
+        selectMapZone(location.name);
+      });
+      discoveryMapMarkers.set(location.name,marker);
+    });
+  }
+
+  async function loadDiscoveryLocations() {
+    if(discoveryLocations) return discoveryLocations;
+    if(discoveryMapLoading) return discoveryMapLoading;
+
+    discoveryMapLoading=fetch('/market/neighborhood-locations',{cache:'no-store'})
+      .then(response=>{
+        if(!response.ok) throw Error();
+        return response.json();
+      })
+      .then(data=>{
+        discoveryLocations=Array.isArray(data)
+          ? data.filter(item=>item && Number.isFinite(Number(item.latitude)) && Number.isFinite(Number(item.longitude)))
+          : [];
+        renderDiscoveryMap();
+        return discoveryLocations;
+      })
+      .catch(()=>{
+        discoveryLocations=[];
+        mapStatus('La carte est disponible, mais les repères de quartiers ne sont pas chargés.');
+        return discoveryLocations;
+      })
+      .finally(()=>{discoveryMapLoading=null;});
+
+    return discoveryMapLoading;
+  }
+
+  async function openDiscoveryMap() {
+    const container=$('#deal-map');
+    if(!container || !window.L) return;
+
+    if(!discoveryMap){
+      discoveryMap=L.map(container,{zoomControl:true,scrollWheelZoom:true,preferCanvas:true});
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+        maxZoom:19,
+        attribution:'&copy; OpenStreetMap contributors'
+      }).addTo(discoveryMap);
+      discoveryMap.setView(OUAGA_CENTER,OUAGA_ZOOM);
+      $('#deal-map-reset')?.addEventListener('click',()=>{
+        discoveryMap.setView(OUAGA_CENTER,OUAGA_ZOOM,{animate:true});
+        discoveryMapMarkers.forEach(marker=>marker.setIcon(mapIcon(false)));
+        const title=$('#deal-map-title');
+        if(title) title.textContent='Carte de Ouagadougou';
+        mapStatus('Sélectionnez un quartier pour zoomer dessus.');
+      });
+    }
+
+    setTimeout(()=>discoveryMap?.invalidateSize(),80);
+    mapStatus('Chargement des repères de quartiers…');
+    await loadDiscoveryLocations();
+
+    const selected=selectedZones.at(-1);
+    if(selected) selectMapZone(selected);
+    else mapStatus('Sélectionnez un quartier pour zoomer dessus.');
+  }
+
+  function refreshDiscoveryMapSelection() {
+    if(!discoveryMap) return;
+    discoveryMapMarkers.forEach((marker,name)=>{
+      marker.setIcon(mapIcon(selectedZones.includes(name)));
+    });
+    const selected=selectedZones.at(-1);
+    if(selected) selectMapZone(selected,{zoom:15});
+    else {
+      discoveryMap.setView(OUAGA_CENTER,OUAGA_ZOOM,{animate:true});
+      const title=$('#deal-map-title');
+      if(title) title.textContent='Carte de Ouagadougou';
+      mapStatus('Sélectionnez un quartier pour zoomer dessus.');
+    }
+  }
+
   function addZone(name) {
-    if(!name || selectedZones.includes(name)) return;
+    if(!name || selectedZones.includes(name)) {
+      if(name) selectMapZone(name);
+      return;
+    }
     selectedZones.push(name);
     zoneSearch.value='';
     renderZoneChips();
     renderZoneMenu();
+    refreshDiscoveryMapSelection();
   }
 
   function matchingNeighborhoods() {
@@ -1744,6 +1889,7 @@
     zoneSearch.value='';
     renderZoneChips();
     zoneMenu.hidden=true;
+    refreshDiscoveryMapSelection();
 
     selectedDocuments.splice(0,selectedDocuments.length);
     documentSearch.value='';
@@ -1772,6 +1918,9 @@
     },
     resetForm(){
       resetDealControls();
+    },
+    openMap(){
+      return openDiscoveryMap();
     }
   };
 })();

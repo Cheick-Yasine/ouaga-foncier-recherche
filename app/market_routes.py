@@ -7,6 +7,7 @@ from app.database import DatabaseNotConfiguredError
 from app.market_stats import neighborhood_trends, summarize_market
 from app.search_repository import load_market_candidates, load_neighborhood_candidates
 from app.neighborhoods import KNOWN_NEIGHBORHOOD_ALIASES, neighborhood_key
+from app.neighborhood_geo import location_for
 
 router = APIRouter(prefix='/market', tags=['Accueil'])
 
@@ -42,3 +43,28 @@ def market_neighborhood_trends(
 @router.get('/neighborhoods')
 def market_neighborhoods() -> list[str]:
     return sorted(set(KNOWN_NEIGHBORHOOD_ALIASES.values()), key=neighborhood_key)
+
+
+@router.get('/neighborhood-locations')
+def market_neighborhood_locations() -> list[dict]:
+    """Repères publics des quartiers pour la carte de découverte."""
+    names = sorted(set(KNOWN_NEIGHBORHOOD_ALIASES.values()), key=neighborhood_key)
+    locations = []
+    seen = set()
+    for name in names:
+        point = location_for(name)
+        if not point:
+            continue
+        key = neighborhood_key(point['name'])
+        if key in seen:
+            continue
+        seen.add(key)
+        locations.append({
+            'name': point['name'],
+            'latitude': point['latitude'],
+            'longitude': point['longitude'],
+            'source': point['source'],
+            'attribution': point['attribution'],
+            'license_url': point['license_url'],
+        })
+    return locations
