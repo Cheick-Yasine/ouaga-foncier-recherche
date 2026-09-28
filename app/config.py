@@ -68,7 +68,7 @@ class Settings(BaseSettings):
             return normalized
 
         raise ValueError(
-            "MCP_SERVER_URL doit être HTTPS, locale ou utiliser le service Docker mcp."
+            "MCP_SERVER_URL doit être HTTPS ou locale."
         )
 
 
