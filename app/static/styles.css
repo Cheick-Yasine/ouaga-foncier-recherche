@@ -2369,3 +2369,24 @@ select,.modal,.modal input,.comparison-shell,.assistant-composer,.secondary-butt
     height:auto !important;
   }
 }
+
+/* HAKIMO — aucun bandeau/fond vide ne doit masquer la carte. */
+#deal-dialog .dialog-heading{display:none !important}
+#deal-dialog .deal-dialog-close{
+  position:absolute !important;
+  top:12px !important;
+  right:12px !important;
+  z-index:50 !important;
+  background:rgba(255,255,255,.92) !important;
+  box-shadow:0 4px 14px rgba(0,0,0,.14) !important;
+}
+#deal-dialog .deal-layout{
+  height:100% !important;
+  min-height:0 !important;
+  padding-top:0 !important;
+}
+#deal-dialog .deal-form-panel{padding-top:1rem !important}
+#deal-dialog .deal-map-panel{
+  margin-top:0 !important;
+  height:100% !important;
+}
