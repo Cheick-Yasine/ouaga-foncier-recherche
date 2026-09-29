@@ -31,9 +31,11 @@ CANONICAL_NEIGHBORHOODS = (
     "Bilibambili", "Mogho Naaba", "Kuinima", "Bindougousso", "Zéca", "Baskuy",
     "Bogodogo", "Boulmiougou", "Tanghin-Dassouri",
     "Pabré", "Koubri", "Komsilga", "Ouagadougou", "Karpala", "Lougsi",
+    "Garghin", "Barogo", "Silmissin",
 )
 
 PERIPHERAL_COMMUNES = frozenset({"Loumbila", "Saaba", "Pabré", "Koubri", "Komsilga", "Tanghin-Dassouri"})
+PERIPHERAL_LOCALITIES = frozenset({"Garghin", "Barogo", "Silmissin"})
 ADMINISTRATIVE_AREAS = frozenset({"Baskuy", "Nongr-Massom", "Bogodogo", "Boulmiougou"})
 BROAD_AREAS = frozenset({"Centre Ville", "Zone Industrielle", "Zone Commerciale"})
 CITY_LEVEL_AREAS = frozenset({"Ouagadougou"})
@@ -122,6 +124,8 @@ def neighborhood_metadata(value: str | None) -> dict[str, object]:
     canonical = KNOWN_NEIGHBORHOOD_ALIASES.get(key)
     if canonical in PERIPHERAL_COMMUNES:
         zone_type, precision = "commune_peripherique", "commune"
+    elif canonical in PERIPHERAL_LOCALITIES:
+        zone_type, precision = "localite_peripherique", "localite"
     elif canonical in ADMINISTRATIVE_AREAS:
         zone_type, precision = "zone_administrative", "large"
     elif canonical in BROAD_AREAS:
