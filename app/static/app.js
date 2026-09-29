@@ -395,7 +395,8 @@ function appendMessage(entry) {
   const simpleSearch=(entry.data_used ?? entry.mcp_used) && !analysis && !comparison && !entry.error;
   const quality=results[0]?.qualite || {};
   const recommendable=results[0]?.recommande_par_gpt ?? quality.informations_completes ?? (['mentionne','annonce_disponible'].includes(quality.document_etat) && ['mentionne','annonce_disponible'].includes(quality.eau_etat) && ['mentionne','annonce_disponible'].includes(quality.electricite_etat) && quality.proximites?.length>0);
-  if (entry.content?.trim()) content.append(entry.role==='assistant' ? formattedReply(entry.content) : el('div','chat-bubble',entry.content));\n  if (entry.content?.trim()) content.append(messageActions(entry, thread?.messages?.indexOf(entry) ?? -1, row));
+  if (entry.content?.trim()) content.append(entry.role==='assistant' ? formattedReply(entry.content) : el('div','chat-bubble',entry.content));
+  if (entry.content?.trim()) content.append(messageActions(entry, thread?.messages?.indexOf(entry) ?? -1, row));
   if ((entry.data_used ?? entry.mcp_used)) {
     const heading=el('div','results-heading');
     heading.append(el('h2','',results.length ? (comparison?'Comparaison':analysis?'Des offres à considérer':recommendable?'Recommandation':'Offres à compléter') : (analysis?'': 'Aucune annonce correspondante')));
