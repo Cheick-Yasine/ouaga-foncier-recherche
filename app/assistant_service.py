@@ -552,6 +552,28 @@ async def run_assistant(
             answer = (response.output_text or "").strip()
             if not answer:
                 answer = "Je n'ai pas pu préparer une réponse. Reformulez votre demande."
+            if mcp_used and latest_mode == "recherche" and latest_analysis is not None and latest_results:
+                # L'analyse doit toujours exposer au moins une piste concrète.
+                # Le LLM peut produire un bon résumé mais oublier la section
+                # d'alternatives ; on l'ajoute donc à partir des données MCP.
+                first = latest_results[0]
+                comparison = first.get("comparaison_annonce") or {}
+                advantages = comparison.get("avantages") or []
+                tradeoffs = comparison.get("compromis") or []
+                quartier = first.get("quartier") or "la zone"
+                intro = f"**Une option à regarder :** {quartier}."
+                if advantages:
+                    intro += " " + "; ".join(str(x) for x in advantages[:2]) + "."
+                elif tradeoffs:
+                    intro += " " + "; ".join(str(x) for x in tradeoffs[:2]) + "."
+                else:
+                    intro += " Cette annonce est proposée comme offre comparable dans la zone."
+                if comparison.get("distance_libelle") and not comparison.get("meme_quartier"):
+                    intro += f" Elle se situe à environ {comparison['distance_libelle']} en ligne droite entre les quartiers."
+                if len(latest_results) > 1:
+                    intro += f" {len(latest_results) - 1} autre(s) offre(s) comparable(s) sont également disponibles."
+                answer = answer.rstrip() + "\n\n" + intro
+
             if mcp_used and latest_mode == "recherche" and price_request is not None:
                 answer, latest_results = _ground_price_search_answer(
                     message,
