@@ -318,6 +318,76 @@ function resultTable(results) {
 
   return fragment;
 }
+function copyText(text, trigger) {
+  const value=String(text || '').trim();
+  if(!value) return;
+  const done=()=>{
+    if(trigger){
+      const previous=trigger.textContent;
+      trigger.textContent='Copié';
+      trigger.classList.add('is-copied');
+      setTimeout(()=>{trigger.textContent=previous;trigger.classList.remove('is-copied');},1400);
+    } else toast('Texte copié.');
+  };
+  if(navigator.clipboard?.writeText) navigator.clipboard.writeText(value).then(done).catch(()=>{
+    const area=document.createElement('textarea');
+    area.value=value; area.style.position='fixed'; area.style.opacity='0';
+    document.body.appendChild(area); area.select();
+    try{document.execCommand('copy');done();}catch{toast('Impossible de copier le texte.');}
+    area.remove();
+  });
+  else {
+    const area=document.createElement('textarea');
+    area.value=value; area.style.position='fixed'; area.style.opacity='0';
+    document.body.appendChild(area); area.select();
+    try{document.execCommand('copy');done();}catch{toast('Impossible de copier le texte.');}
+    area.remove();
+  }
+}
+function messageActions(entry,index,row) {
+  const actions=el('div','chat-message-actions');
+  const copy=button('Copier','chat-action',()=>copyText(entry.content,copy));
+  actions.append(copy);
+  if(entry.role==='user' && !busy && !entry.error){
+    const edit=button('Modifier','chat-action',()=>editUserMessage(index,row));
+    actions.prepend(edit);
+  }
+  return actions;
+}
+function editUserMessage(index,row){
+  if(busy || !thread?.messages?.[index] || thread.messages[index].role!=='user') return;
+  const entry=thread.messages[index], content=row.querySelector('.chat-content');
+  const original=entry.content;
+  content.replaceChildren(
+    el('p','chat-role','Vous')
+  );
+  const editor=el('div','chat-edit-box');
+  const textarea=document.createElement('textarea');
+  textarea.value=original;
+  textarea.rows=Math.min(8,Math.max(3,Math.ceil(original.length/70)));
+  textarea.maxLength=6000;
+  textarea.setAttribute('aria-label','Modifier votre question');
+  const controls=el('div','chat-edit-actions');
+  const cancel=button('Annuler','chat-action',()=>{renderConversation();});
+  const save=button('Enregistrer','chat-action primary-chat-action',()=>{
+    const value=textarea.value.trim();
+    if(value.length<2){toast('Votre question est trop courte.');return;}
+    if(value.length>6000){toast('Limitez votre message à 6 000 caractères.');return;}
+    const target=thread;
+    target.messages.splice(index);
+    if(index===0) target.query=value.slice(0,110);
+    renderConversation();
+    sendMessage(value);
+  });
+  controls.append(cancel,save);
+  editor.append(textarea,controls);
+  content.append(editor);
+  const actions=el('div','chat-message-actions');
+  actions.append(button('Copier','chat-action',()=>copyText(textarea.value,actions.firstElementChild)));
+  content.append(actions);
+  textarea.focus();
+  textarea.setSelectionRange(textarea.value.length,textarea.value.length);
+}
 function appendMessage(entry) {
   const row=el('article','chat-row is-'+entry.role+(entry.error?' is-error':'')), content=el('div','chat-content');
   content.append(el('p','chat-role',entry.role==='assistant'?'HAKIMO':'Vous'));
@@ -325,7 +395,7 @@ function appendMessage(entry) {
   const simpleSearch=(entry.data_used ?? entry.mcp_used) && !analysis && !comparison && !entry.error;
   const quality=results[0]?.qualite || {};
   const recommendable=results[0]?.recommande_par_gpt ?? quality.informations_completes ?? (['mentionne','annonce_disponible'].includes(quality.document_etat) && ['mentionne','annonce_disponible'].includes(quality.eau_etat) && ['mentionne','annonce_disponible'].includes(quality.electricite_etat) && quality.proximites?.length>0);
-  if (entry.content?.trim()) content.append(entry.role==='assistant' ? formattedReply(entry.content) : el('div','chat-bubble',entry.content));
+  if (entry.content?.trim()) content.append(entry.role==='assistant' ? formattedReply(entry.content) : el('div','chat-bubble',entry.content));\n  if (entry.content?.trim()) content.append(messageActions(entry, thread?.messages?.indexOf(entry) ?? -1, row));
   if ((entry.data_used ?? entry.mcp_used)) {
     const heading=el('div','results-heading');
     heading.append(el('h2','',results.length ? (comparison?'Comparaison':analysis?'Des offres à considérer':recommendable?'Recommandation':'Offres à compléter') : (analysis?'': 'Aucune annonce correspondante')));
@@ -349,6 +419,7 @@ function appendMessage(entry) {
   }
   row.append(el('div','chat-avatar',entry.role==='assistant'?'H':'Vous'),content); messages.append(row); queueMicrotask(refreshSourceLinks); return row;
 }
+
 function renderSuggestions(entry) {
   const node=$('#followup-suggestions'); node.replaceChildren();
   if (!entry?.suggestions) return;
@@ -390,12 +461,15 @@ function setBusy(value) {
   $$('#followup-suggestions button').forEach(b=>b.disabled=value);
   renderSidebar();
 }
-async function sendMessage(message) {
+async function sendMessage(message, options={}) {
   if (pendingRequests.has(thread?.id) || !message || message.trim().length<2) return;
   message=message.trim();
   if (message.length>6000) { toast('Limitez votre message à 6 000 caractères.'); return; }
   showPage('chat'); closeSidebar(); thread ||= newThread();
   const target=thread, threadId=target.id, storageKey=key('conversations'), alertId=checkingAlert;
+  const replaceIndex=Number.isInteger(options.replaceIndex) ? options.replaceIndex : null;
+  if(replaceIndex!==null && target.messages[replaceIndex]?.role==='user') target.messages.splice(replaceIndex);
+
   const alertKey=key('alerts'); checkingAlert=null;
   const age=Number(period.value); target.max_age_days=age;
   const previous=target.messages.filter(m=>!m.error).slice(-12).map(m=>({role:m.role,content:historyContent(m)}));
