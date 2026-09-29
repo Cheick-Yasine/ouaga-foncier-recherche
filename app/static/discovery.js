@@ -580,7 +580,7 @@
     medianButton.setAttribute('aria-pressed','true');
     expert.setAttribute('aria-pressed',String(priceExpertMode));
     expert.textContent='Mode expert';
-    medianButton.disabled=true;
+    medianButton.disabled=false;
   }
 
   function median(values) {
