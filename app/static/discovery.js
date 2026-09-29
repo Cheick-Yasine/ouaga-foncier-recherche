@@ -475,7 +475,7 @@
   let trendRequestId=0;
   let rankingRequestId=0;
   let drawFrame=null;
-  let priceStatistic='mean';
+  let priceStatistic='median';
   let priceExpertMode=false;
 
   // Les deux graphiques historiques restent dans leur rendu d'origine.
@@ -573,20 +573,24 @@
   }
 
   function syncPriceControls() {
-    const mean=$('#price-stat-mean');
     const medianButton=$('#price-stat-median');
     const expert=$('#price-expert-toggle');
-    if(!mean || !medianButton || !expert) return;
+    if(!medianButton || !expert) return;
 
-    mean.setAttribute('aria-pressed',String(priceStatistic==='mean'));
-    medianButton.setAttribute('aria-pressed',String(priceStatistic==='median'));
+    medianButton.setAttribute('aria-pressed','true');
     expert.setAttribute('aria-pressed',String(priceExpertMode));
-    expert.textContent=priceExpertMode ? 'Quitter le mode expert' : 'Mode expert';
-    mean.disabled=priceExpertMode;
-    medianButton.disabled=priceExpertMode;
+    expert.textContent=priceExpertMode ? 'Quitter la distribution' : 'Voir la distribution';
+    medianButton.disabled=true;
   }
 
-  function drawPriceBoxplots(container,weeks,kind) {
+  function median(values) {
+    const sorted=values.filter(Number.isFinite).sort((a,b)=>a-b);
+    if(!sorted.length) return null;
+    const middle=Math.floor(sorted.length/2);
+    return sorted.length%2 ? sorted[middle] : (sorted[middle-1]+sorted[middle])/2;
+  }
+
+  function drawPriceViolin(container,weeks,kind) {
     clearPlotlyContainer(container);
     if(!weeks.length){
       container.append(element('p','chart-empty','Aucune donnée disponible.'));
@@ -594,19 +598,20 @@
     }
     if(!plotlyReady(container)) return;
 
-    const x=[];
-    const y=[];
+    const labels=[];
+    const values=[];
+    const medians=[];
     weeks.forEach(week=>{
       const label=shortDate(week.debut)+' – '+shortDate(week.fin);
-      const values=week.types?.[kind]?.prix_m2_values || [];
-      values.forEach(value=>{
-        if(!Number.isFinite(value) || value<=0) return;
-        x.push(label);
-        y.push(value);
-      });
+      const weekValues=(week.types?.[kind]?.prix_m2_values || [])
+        .filter(value=>Number.isFinite(value) && value>0);
+      if(!weekValues.length) return;
+      labels.push(label);
+      values.push(...weekValues.map(value=>({label,value})));
+      medians.push({label,value:median(weekValues)});
     });
 
-    if(!y.length){
+    if(!values.length){
       container.replaceChildren(
         element('p','chart-empty','Aucune distribution de prix au m² disponible.')
       );
@@ -614,30 +619,59 @@
     }
 
     const theme=plotTheme();
-    const trace={
-      type:'box',
-      x,
-      y,
-      name:'Prix / m²',
-      boxmean:true,
-      boxpoints:false,
-      quartilemethod:'linear',
-      hoveron:'boxes',
-      marker:{color:'#2563eb'},
-      line:{color:'#2563eb',width:2},
-      fillcolor:'rgba(37,99,235,0.14)'
+    const violin={
+      type:'violin',
+      x:values.map(item=>item.label),
+      y:values.map(item=>item.value),
+      name:'Annonces',
+      points:'all',
+      jitter:0.28,
+      pointpos:0,
+      hoveron:'points+kde',
+      scalemode:'width',
+      spanmode:'hard',
+      bandwidth:0,
+      marker:{
+        color:'#2563eb',
+        size:5,
+        opacity:0.5,
+        line:{width:0}
+      },
+      line:{color:'#2563eb',width:1.5},
+      fillcolor:'rgba(37,99,235,0.18)',
+      meanline:{visible:false},
+      box:{visible:false}
     };
+
+    const medianTrace={
+      type:'scatter',
+      mode:'markers+lines',
+      x:medians.map(item=>item.label),
+      y:medians.map(item=>item.value),
+      name:'Médiane',
+      marker:{color:'#0f172a',size:7,symbol:'diamond'},
+      line:{color:'#0f172a',width:2},
+      hovertemplate:'Médiane : %{y:,.0f} FCFA/m²<extra></extra>'
+    };
+
     const layout={
       autosize:true,
       height:cardIsFullscreen(container.closest('.chart-fullscreen-card'))
-        ? Math.max(520,window.innerHeight-230)
-        : 390,
+        ? Math.max(560,window.innerHeight-230)
+        : 430,
       margin:{l:82,r:22,t:28,b:76},
       paper_bgcolor:'rgba(0,0,0,0)',
       plot_bgcolor:'rgba(0,0,0,0)',
       font:{family:'Manrope, sans-serif',color:theme.text,size:12},
-      showlegend:false,
-      boxgap:0.38,
+      showlegend:true,
+      legend:{
+        orientation:'h',
+        x:0,
+        y:1.08,
+        font:{size:11,color:theme.muted}
+      },
+      violinmode:'group',
+      violingap:0.18,
       xaxis:{
         title:{text:'Semaine',font:{size:11}},
         tickfont:{color:theme.muted,size:10},
@@ -651,15 +685,17 @@
         tickfont:{color:theme.muted,size:10},
         tickformat:'~s'
       },
-      uirevision:'price-box-log-'+kind
+      hoverlabel:{font:{family:'Manrope, sans-serif'}},
+      uirevision:'price-violin-log-'+kind
     };
 
-    Plotly.react(container,[trace],layout,plotConfig());
+    Plotly.react(container,[violin,medianTrace],layout,plotConfig());
     const note=element(
       'p',
       'chart-detail expert-chart-detail',
-      'Mode expert : les valeurs extrêmes sont masquées pour garder les boîtes lisibles. '+
-      'L’axe vertical est logarithmique ; la ligne centrale est la médiane et le repère de moyenne reste affiché.'
+      'Chaque point représente une annonce avec un prix au m² calculable. '+
+      'La largeur du violon montre où les annonces se concentrent ; le losange indique la médiane. '+
+      'L’axe vertical est logarithmique pour rendre visibles les écarts de prix.'
     );
     container.append(note);
   }
@@ -671,7 +707,7 @@
     if(!container) return;
     syncPriceControls();
     if(priceExpertMode){
-      drawPriceBoxplots(container,market.semaines || [],kind);
+      drawPriceViolin(container,market.semaines || [],kind);
       return;
     }
     drawChart(
@@ -1178,15 +1214,7 @@
     loadNeighborhoodRanking(true);
   });
 
-  $('#price-stat-mean')?.addEventListener('click',()=>{
-    if(priceExpertMode) return;
-    priceStatistic='mean';
-    drawPriceChart();
-  });
-
   $('#price-stat-median')?.addEventListener('click',()=>{
-    if(priceExpertMode) return;
-    priceStatistic='median';
     drawPriceChart();
   });
 
