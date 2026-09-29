@@ -199,6 +199,9 @@ def analyze_offer(publication: str, candidates: list[SearchCandidate], *, prefer
     }
     strict_zone = 'quartier' in criteria.required_fields or bool(re.search(r'\b(?:(?:uniquement|seulement|exclusivement)\s+(?:a|au|dans)|meme quartier|pas d.autres? quartiers?)\b', normalize_text(preferences)))
     origin = criteria.neighborhood
+    # L'analyse doit aussi retourner des offres comparables, pas uniquement des
+    # offres que le moteur considère comme « meilleures ». Sinon une annonce peut
+    # recevoir un avis textuel sans aucune offre voisine à afficher.
     metadata = {}
     pool = []
     for candidate in others:
@@ -209,24 +212,94 @@ def analyze_offer(publication: str, candidates: list[SearchCandidate], *, prefer
             continue
         if land_family_from_neon(candidate) != land_family(subject):
             continue
-        if criteria.area_m2 and (not candidate.area_m2 or not .75 * criteria.area_m2 <= candidate.area_m2 <= 1.25 * criteria.area_m2):
+        if criteria.area_m2 and (
+            not candidate.area_m2
+            or not .75 * criteria.area_m2 <= candidate.area_m2 <= 1.25 * criteria.area_m2
+        ):
             continue
+
         candidate_quality = offer_quality_from_neon(candidate)
-        option = _better_option(subject, candidate, quality, candidate_quality, criteria.price_fcfa)
-        if not option:
-            continue
-        metadata[candidate.identifier] = {**relation, **option}
-        pool.append(replace(candidate, proximity='+'.join(candidate_quality['proximites']) or None))
-    # La proximité a été vérifiée géographiquement. Elle n'est pas une égalité
-    # de quartier ; le budget et les autres exigences restent actifs.
-    explicit = {name for name, value in [('statut_document', criteria.document_status), ('viabilite', criteria.viability), ('proximite', criteria.proximity)] if value}
-    ranking_criteria = replace(criteria, neighborhood=None, required_fields=(criteria.required_fields | explicit) - {'quartier'})
+        reference_m2 = price_per_square_metre(subject)
+        candidate_m2 = price_per_square_metre(candidate)
+
+        # Construire une comparaison factuelle pour chaque offre retenue.
+        advantages = []
+        tradeoffs = []
+        if candidate_m2 is not None and reference_m2 is not None:
+            delta_m2 = round((candidate_m2 / reference_m2 - 1) * 100, 1)
+            if delta_m2 < 0:
+                advantages.append(
+                    f"Prix au m² plus bas : {candidate_m2:,.0f} FCFA/m² contre "
+                    f"{reference_m2:,.0f} FCFA/m²".replace(',', ' ')
+                )
+            elif delta_m2 > 0:
+                tradeoffs.append(
+                    f"Prix au m² plus élevé : {candidate_m2:,.0f} FCFA/m² contre "
+                    f"{reference_m2:,.0f} FCFA/m²".replace(',', ' ')
+                )
+        else:
+            delta_m2 = None
+
+        if candidate_quality['informations_completes'] and not quality['informations_completes']:
+            advantages.append("Annonce plus complète sur les informations disponibles")
+        if candidate_quality['document'] and candidate_quality['document'] != quality['document']:
+            advantages.append(
+                "Document annoncé : "
+                + DOCUMENT_LABELS.get(candidate_quality['document'], candidate_quality['document'])
+            )
+        for key, label in (('eau', 'Eau'), ('electricite', 'Électricité')):
+            if candidate_quality[key + '_etat'] in {'mentionne', 'annonce_disponible'} and (
+                quality[key + '_etat'] not in {'mentionne', 'annonce_disponible'}
+            ):
+                advantages.append(label + " mentionnée dans l'annonce")
+        if not advantages and not tradeoffs:
+            advantages.append("Offre comparable à regarder dans la zone")
+
+        metadata[candidate.identifier] = {
+            **relation,
+            'avantages': advantages,
+            'compromis': tradeoffs,
+            'ecart_prix_m2_pct': delta_m2,
+        }
+        pool.append(
+            replace(
+                candidate,
+                proximity='+'.join(candidate_quality['proximites']) or None,
+            )
+        )
+
+    # La proximité est vérifiée géographiquement. Les offres proches sont donc
+    # réellement affichables, même si elles ne sont pas strictement « meilleures ».
+    explicit = {
+        name
+        for name, value in [
+            ('statut_document', criteria.document_status),
+            ('viabilite', criteria.viability),
+            ('proximite', criteria.proximity),
+        ]
+        if value
+    }
+    ranking_criteria = replace(
+        criteria,
+        neighborhood=None,
+        price_fcfa=None,
+        price_is_maximum=False,
+        required_fields=(criteria.required_fields | explicit) - {'quartier'},
+    )
     ranked = rank_candidates(ranking_criteria, pool, limit=len(pool))
-    # Une offre complète reste prioritaire. À complétude comparable, préférer
-    # le quartier demandé à ses voisins et conserver le classement prix/qualité.
-    ranked.sort(key=lambda r: (not offer_quality_from_neon(r.candidate)['informations_completes'],
-                               not metadata[r.candidate.identifier]['meme_quartier']))
-    alternatives = [OfferAlternative(**vars(r), comparison=metadata[r.candidate.identifier]) for r in ranked[:10]]
+    # D'abord le même quartier, puis les quartiers réellement proches, tout en
+    # conservant le classement de qualité/prix du moteur.
+    ranked.sort(
+        key=lambda r: (
+            not metadata[r.candidate.identifier]['meme_quartier'],
+            metadata[r.candidate.identifier].get('distance_km', float('inf')),
+            not offer_quality_from_neon(r.candidate)['informations_completes'],
+        )
+    )
+    alternatives = [
+        OfferAlternative(**vars(r), comparison=metadata[r.candidate.identifier])
+        for r in ranked[:10]
+    ]
     analysis['zone_recherche'] = {
         'quartier_origine': origin, 'quartiers_proches_inclus': not strict_zone and location_for(origin) is not None,
         'rayon_km': NEARBY_RADIUS_KM if not strict_zone and location_for(origin) else None,
