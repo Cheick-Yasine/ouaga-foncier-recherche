@@ -579,7 +579,7 @@
 
     medianButton.setAttribute('aria-pressed','true');
     expert.setAttribute('aria-pressed',String(priceExpertMode));
-    expert.textContent=priceExpertMode ? 'Quitter la distribution' : 'Voir la distribution';
+    expert.textContent='Mode expert';
     medianButton.disabled=true;
   }
 
