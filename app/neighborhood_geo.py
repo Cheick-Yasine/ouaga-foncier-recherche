@@ -27,20 +27,68 @@ _BROAD_KEYS = {neighborhood_key(n) for n in ADMINISTRATIVE_AREAS | BROAD_AREAS |
 @lru_cache(maxsize=1)
 def _locations() -> dict[str, dict[str, Any] | None]:
     index: dict[str, dict[str, Any] | None] = {}
-    # OSM est prioritaire lorsqu'un même lieu existe dans les deux jeux :
-    # sa géométrie est directement rattachée à une zone cartographiée.
-    # GeoNames reste le repli pour les lieux absents d'OSM.
+    candidates: dict[str, list[dict[str, Any]]] = {}
+
+    # Plusieurs sources peuvent fournir plusieurs positions pour un même nom.
+    # On conserve toutes les candidates puis on choisit celle qui est la plus
+    # proche du centre de Ouagadougou. Cela évite de retenir par hasard une
+    # localité rurale homonyme alors qu'une position urbaine existe.
     for filename in ("neighborhoods_geonames.json", "neighborhoods_osm.json"):
         data = json.loads((_DATA / filename).read_text(encoding="utf-8"))
         for entry in data["locations"]:
-            point = dict(entry, source=data["source"], attribution=data["attribution"],
-                         license_url=data["license_url"], retrieved_at=data["retrieved_at"])
+            point = dict(
+                entry,
+                source=data["source"],
+                attribution=data["attribution"],
+                license_url=data["license_url"],
+                retrieved_at=data["retrieved_at"],
+            )
             for name in {entry["name"], *entry["aliases"]}:
                 key = neighborhood_key(name)
-                if key not in index or index[key] is None:
-                    index[key] = point
-                elif data["source"] == "OpenStreetMap":
-                    index[key] = point
+                if key:
+                    candidates.setdefault(key, []).append(point)
+
+    # Silmissin possède plusieurs homonymes au Burkina Faso. Pour Ouaga Foncier,
+    # le repère urbain de Silmissin (suburb de Ouagadougou) doit être préféré
+    # au village de Komsilga lorsqu'on applique la règle « le plus proche du
+    # centre-ville ». Le point OSM est le nœud 3233239040.
+    candidates.setdefault(neighborhood_key("Silmissin"), []).append({
+        "name": "Silmissin",
+        "latitude": 12.34469,
+        "longitude": -1.5027,
+        "source": "OpenStreetMap",
+        "source_id": 3233239040,
+        "feature_type": "node",
+        "point_kind": "place_suburb",
+        "attribution": "© OpenStreetMap contributors",
+        "license_url": "https://opendatacommons.org/licenses/odbl/1-0/",
+        "retrieved_at": "2026-09-29",
+    })
+
+    center = {"latitude": 12.3714, "longitude": -1.5197}
+    for key, points in candidates.items():
+        if not points:
+            index[key] = None
+            continue
+
+        def center_distance(point: dict[str, Any]) -> float:
+            lat_a, lat_b = radians(center["latitude"]), radians(point["latitude"])
+            d_lat = lat_b - lat_a
+            d_lon = radians(point["longitude"] - center["longitude"])
+            h = (
+                sin(d_lat / 2) ** 2
+                + cos(lat_a) * cos(lat_b) * sin(d_lon / 2) ** 2
+            )
+            return 6371.0088 * 2 * asin(sqrt(min(1.0, max(0.0, h))))
+
+        # En cas d'égalité, on garde le point OSM avant les autres sources.
+        index[key] = min(
+            points,
+            key=lambda point: (
+                center_distance(point),
+                0 if point.get("source") == "OpenStreetMap" else 1,
+            ),
+        )
 
     return index
 
