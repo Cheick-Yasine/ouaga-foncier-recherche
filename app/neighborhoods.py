@@ -31,7 +31,7 @@ CANONICAL_NEIGHBORHOODS = (
     "Bilibambili", "Mogho Naaba", "Kuinima", "Bindougousso", "Zéca", "Baskuy",
     "Bogodogo", "Boulmiougou", "Tanghin-Dassouri",
     "Pabré", "Koubri", "Komsilga", "Ouagadougou", "Karpala", "Lougsi",
-    "Oscar Yaar", "Rotonde", "Université de Ouagadougou", "Zone Ministères et Ambassades", "Boince Yaar", "Petit Paris", "Marché du 10", "Cité An III", "Sankariaré", "Naab Pougo", "Yaoghin", "Sogpelcé", "Sabin barrage", "Zone industrielle Kossodo", "Toudoubwéogo", "Sogdin", "ENAREF Cogeb", "1200 Logements", "Ouaga Inter", "SIAO", "Toeyibin", "Pagalayiri", "Bongnaam", "Song-Naaba", "Kankamsin", "Nabitenga", "Gantin", "Silmiyiri", "Marcoussis", "Ouapassi", "Zoodnoma", "Watinonma", "Kossoghin", "Bangpooré", "Wobriguéré", "Babouang Rouanga", "Toeghin", "Sakoula", "Godin", "Goundrin", "Quatorze-Yaar", "Djikof", "Taabtenga", "Zone une", "Katr-yaar", "Rayongo", "Ouidtenga", "Dayongo", "Lanoayiri", "Trame d’Accueil", "Kossyam",
+    "Oscar Yaar", "Rotonde", "Université de Ouagadougou", "Zone Ministères et Ambassades", "Boince Yaar", "Petit Paris", "Marché du 10", "Cité An III", "Sankariaré", "Naab Pougo", "Yaoghin", "Sogpelcé", "Sabin barrage", "Zone industrielle Kossodo", "Toudoubwéogo", "Sogdin", "ENAREF Cogeb", "1200 Logements", "Ouaga Inter", "SIAO", "Toeyibin", "Pagalayiri", "Bongnaam", "Song-Naaba", "Kankamsin", "Nabitenga", "Gantin", "Silmiyiri", "Marcoussis", "Ouapassi", "Zoodnoma", "Watinonma", "Kossoghin", "Bangpooré", "Wobriguéré", "Babouang Rouanga", "Toeghin", "Sakoula", "Godin", "Goundrin", "Quatorze-Yaar", "Djikof", "Tabtenga", "Zone une", "Katr-yaar", "Rayongo", "Ouidtenga", "Dayongo", "Lanoayiri", "Trame d’Accueil", "Kossyam",
     "Garghin", "Barogo", "Silmissin",
 )
 
