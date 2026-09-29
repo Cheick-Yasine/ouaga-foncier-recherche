@@ -115,7 +115,7 @@ def _summary(subject: SearchCandidate, quality: dict, comparison: str,
         if relation['compromis']:
             parts.append('En contrepartie : ' + '; '.join(relation['compromis']) + '.')
     else:
-        parts.append('Je n’ai pas trouvé d’offre clairement meilleure dans la zone comparée. Cela ne suffit pas à dire que celle-ci est la meilleure.')
+        parts.append('Aucune offre comparable n’a été trouvée dans le même quartier avec les critères les plus proches. La recherche peut être élargie aux quartiers voisins ou à des superficies différentes.')
     parts.append('Les documents et les équipements restent à vérifier auprès du vendeur.')
     return ' '.join(parts)
 
@@ -204,25 +204,51 @@ def analyze_offer(publication: str, candidates: list[SearchCandidate], *, prefer
     # recevoir un avis textuel sans aucune offre voisine à afficher.
     metadata = {}
     pool = []
+
+    # Recherche flexible en plusieurs niveaux :
+    # 1) même quartier + surface proche ;
+    # 2) quartier proche + surface proche ;
+    # 3) même famille de bien dans les quartiers proches, même si la surface
+    #    est différente. L'objectif est de toujours proposer des offres à
+    #    regarder, plutôt que de supprimer toute alternative parce que les
+    #    critères sont trop stricts.
+    tiers = [[], [], []]
+    subject_family = land_family(subject)
+
     for candidate in others:
         relation = neighborhood_relation(origin, candidate.neighborhood)
         if not relation or (strict_zone and not relation['meme_quartier']):
             continue
-        if criteria.property_type and candidate.property_type != criteria.property_type:
-            continue
-        if land_family_from_neon(candidate) != land_family(subject):
-            continue
-        if criteria.area_m2 and (
-            not candidate.area_m2
-            or not .75 * criteria.area_m2 <= candidate.area_m2 <= 1.25 * criteria.area_m2
-        ):
+
+        candidate_family = land_family_from_neon(candidate)
+        if candidate_family != subject_family:
             continue
 
+        if criteria.property_type and candidate.property_type != criteria.property_type:
+            # Pour les terrains/parcelles, la famille foncière reste le critère
+            # principal : on accepte l'autre libellé si cela permet d'afficher
+            # des comparables réellement proches.
+            if not (
+                subject_family in {'terrain', 'parcelle'}
+                and candidate_family == subject_family
+            ):
+                continue
+
+        if not candidate.area_m2 or not subject.area_m2:
+            area_level = 2
+        elif .50 * subject.area_m2 <= candidate.area_m2 <= 1.50 * subject.area_m2:
+            area_level = 0 if relation['meme_quartier'] else 1
+        elif .75 * subject.area_m2 <= candidate.area_m2 <= 2.00 * subject.area_m2:
+            area_level = 1
+        else:
+            area_level = 2
+
+        # Une annonce sans surface reste utile dans le niveau 3 : elle peut
+        # fournir un prix, un document ou des équipements à vérifier.
         candidate_quality = offer_quality_from_neon(candidate)
         reference_m2 = price_per_square_metre(subject)
         candidate_m2 = price_per_square_metre(candidate)
 
-        # Construire une comparaison factuelle pour chaque offre retenue.
         advantages = []
         tradeoffs = []
         if candidate_m2 is not None and reference_m2 is not None:
@@ -260,16 +286,20 @@ def analyze_offer(publication: str, candidates: list[SearchCandidate], *, prefer
             'avantages': advantages,
             'compromis': tradeoffs,
             'ecart_prix_m2_pct': delta_m2,
+            'niveau_comparaison': area_level + 1,
         }
-        pool.append(
+        tiers[area_level].append(
             replace(
                 candidate,
                 proximity='+'.join(candidate_quality['proximites']) or None,
             )
         )
 
-    # La proximité est vérifiée géographiquement. Les offres proches sont donc
-    # réellement affichables, même si elles ne sont pas strictement « meilleures ».
+    # On prend d'abord les comparables les plus proches. Si le quartier
+    # manque d'offres, on élargit automatiquement au voisinage puis à la
+    # même famille foncière sans imposer une superficie similaire.
+    pool = [candidate for tier in tiers for candidate in tier]
+
     explicit = {
         name
         for name, value in [
@@ -284,13 +314,15 @@ def analyze_offer(publication: str, candidates: list[SearchCandidate], *, prefer
         neighborhood=None,
         price_fcfa=None,
         price_is_maximum=False,
-        required_fields=(criteria.required_fields | explicit) - {'quartier'},
+        area_m2=None,
+        area_min_m2=None,
+        area_max_m2=None,
+        required_fields=(criteria.required_fields | explicit) - {'quartier', 'superficie', 'prix'},
     )
     ranked = rank_candidates(ranking_criteria, pool, limit=len(pool))
-    # D'abord le même quartier, puis les quartiers réellement proches, tout en
-    # conservant le classement de qualité/prix du moteur.
     ranked.sort(
         key=lambda r: (
+            metadata[r.candidate.identifier]['niveau_comparaison'],
             not metadata[r.candidate.identifier]['meme_quartier'],
             metadata[r.candidate.identifier].get('distance_km', float('inf')),
             not offer_quality_from_neon(r.candidate)['informations_completes'],
@@ -300,6 +332,7 @@ def analyze_offer(publication: str, candidates: list[SearchCandidate], *, prefer
         OfferAlternative(**vars(r), comparison=metadata[r.candidate.identifier])
         for r in ranked[:10]
     ]
+
     analysis['zone_recherche'] = {
         'quartier_origine': origin, 'quartiers_proches_inclus': not strict_zone and location_for(origin) is not None,
         'rayon_km': NEARBY_RADIUS_KM if not strict_zone and location_for(origin) else None,
