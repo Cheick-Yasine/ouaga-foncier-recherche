@@ -9,6 +9,7 @@
   "locations": [
     {"name": "1200 Logements", "source_name": "1200 Logements", "aliases": [], "latitude": 12.36888, "longitude": -1.4975, "source_id": 11900522, "feature_code": "PPLX"},
     {"name": "Balkuy", "source_name": "Balkuy", "aliases": [], "latitude": 12.29979, "longitude": -1.45207, "source_id": 2362989, "feature_code": "PPL"},
+    {"name": "Barogo", "source_name": "Barogo", "aliases": [], "latitude": 12.41186, "longitude": -1.41999, "source_id": 2362741, "feature_code": "PPL"},
     {"name": "Bendogo", "source_name": "Bendogo", "aliases": [], "latitude": 12.39508, "longitude": -1.45425, "source_id": 2362568, "feature_code": "PPLX"},
     {"name": "Bilbalogo", "source_name": "Bilbalogho", "aliases": ["Bilbalogho"], "latitude": 12.3626, "longitude": -1.5311, "source_id": 11900537, "feature_code": "PPLX"},
     {"name": "Bissighin", "source_name": "Bissighin", "aliases": [], "latitude": 12.39354, "longitude": -1.60484, "source_id": 2570255, "feature_code": "PPL"},
@@ -24,6 +25,7 @@
     {"name": "Dapoya", "source_name": "Dapoya", "aliases": [], "latitude": 12.38145, "longitude": -1.52389, "source_id": 11900518, "feature_code": "PPLX"},
     {"name": "Dassasgho", "source_name": "Dassasgo", "aliases": ["Dassasgo"], "latitude": 12.38719, "longitude": -1.46896, "source_id": 2361523, "feature_code": "PPLX"},
     {"name": "Gampela", "source_name": "Gampéla", "aliases": ["Gampéla"], "latitude": 12.4307, "longitude": -1.37318, "source_id": 2360640, "feature_code": "PPL"},
+    {"name": "Garghin", "source_name": "Garghin", "aliases": ["Gagen", "Gaguin", "Garguen"], "latitude": 12.24757, "longitude": -1.52893, "source_id": 2360697, "feature_code": "PPL"},
     {"name": "Gounghin", "source_name": "Gounghin", "aliases": [], "latitude": 12.35895, "longitude": -1.54442, "source_id": 11900680, "feature_code": "PPLX"},
     {"name": "Gounghin Nord", "source_name": "Gounghin Nord", "aliases": [], "latitude": 12.3612, "longitude": -1.55055, "source_id": 11900526, "feature_code": "PPLX"},
     {"name": "Gounghin Sud", "source_name": "Gounghin Sud", "aliases": [], "latitude": 12.35298, "longitude": -1.54342, "source_id": 11900619, "feature_code": "PPLX"},
@@ -61,6 +63,7 @@
     {"name": "Sandogo", "source_name": "Sandogo", "aliases": [], "latitude": 12.31785, "longitude": -1.59374, "source_id": 2355958, "feature_code": "PPL"},
     {"name": "Sanyiri", "source_name": "Sanyiri", "aliases": [], "latitude": 12.34629, "longitude": -1.48007, "source_id": 11900622, "feature_code": "PPLX"},
     {"name": "Silmiougou", "source_name": "Silmiougou", "aliases": [], "latitude": 12.37149, "longitude": -1.65651, "source_id": 2355573, "feature_code": "PPL"},
+    {"name": "Silmissin", "source_name": "Silmissin", "aliases": ["Silmisse", "Silmissen", "Silmissi", "Silmissé"], "latitude": 12.2094, "longitude": -1.566881, "source_id": 2355575, "feature_code": "PPL"},
     {"name": "Somgandé", "source_name": "Somgandé", "aliases": [], "latitude": 12.40927, "longitude": -1.50267, "source_id": 2355383, "feature_code": "PPLX"},
     {"name": "Tabtenga", "source_name": "Taptenga", "aliases": ["Taptenga"], "latitude": 12.37245, "longitude": -1.4518, "source_id": 2355176, "feature_code": "PPL"},
     {"name": "Tampouy", "source_name": "Tampouy", "aliases": [], "latitude": 12.39995, "longitude": -1.57086, "source_id": 2355060, "feature_code": "PPLX"},
