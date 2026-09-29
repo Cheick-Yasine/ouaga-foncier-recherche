@@ -457,6 +457,66 @@ h1 span {
   color:#923d31
 }
 
+.chat-message-actions {
+  display:flex;
+  align-items:center;
+  gap:.35rem;
+  margin-top:.45rem;
+}
+.chat-action {
+  border:0;
+  background:transparent;
+  color:var(--muted);
+  padding:.25rem .45rem;
+  border-radius:7px;
+  font-size:.75rem;
+  cursor:pointer;
+}
+.chat-action:hover {
+  background:var(--blue-soft);
+  color:var(--blue);
+}
+.chat-action.is-copied {
+  color:var(--blue);
+  font-weight:600;
+}
+.chat-edit-box {
+  display:grid;
+  gap:.55rem;
+}
+.chat-edit-box textarea {
+  width:100%;
+  min-width:260px;
+  min-height:80px;
+  max-height:260px;
+  resize:vertical;
+  border:1px solid var(--blue);
+  border-radius:10px;
+  background:var(--surface);
+  color:var(--ink);
+  padding:.7rem .8rem;
+  font:inherit;
+  line-height:1.6;
+  outline:none;
+  box-shadow:0 0 0 3px var(--blue-soft);
+}
+.chat-edit-actions {
+  display:flex;
+  justify-content:flex-end;
+  gap:.4rem;
+}
+.primary-chat-action {
+  background:var(--primary);
+  color:#fff;
+  font-weight:600;
+  padding:.35rem .65rem;
+}
+.primary-chat-action:hover {
+  background:var(--primary);
+  color:#fff;
+  filter:brightness(1.08);
+}
+
 
 
 
@@ -963,6 +1023,10 @@ h1 span {
     max-width:65%;
     font-size:.7rem
   }
+}
+@media(max-width:800px) {
+  .is-user .chat-content { max-width:94%; }
+  .chat-edit-box textarea { min-width:0; }
 }
 @media(max-width:800px) {
   .workspace {
