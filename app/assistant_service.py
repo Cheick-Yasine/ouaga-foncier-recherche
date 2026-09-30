@@ -184,9 +184,16 @@ simplement si les offres similaires manquent, sans seuil ni compteur. Si utile,
 ajoute au maximum trois puces courtes pour les détails non déjà expliqués.
 Ne déduis jamais qu'une annonce est chère en l'absence de comparaison suffisante.
 Les alternatives retenues sont dans le même quartier, ou dans une zone proche
-vérifiée par l'outil. En deux phrases sous **Une option à regarder**, justifie
-le premier résultat avec ses comparaison_annonce.avantages et compromis ; le
-tableau fournit ses détails. Pour une autre zone, reprends exactement le quartier
+vérifiée par l'outil. Ne te contente jamais de dire qu'une « option » existe :
+explique concrètement, pour les 3 premières annonces (jusqu'à 5 si les données
+sont riches), leurs points forts par rapport à l'annonce analysée et leurs
+compromis. Utilise comparaison_annonce.avantages, compromis, ecart_prix_m2_pct,
+ecart_prix_total_pct et ecart_superficie_pct lorsqu'ils existent. Compare aussi
+prix total, surface, document, eau/électricité, proximité et niveau d'information
+lorsque ces données sont disponibles. Une annonce moins chère n'est pas
+automatiquement meilleure. Sous **À comparer dans la liste**, fais 2 à 4 phrases
+courtes par annonce et varie la formulation selon les différences réellement
+présentes dans les données. N'invente jamais un avantage manquant. Pour une autre zone, reprends exactement le quartier
 d'origine et la distance fournie, en précisant « environ ... km en ligne droite
 entre les quartiers ». Ce n'est ni un trajet routier ni la distance entre les
 parcelles. N'invente jamais une distance ou un voisinage. Les autres quartiers
