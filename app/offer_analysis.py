@@ -108,12 +108,23 @@ def _summary(subject: SearchCandidate, quality: dict, comparison: str,
     if missing:
         parts.append('À vérifier avant de choisir : ' + '; '.join(missing) + '.')
     if alternatives:
-        first = alternatives[0]
-        relation = first.comparison
-        where = 'dans le même quartier' if relation['meme_quartier'] else relation['distance_libelle'] + ' en ligne droite entre les quartiers'
-        parts.append(f"L’offre à {first.candidate.neighborhood}, {where}, mérite d’être regardée : " + '; '.join(relation['avantages']) + '.')
-        if relation['compromis']:
-            parts.append('En contrepartie : ' + '; '.join(relation['compromis']) + '.')
+        parts.append('Voici les principales différences avec les annonces comparables affichées :')
+        for index, alternative in enumerate(alternatives[:3], 1):
+            relation = alternative.comparison
+            where = (
+                'dans le même quartier'
+                if relation.get('meme_quartier')
+                else (
+                    f"à environ {relation['distance_libelle']} en ligne droite entre les quartiers"
+                    if relation.get('distance_libelle')
+                    else 'dans une autre zone de comparaison'
+                )
+            )
+            label = f"{alternative.candidate.neighborhood or 'quartier non précisé'}, {where}"
+            details = relation.get('resume_comparaison') or 'comparaison disponible sur les critères renseignés'
+            parts.append(f"Option {index} : {label}. {details}.")
+            if relation.get('compromis'):
+                parts.append('À surveiller : ' + '; '.join(relation['compromis'][:2]) + '.')
     else:
         parts.append('Aucune offre comparable n’a été trouvée dans le même quartier avec les critères les plus proches. La recherche peut être élargie aux quartiers voisins ou à des superficies différentes.')
     parts.append('Les documents et les équipements restent à vérifier auprès du vendeur.')
