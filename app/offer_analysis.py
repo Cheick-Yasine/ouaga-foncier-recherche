@@ -296,9 +296,91 @@ def analyze_offer(publication: str, candidates: list[SearchCandidate], *, prefer
         )
 
     # On prend d'abord les comparables les plus proches. Si le quartier
-    # manque d'offres, on élargit automatiquement au voisinage puis à la
-    # même famille foncière sans imposer une superficie similaire.
+    # manque d'offres (ou si son nom n'est pas encore géolocalisé), on utilise
+    # un repli plus large : même famille foncière, puis même type de bien.
+    # Cela garantit que l'analyse peut afficher des offres à regarder sans
+    # inventer une proximité géographique qui n'a pas été vérifiée.
     pool = [candidate for tier in tiers for candidate in tier]
+
+    if not pool and not strict_zone:
+        fallback_candidates = []
+        for candidate in others:
+            candidate_family = land_family_from_neon(candidate)
+            if candidate_family != subject_family:
+                continue
+            if criteria.property_type and candidate.property_type != criteria.property_type:
+                if not (
+                    subject_family in {'terrain', 'parcelle'}
+                    and candidate_family == subject_family
+                ):
+                    continue
+
+            candidate_quality = offer_quality_from_neon(candidate)
+            candidate_m2 = price_per_square_metre(candidate)
+            reference_m2 = price_per_square_metre(subject)
+            advantages = []
+            tradeoffs = []
+
+            if candidate_m2 is not None and reference_m2 is not None:
+                delta_m2 = round((candidate_m2 / reference_m2 - 1) * 100, 1)
+                if delta_m2 < 0:
+                    advantages.append(
+                        f"Prix au m² plus bas : {candidate_m2:,.0f} FCFA/m² contre "
+                        f"{reference_m2:,.0f} FCFA/m²".replace(',', ' ')
+                    )
+                elif delta_m2 > 0:
+                    tradeoffs.append(
+                        f"Prix au m² plus élevé : {candidate_m2:,.0f} FCFA/m² contre "
+                        f"{reference_m2:,.0f} FCFA/m²".replace(',', ' ')
+                    )
+            else:
+                delta_m2 = None
+
+            if candidate_quality['informations_completes'] and not quality['informations_completes']:
+                advantages.append("Annonce plus complète sur les informations disponibles")
+            if candidate_quality['document'] and candidate_quality['document'] != quality['document']:
+                advantages.append(
+                    "Document annoncé : "
+                    + DOCUMENT_LABELS.get(candidate_quality['document'], candidate_quality['document'])
+                )
+            for key, label in (('eau', 'Eau'), ('electricite', 'Électricité')):
+                if candidate_quality[key + '_etat'] in {'mentionne', 'annonce_disponible'} and (
+                    quality[key + '_etat'] not in {'mentionne', 'annonce_disponible'}
+                ):
+                    advantages.append(label + " mentionnée dans l'annonce")
+            if not advantages and not tradeoffs:
+                advantages.append("Offre de comparaison à regarder dans la base")
+
+            relation = neighborhood_relation(origin, candidate.neighborhood)
+            if relation:
+                comparison = {
+                    **relation,
+                    'avantages': advantages,
+                    'compromis': tradeoffs,
+                    'ecart_prix_m2_pct': delta_m2,
+                    'niveau_comparaison': 3,
+                }
+            else:
+                comparison = {
+                    'meme_quartier': False,
+                    'distance_km': None,
+                    'distance_libelle': None,
+                    'avantages': advantages,
+                    'compromis': tradeoffs,
+                    'ecart_prix_m2_pct': delta_m2,
+                    'niveau_comparaison': 4,
+                    'zone_proche_verifiee': False,
+                }
+
+            metadata[candidate.identifier] = comparison
+            fallback_candidates.append(
+                replace(
+                    candidate,
+                    proximity='+'.join(candidate_quality['proximites']) or None,
+                )
+            )
+
+        pool = fallback_candidates
 
     explicit = {
         name
