@@ -263,6 +263,61 @@ function formattedReply(text) {
   }
   return box;
 }
+function analysisComparisonPanel(results) {
+  const section=el('section','analysis-comparison');
+  const heading=el('div','analysis-comparison-heading');
+  heading.append(
+    el('span','analysis-comparison-kicker','Comparaison'),
+    el('h3','', 'Ce que les annonces listées apportent par rapport à celle analysée')
+  );
+  section.append(heading);
+
+  const list=el('div','analysis-comparison-list');
+  results.slice(0,5).forEach((r,index)=>{
+    const comparison=r.comparaison_annonce || {};
+    const card=el('article','analysis-comparison-card');
+    const top=el('div','analysis-comparison-top');
+    top.append(
+      el('span','analysis-comparison-rank',String(index+1).padStart(2,'0')),
+      el('div','analysis-comparison-title',title(r))
+    );
+    const facts=el('div','analysis-comparison-facts');
+    if(r.quartier) facts.append(el('span','',r.quartier));
+    if(r.prix_fcfa) facts.append(el('span','',number(r.prix_fcfa,' FCFA')));
+    if(r.superficie_m2) facts.append(el('span','',area(r.superficie_m2)));
+    if(r.prix_m2_fcfa || unitPrice(r)) facts.append(el('span','',unitPrice(r)));
+    if(comparison.distance_libelle){
+      facts.append(el('span','',comparison.meme_quartier ? 'Même quartier' : '≈ '+comparison.distance_libelle+' en ligne droite'));
+    }
+    top.append(facts);
+    card.append(top);
+
+    const advantages=(comparison.avantages || comparison.points_forts || []).slice(0,4);
+    const tradeoffs=(comparison.compromis || comparison.points_attention || []).slice(0,3);
+    if(advantages.length){
+      const strong=el('div','analysis-comparison-block');
+      strong.append(el('strong','','Points forts'));
+      const ul=el('ul');
+      advantages.forEach(item=>ul.append(el('li','',String(item))));
+      strong.append(ul); card.append(strong);
+    }
+    if(tradeoffs.length){
+      const weak=el('div','analysis-comparison-block is-caution');
+      weak.append(el('strong','','À surveiller'));
+      const ul=el('ul');
+      tradeoffs.forEach(item=>ul.append(el('li','',String(item))));
+      weak.append(ul); card.append(weak);
+    }
+    if(!advantages.length && !tradeoffs.length){
+      card.append(el('p','subtle','Aucun avantage ou compromis supplémentaire n’est renseigné dans l’annonce.'));
+    }
+    list.append(card);
+  });
+  section.append(list);
+  if(results.length>5) section.append(el('p','analysis-comparison-note','Les autres annonces restent disponibles dans le tableau ci-dessous.'));
+  return section;
+}
+
 function resultTable(results) {
   const fragment=$('#comparison-template').content.cloneNode(true);
   const body=fragment.querySelector('tbody');
@@ -409,6 +464,7 @@ function appendMessage(entry) {
     }
     if (simpleSearch && results.length && !recommendable) content.append(el('p','subtle','Aucune annonce suffisamment complète pour être recommandée pour le moment.'));
     if (results.length) {
+      if (analysis) content.append(analysisComparisonPanel(results));
       content.append(resultTable(results));
       if (results.some(r => r.comparaison_annonce?.distance_km != null)) {
         const note=el('p','map-attribution','Distances approximatives entre les quartiers, en ligne droite. Le trajet par la route peut être plus long. Repères : ');
