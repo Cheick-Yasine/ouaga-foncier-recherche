@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
+import logging
 from typing import Any
 
 import psycopg
@@ -22,6 +23,8 @@ from app.search_repository import load_recent_candidates
 from app.listing_scope import facebook_publication_url
 from app.neighborhoods import neighborhood_metadata
 from app.semantic_filter import apply_semantic_filter, sanitize_external_text
+
+LOGGER = logging.getLogger(__name__)
 
 mcp = FastMCP(
     "Ouaga Foncier Recherche",
@@ -250,11 +253,18 @@ def evaluer_annonce(
         candidates = load_recent_candidates(anciennete_jours)
     except (DatabaseNotConfiguredError, psycopg.Error):
         return {"erreur": "La base d'annonces est temporairement indisponible."}
-    analysis, criteria, alternatives = analyze_offer(
-        sanitize_external_text(publication, limit=6000), candidates,
-        preferences=description, max_age_days=anciennete_jours,
-        required_fields=frozenset(required),
-    )
+    try:
+        analysis, criteria, alternatives = analyze_offer(
+            sanitize_external_text(publication, limit=6000), candidates,
+            preferences=description, max_age_days=anciennete_jours,
+            required_fields=frozenset(required),
+        )
+    except Exception:
+        LOGGER.exception("offer_analysis_failed")
+        return {
+            "erreur": "L'analyse de cette annonce a rencontré un problème interne. "
+            "La recherche classique reste disponible ; réessayez l'analyse de l'annonce."
+        }
     selected = alternatives[:min(max(int(limit), 1), 10)]
     return {
         "analyse": analysis, "criteres": _criteria_payload(criteria),
