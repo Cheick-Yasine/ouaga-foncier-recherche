@@ -382,6 +382,73 @@ def analyze_offer(publication: str, candidates: list[SearchCandidate], *, prefer
 
         pool = fallback_candidates
 
+    # Enrichissement final : chaque alternative reçoit une comparaison
+    # chiffrée par rapport à l'annonce analysée. Ces champs alimentent à la fois
+    # le texte du modèle et l'affichage des cartes de comparaison.
+    reference_price = price_per_square_metre(subject)
+    reference_total = subject.price_fcfa
+    reference_area = subject.area_m2
+    for candidate in pool:
+        comparison = metadata.get(candidate.identifier)
+        if comparison is None:
+            continue
+        candidate_quality = offer_quality_from_neon(candidate)
+        candidate_m2 = price_per_square_metre(candidate)
+        total_delta = None
+        area_delta = None
+        if reference_total and candidate.price_fcfa:
+            total_delta = round((candidate.price_fcfa / reference_total - 1) * 100, 1)
+            if total_delta < 0:
+                comparison['avantages'].append(
+                    f"Prix total inférieur de {abs(total_delta):g} % à celui de l'annonce analysée"
+                )
+            elif total_delta > 0:
+                comparison['compromis'].append(
+                    f"Prix total supérieur de {total_delta:g} % à celui de l'annonce analysée"
+                )
+        if reference_area and candidate.area_m2:
+            area_delta = round((candidate.area_m2 / reference_area - 1) * 100, 1)
+            if area_delta > 0:
+                comparison['avantages'].append(
+                    f"Superficie supérieure de {area_delta:g} %"
+                )
+            elif area_delta < 0:
+                comparison['compromis'].append(
+                    f"Superficie inférieure de {abs(area_delta):g} %"
+                )
+
+        # Points forts propres à cette annonce, sans recopier les mêmes mots.
+        for advantage in candidate_quality.get('atouts', []):
+            if advantage not in quality.get('atouts', []):
+                comparison['avantages'].append(str(advantage))
+        for vigilance in candidate_quality.get('vigilances', []):
+            if vigilance not in quality.get('vigilances', []):
+                comparison['compromis'].append(str(vigilance))
+
+        comparison['avantages'] = list(dict.fromkeys(comparison.get('avantages') or []))[:6]
+        comparison['compromis'] = list(dict.fromkeys(comparison.get('compromis') or []))[:4]
+        comparison['points_forts'] = comparison['avantages']
+        comparison['points_attention'] = comparison['compromis']
+        comparison['ecart_prix_total_pct'] = total_delta
+        comparison['ecart_superficie_pct'] = area_delta
+        comparison['ecart_prix_m2_pct'] = comparison.get('ecart_prix_m2_pct')
+        comparison['surface_difference_m2'] = (
+            round(candidate.area_m2 - reference_area, 1)
+            if candidate.area_m2 is not None and reference_area is not None
+            else None
+        )
+        comparison['prix_total_difference_fcfa'] = (
+            round(candidate.price_fcfa - reference_total)
+            if candidate.price_fcfa is not None and reference_total is not None
+            else None
+        )
+        if comparison['avantages']:
+            comparison['resume_comparaison'] = " ; ".join(comparison['avantages'][:3])
+        elif comparison['compromis']:
+            comparison['resume_comparaison'] = " ; ".join(comparison['compromis'][:3])
+        else:
+            comparison['resume_comparaison'] = "Comparaison disponible surtout sur les critères affichés."
+
     explicit = {
         name
         for name, value in [
