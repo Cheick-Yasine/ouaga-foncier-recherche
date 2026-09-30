@@ -2487,3 +2487,109 @@ select,.modal,.modal input,.comparison-shell,.assistant-composer,.secondary-butt
 #deal-dialog .deal-map-toolbar-actions .deal-dialog-close:hover{
   background:var(--blue-soft) !important;
 }
+
+
+/* Analyse d'annonce — comparaison concrète des alternatives. */
+.analysis-comparison{
+  margin:18px 0 16px;
+  padding:16px;
+  border:1px solid var(--line);
+  border-radius:16px;
+  background:var(--surface-2);
+}
+.analysis-comparison-heading{margin-bottom:12px}
+.analysis-comparison-kicker{
+  display:block;
+  margin-bottom:4px;
+  color:var(--blue);
+  font-size:.64rem;
+  font-weight:800;
+  letter-spacing:.08em;
+  text-transform:uppercase
+}
+.analysis-comparison-heading h3{
+  margin:0;
+  font-size:.95rem;
+  line-height:1.35;
+  letter-spacing:-.02em
+}
+.analysis-comparison-list{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:10px;
+}
+.analysis-comparison-card{
+  min-width:0;
+  padding:13px;
+  border:1px solid var(--line);
+  border-radius:13px;
+  background:var(--surface);
+}
+.analysis-comparison-top{
+  display:flex;
+  align-items:flex-start;
+  gap:10px;
+}
+.analysis-comparison-rank{
+  flex:none;
+  display:grid;
+  place-items:center;
+  width:28px;
+  height:28px;
+  border-radius:8px;
+  background:var(--blue-soft);
+  color:var(--blue);
+  font-size:.66rem;
+  font-weight:800;
+}
+.analysis-comparison-title{
+  min-width:0;
+  color:var(--ink);
+  font-size:.8rem;
+  font-weight:750;
+  line-height:1.35;
+}
+.analysis-comparison-facts{
+  display:flex;
+  flex-wrap:wrap;
+  gap:5px;
+  margin:9px 0 10px 38px;
+}
+.analysis-comparison-facts span{
+  padding:3px 6px;
+  border:1px solid var(--line);
+  border-radius:999px;
+  color:var(--muted);
+  font-size:.61rem;
+  line-height:1.25;
+}
+.analysis-comparison-block{
+  margin-top:9px;
+}
+.analysis-comparison-block strong{
+  display:block;
+  margin-bottom:4px;
+  color:var(--ink);
+  font-size:.68rem;
+}
+.analysis-comparison-block ul{
+  margin:0;
+  padding-left:16px;
+}
+.analysis-comparison-block li{
+  margin:3px 0;
+  color:var(--muted);
+  font-size:.69rem;
+  line-height:1.5;
+}
+.analysis-comparison-block.is-caution strong{
+  color:var(--muted);
+}
+.analysis-comparison-note{
+  margin:10px 0 0;
+  color:var(--muted);
+  font-size:.68rem;
+}
+@media(max-width:760px){
+  .analysis-comparison-list{grid-template-columns:1fr}
+}
