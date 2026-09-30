@@ -560,26 +560,36 @@ async def run_assistant(
             if not answer:
                 answer = "Je n'ai pas pu préparer une réponse. Reformulez votre demande."
             if mcp_used and latest_mode == "recherche" and latest_analysis is not None and latest_results:
-                # L'analyse doit toujours exposer au moins une piste concrète.
-                # Le LLM peut produire un bon résumé mais oublier la section
-                # d'alternatives ; on l'ajoute donc à partir des données MCP.
-                first = latest_results[0]
-                comparison = first.get("comparaison_annonce") or {}
-                advantages = comparison.get("avantages") or []
-                tradeoffs = comparison.get("compromis") or []
-                quartier = first.get("quartier") or "la zone"
-                intro = f"**Une option à regarder :** {quartier}."
-                if advantages:
-                    intro += " " + "; ".join(str(x) for x in advantages[:2]) + "."
-                elif tradeoffs:
-                    intro += " " + "; ".join(str(x) for x in tradeoffs[:2]) + "."
-                else:
-                    intro += " Cette annonce est proposée comme offre comparable dans la zone."
-                if comparison.get("distance_libelle") and not comparison.get("meme_quartier"):
-                    intro += f" Elle se situe à environ {comparison['distance_libelle']} en ligne droite entre les quartiers."
-                if len(latest_results) > 1:
-                    intro += f" {len(latest_results) - 1} autre(s) offre(s) comparable(s) sont également disponibles."
-                answer = answer.rstrip() + "\n\n" + intro
+                # Le LLM peut oublier de détailler les alternatives. Ajout
+                # déterministe des différences réellement calculées, jusqu'à
+                # cinq annonces, pour éviter une réponse générique et répétitive.
+                blocks = ["**À comparer dans la liste :**"]
+                for index, item in enumerate(latest_results[:5], 1):
+                    comparison = item.get("comparaison_annonce") or {}
+                    advantages = [str(x) for x in (comparison.get("avantages") or [])[:3]]
+                    tradeoffs = [str(x) for x in (comparison.get("compromis") or [])[:2]]
+                    quartier = item.get("quartier") or "quartier non précisé"
+                    price = item.get("prix_fcfa")
+                    area = item.get("superficie_m2")
+                    unit = item.get("prix_m2_fcfa")
+                    details = [quartier]
+                    if price:
+                        details.append(_format_fcfa(price))
+                    if area:
+                        details.append(f"{area:g} m²")
+                    if unit:
+                        details.append(f"{unit:,.0f} FCFA/m²".replace(",", " "))
+                    line = f"**{index}. {' · '.join(details)}**"
+                    if comparison.get("distance_libelle") and not comparison.get("meme_quartier"):
+                        line += f" — environ {comparison['distance_libelle']} en ligne droite entre les quartiers."
+                    if advantages:
+                        line += " Points forts par rapport à l'annonce analysée : " + "; ".join(advantages) + "."
+                    if tradeoffs:
+                        line += " À surveiller : " + "; ".join(tradeoffs) + "."
+                    if not advantages and not tradeoffs:
+                        line += " Aucun avantage supplémentaire n'est renseigné ; comparez surtout le prix, la surface et l'emplacement affichés."
+                    blocks.append(line)
+                answer = answer.rstrip() + "\n\n" + "\n".join(blocks)
 
             if mcp_used and latest_mode == "recherche" and price_request is not None:
                 answer, latest_results = _ground_price_search_answer(
