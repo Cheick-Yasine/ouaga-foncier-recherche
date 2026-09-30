@@ -195,11 +195,11 @@ def analyze_offer(publication: str, candidates: list[SearchCandidate], *, prefer
     else:
         verdict = 'Prix proche des annonces comparables'
     if sufficient:
-        comparison = (f"Son prix au m² est {abs(delta):g} % {'plus élevé' if delta > 0 else 'plus bas'} que le prix de repère des offres similaires du quartier." if delta else 'Son prix au m² est au niveau du prix de repère des offres similaires du quartier.')
+        comparison_text = (f"Son prix au m² est {abs(delta):g} % {'plus élevé' if delta > 0 else 'plus bas'} que le prix de repère des offres similaires du quartier." if delta else 'Son prix au m² est au niveau du prix de repère des offres similaires du quartier.')
     else:
-        comparison = "Il n’y a pas assez d’annonces similaires dans ce quartier pour dire si ce prix est bas ou élevé."
+        comparison_text = "Il n’y a pas assez d’annonces similaires dans ce quartier pour dire si ce prix est bas ou élevé."
     if sufficient and benchmark:
-        comparison += f" Ce repère est d’environ {benchmark:,.0f} FCFA/m² ; il repose sur les prix demandés par les vendeurs.".replace(',', ' ')
+        comparison_text += f" Ce repère est d’environ {benchmark:,.0f} FCFA/m² ; il repose sur les prix demandés par les vendeurs.".replace(',', ' ')
     reasons.extend(quality['atouts'])
     analysis = {
         'verdict':verdict,'comparaison':comparison,'raisons':reasons,
@@ -498,5 +498,5 @@ def analyze_offer(publication: str, candidates: list[SearchCandidate], *, prefer
         'rayon_km': NEARBY_RADIUS_KM if not strict_zone and location_for(origin) else None,
         'precision': 'Distances approximatives entre les quartiers, en ligne droite. Le trajet par la route peut être plus long.',
     }
-    analysis['resume'] = _summary(subject, quality, comparison, alternatives, criteria.price_fcfa)
+    analysis['resume'] = _summary(subject, quality, comparison_text, alternatives, criteria.price_fcfa)
     return analysis, criteria, alternatives
