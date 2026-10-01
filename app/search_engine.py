@@ -43,7 +43,8 @@ _PRICE_PATTERN = re.compile(
 )
 _PLAIN_PRICE_PATTERN = re.compile(
     r"\b(?:prix(?:\s+de)?|a|de|pour)\s*"
-    r"(\d(?:[\d ]*\d)?)\b"
+    r"(\d(?:[\d ]*\d)?)"
+    r"(?=\s*(?:f(?:cfa|\s*cfa)?|fcfa|cfa|francs?)?\b)"
 )
 _BUDGET_PATTERN = re.compile(
     r"\bbudget(?:\s+(?:maximum|maximal|de))?\s*"
