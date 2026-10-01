@@ -25,3 +25,23 @@ def test_analysis_summary_uses_server_calculated_values():
     assert "126 515 FCFA/m²" in grounded
     assert "**À comparer dans la liste:**" not in grounded
     assert "Annonce comparable." in grounded
+
+
+from app.search_engine import parse_search_description, SearchCandidate, price_per_square_metre
+
+
+def test_parse_french_grouped_price_with_f_suffix():
+    criteria = parse_search_description(
+        "Une parcelle de 550 m² à Pissy. Prix : 75 000 000f."
+    )
+    assert criteria.price_fcfa == 75_000_000
+    assert criteria.area_m2 == 550
+
+
+def test_price_per_square_metre_uses_total_price_without_truncation():
+    candidate = SearchCandidate(
+        identifier="test",
+        price_fcfa=75_000_000,
+        area_m2=550,
+    )
+    assert price_per_square_metre(candidate) == 136_363.64
