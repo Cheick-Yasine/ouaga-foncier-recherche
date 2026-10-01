@@ -327,7 +327,7 @@ def _payload_for_llm(payload: dict[str, Any]) -> dict[str, Any]:
     safe_payload = dict(payload)
     if isinstance(payload.get("analyse"), dict):
         safe_payload["analyse"] = {key: value for key, value in payload["analyse"].items()
-                                   if key not in {"mediane_prix_m2", "ecart_mediane_pct", "nombre_comparables"}}
+                                   if key not in {"nombre_comparables"}}
     results = safe_payload.get("results")
     if isinstance(results, list):
         safe_payload["results"] = [
@@ -343,39 +343,40 @@ def _payload_for_llm(payload: dict[str, Any]) -> dict[str, Any]:
 
 
 def _ground_analysis_answer(answer: str, analysis: dict[str, Any] | None) -> str:
-    """Verrouille les chiffres de l'analyse sur le calcul déterministe du serveur.
-
-    Le LLM rédige la réponse, mais ne doit jamais recalculer le prix/m² ou
-    l'écart au prix de repère à partir du texte de l'annonce. Ces valeurs sont
-    déjà calculées par analyze_offer et exposées dans analyse.resume.
-    """
+    """Ajoute les chiffres de référence calculés côté serveur sans écraser l'analyse détaillée du LLM."""
     if not isinstance(analysis, dict):
         return answer
-    resume = analysis.get("resume")
-    if not isinstance(resume, str) or not resume.strip():
+
+    bien = analysis.get("bien") if isinstance(analysis.get("bien"), dict) else {}
+    unit_price = bien.get("prix_m2_fcfa")
+    benchmark = analysis.get("mediane_prix_m2")
+    delta = analysis.get("ecart_mediane_pct")
+    if unit_price is None:
         return answer
 
-    heading = re.search(
-        r"(?is)(?:^|\n)\s*(?:\*\*)?En résumé(?:\*\*)?\s*:?[ \t]*",
-        answer,
-    )
-    if not heading:
+    def fmt(value: Any) -> str:
+        try:
+            return f"{float(value):,.0f}".replace(",", " ") + " FCFA/m²"
+        except (TypeError, ValueError):
+            return "non disponible"
+
+    facts = [
+        f"Prix calculé : **{fmt(unit_price)}**.",
+    ]
+    if benchmark is not None:
+        if delta is None:
+            facts.append(f"Prix de repère des offres similaires : **{fmt(benchmark)}**.")
+        else:
+            direction = "au-dessus" if delta > 0 else "en dessous" if delta < 0 else "au niveau"
+            facts.append(
+                f"Prix de repère : **{fmt(benchmark)}** ; écart calculé : "
+                f"**{abs(float(delta)):g} % {direction}**."
+            )
+
+    block = "**Données chiffrées vérifiées**\n\n" + " ".join(facts)
+    if "Données chiffrées vérifiées" in answer:
         return answer
-
-    section_start = heading.start()
-    content_start = heading.end()
-    next_heading = re.search(
-        r"(?m)\n\s*\*\*[^*\n]+\*\*\s*:?[ \t]*",
-        answer[content_start:],
-    )
-    section_end = (
-        content_start + next_heading.start()
-        if next_heading
-        else len(answer)
-    )
-
-    replacement = "**En résumé**\n\n" + resume.strip()
-    return answer[:section_start] + replacement + answer[section_end:]
+    return answer.rstrip() + "\n\n" + block
 
 def _original_publication(message: str, history: Sequence[ChatMessage], proposed: str) -> str:
     """Le LLM choisit l'outil ; les chiffres évalués viennent du message source."""
