@@ -342,6 +342,41 @@ def _payload_for_llm(payload: dict[str, Any]) -> dict[str, Any]:
     return safe_payload
 
 
+def _ground_analysis_answer(answer: str, analysis: dict[str, Any] | None) -> str:
+    """Verrouille les chiffres de l'analyse sur le calcul déterministe du serveur.
+
+    Le LLM rédige la réponse, mais ne doit jamais recalculer le prix/m² ou
+    l'écart au prix de repère à partir du texte de l'annonce. Ces valeurs sont
+    déjà calculées par analyze_offer et exposées dans analyse.resume.
+    """
+    if not isinstance(analysis, dict):
+        return answer
+    resume = analysis.get("resume")
+    if not isinstance(resume, str) or not resume.strip():
+        return answer
+
+    heading = re.search(
+        r"(?is)(?:^|\n)\s*(?:\*\*)?En résumé(?:\*\*)?\s*:?[ \t]*",
+        answer,
+    )
+    if not heading:
+        return answer
+
+    section_start = heading.start()
+    content_start = heading.end()
+    next_heading = re.search(
+        r"(?m)\n\s*\*\*[^*\n]+\*\*\s*:?[ \t]*",
+        answer[content_start:],
+    )
+    section_end = (
+        content_start + next_heading.start()
+        if next_heading
+        else len(answer)
+    )
+
+    replacement = "**En résumé**\n\n" + resume.strip()
+    return answer[:section_start] + replacement + answer[section_end:]
+
 def _original_publication(message: str, history: Sequence[ChatMessage], proposed: str) -> str:
     """Le LLM choisit l'outil ; les chiffres évalués viennent du message source."""
     sources = [message, *(item.content for item in reversed(history) if item.role == "user")]
@@ -561,6 +596,10 @@ async def run_assistant(
             answer = (response.output_text or "").strip()
             if not answer:
                 answer = "Je n'ai pas pu préparer une réponse. Reformulez votre demande."
+            if mcp_used and latest_analysis is not None:
+                # Le modèle ne doit pas recalculer les montants de l'annonce.
+                # Le résumé de l'outil est la source numérique de vérité.
+                answer = _ground_analysis_answer(answer, latest_analysis)
             if mcp_used and latest_mode == "recherche" and latest_analysis is not None and latest_results:
                 # Le LLM peut oublier de détailler les alternatives. Ajout
                 # déterministe des différences réellement calculées, jusqu'à
