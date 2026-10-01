@@ -263,6 +263,56 @@ function formattedReply(text) {
   }
   return box;
 }
+function analysisDetailPanel(analysis) {
+  const section = el('section','analysis-detail-panel');
+  const heading = el('div','analysis-detail-heading');
+  heading.append(
+    el('span','analysis-comparison-kicker','Analyse détaillée'),
+    el('h3','','Chiffres vérifiés et éléments à contrôler')
+  );
+  section.append(heading);
+
+  const grid = el('div','analysis-detail-grid');
+  const bien = analysis?.bien || {};
+  const add = (label, value, cls='') => {
+    const card = el('article','analysis-detail-card '+cls);
+    card.append(el('span','analysis-detail-label',label), el('strong','analysis-detail-value',value));
+    grid.append(card);
+  };
+  if (bien.prix_fcfa != null) add('Prix demandé', number(bien.prix_fcfa,' FCFA'));
+  if (bien.superficie_m2 != null) add('Superficie', area(bien.superficie_m2));
+  if (bien.prix_m2_fcfa != null) add('Prix calculé / m²', unitPrice({prix_m2_fcfa:bien.prix_m2_fcfa}), 'is-primary');
+  if (analysis.mediane_prix_m2 != null) add('Prix de repère', unitPrice({prix_m2_fcfa:analysis.mediane_prix_m2}));
+  if (analysis.ecart_mediane_pct != null) {
+    const d = Number(analysis.ecart_mediane_pct);
+    add('Écart au repère', Math.abs(d).toLocaleString('fr-FR',{maximumFractionDigits:1})+' % '+(d > 0 ? 'au-dessus' : d < 0 ? 'en dessous' : 'au niveau'));
+  }
+  if (bien.quartier) add('Quartier', String(bien.quartier));
+  if (bien.document) add('Document annoncé', label(bien.document));
+
+  const quality = analysis.qualite || {};
+  const checks = [];
+  if (quality.document_etat) checks.push('Document : '+(quality.document_libelle || quality.document_etat));
+  if (quality.eau_etat) checks.push('Eau : '+(quality.eau_libelle || quality.eau_etat));
+  if (quality.electricite_etat) checks.push('Électricité : '+(quality.electricite_libelle || quality.electricite_etat));
+  if (Array.isArray(quality.proximites) && quality.proximites.length) checks.push('Accès / proximité : '+quality.proximites.join(', '));
+  if (checks.length) {
+    const box=el('div','analysis-detail-checks');
+    box.append(el('strong','','Points à vérifier'));
+    const ul=el('ul'); checks.forEach(item=>ul.append(el('li','',item))); box.append(ul);
+    section.append(grid,box);
+  } else {
+    section.append(grid);
+  }
+
+  if (analysis.verdict) {
+    const verdict=el('p','analysis-detail-verdict');
+    verdict.append(el('strong','','Lecture : '),document.createTextNode(String(analysis.verdict)));
+    section.append(verdict);
+  }
+  return section;
+}
+
 function analysisComparisonPanel(results) {
   const section=el('section','analysis-comparison');
   const heading=el('div','analysis-comparison-heading');
@@ -464,6 +514,7 @@ function appendMessage(entry) {
     }
     if (simpleSearch && results.length && !recommendable) content.append(el('p','subtle','Aucune annonce suffisamment complète pour être recommandée pour le moment.'));
     if (results.length) {
+      if (analysis) content.append(analysisDetailPanel(entry.analysis));
       if (analysis) content.append(analysisComparisonPanel(results));
       content.append(resultTable(results));
       if (results.some(r => r.comparaison_annonce?.distance_km != null)) {
