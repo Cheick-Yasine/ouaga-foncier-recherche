@@ -2489,6 +2489,65 @@ select,.modal,.modal input,.comparison-shell,.assistant-composer,.secondary-butt
 }
 
 
+/* Analyse d'annonce — chiffres vérifiés et détail. */
+.analysis-detail-panel{
+  margin:18px 0 16px;
+  padding:16px;
+  border:1px solid var(--line);
+  border-radius:16px;
+  background:var(--surface-2);
+}
+.analysis-detail-heading{margin-bottom:12px}
+.analysis-detail-heading h3{margin:0;font-size:.95rem;line-height:1.35;letter-spacing:-.02em}
+.analysis-detail-grid{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:9px;
+}
+.analysis-detail-card{
+  min-width:0;
+  padding:11px 12px;
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:var(--surface);
+}
+.analysis-detail-card.is-primary{
+  border-color:color-mix(in srgb,var(--blue) 35%,var(--line));
+}
+.analysis-detail-label{
+  display:block;
+  margin-bottom:5px;
+  color:var(--muted);
+  font-size:.63rem;
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing:.04em;
+}
+.analysis-detail-value{display:block;font-size:.82rem;line-height:1.35}
+.analysis-detail-checks{
+  margin-top:11px;
+  padding-top:11px;
+  border-top:1px solid var(--line);
+}
+.analysis-detail-checks strong{font-size:.68rem}
+.analysis-detail-checks ul{margin:5px 0 0;padding-left:18px}
+.analysis-detail-checks li{margin:3px 0;color:var(--muted);font-size:.69rem;line-height:1.45}
+.analysis-detail-verdict{
+  margin:12px 0 0;
+  padding:10px 12px;
+  border-radius:10px;
+  background:var(--surface);
+  color:var(--muted);
+  font-size:.72rem;
+  line-height:1.5;
+}
+@media (max-width:760px){
+  .analysis-detail-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (max-width:480px){
+  .analysis-detail-grid{grid-template-columns:1fr}
+}
+
 /* Analyse d'annonce — comparaison concrète des alternatives. */
 .analysis-comparison{
   margin:18px 0 16px;
