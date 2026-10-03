@@ -67,24 +67,6 @@
     const average = movingAverage(rows);
     const t = theme();
 
-    const rawTrace = {
-      x: rows.map(row => row.date),
-      y: rows.map(row => row.annonces),
-      type: 'scatter',
-      mode: 'lines+markers',
-      name: 'Annonces du jour',
-      line: {
-        color: t.muted,
-        width: 1.8
-      },
-      marker: {
-        color: t.muted,
-        size: 5
-      },
-      hovertemplate: '%{customdata}<br><b>%{y:,.0f}</b> annonce(s)<extra></extra>',
-      customdata: rows.map(row => fullDate(row.date))
-    };
-
     const averageTrace = {
       x: rows.map(row => row.date),
       y: average,
@@ -173,7 +155,7 @@
       modeBarButtonsToRemove: ['lasso2d', 'select2d', 'autoScale2d']
     };
 
-    Plotly.react(container, [rawTrace, averageTrace], layout, config);
+    // Remplace entièrement le rendu historique (SVG) : une seule courbe, la moyenne mobile 2 jours.\n    Plotly.react(container, [averageTrace], layout, config);
 
     if (!resizeObserver) {
       resizeObserver = new ResizeObserver(() => {
