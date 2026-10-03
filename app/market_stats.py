@@ -77,7 +77,42 @@ def summarize_market(candidates: Iterable[SearchCandidate], *, now: datetime | N
         'depuis': start.isoformat(), 'jusqu_a': current.isoformat(),
         'perimetre': 'Ouagadougou et environs', 'date_utilisee': 'date_publication',
         'semaines': weekly_market(pool, week_start),
+        'jours': daily_market(pool, start, current),
     }
+
+
+def daily_market(candidates, start, current):
+    """Compte les nouvelles annonces chaque jour sur les 30 derniers jours."""
+    days = []
+    cursor = start.date()
+    end = current.date()
+
+    while cursor <= end:
+        day_start = datetime(
+            cursor.year, cursor.month, cursor.day, tzinfo=timezone.utc
+        )
+        day_end = day_start + timedelta(days=1)
+        rows = [
+            candidate
+            for candidate in candidates
+            if (
+                (published := publication_time(candidate.publication_label)) is not None
+                and day_start <= published < day_end
+            )
+        ]
+        by_type = {}
+        for kind in ("tous", "parcelle", "terrain", "maison"):
+            selected = rows if kind == "tous" else [
+                candidate for candidate in rows if candidate.property_type == kind
+            ]
+            by_type[kind] = {"annonces": len(selected)}
+        days.append({
+            "date": cursor.isoformat(),
+            "types": by_type,
+        })
+        cursor += timedelta(days=1)
+
+    return days
 
 
 def weekly_market(candidates, start):
