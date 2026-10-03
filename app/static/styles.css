@@ -623,6 +623,21 @@ h1 span {
   border-bottom:1px solid var(--line);
   z-index:1
 }
+.comparison-number-column,
+.result-number {
+  width:52px;
+  min-width:52px;
+  max-width:52px;
+  text-align:center !important;
+  white-space:nowrap;
+}
+.result-number {
+  font-size:.78rem;
+  font-weight:700;
+  color:var(--blue);
+  background:var(--surface-2);
+}
+
 .comparison-table td {
   padding:1rem .8rem;
   border-bottom:1px solid #edf1f7;
