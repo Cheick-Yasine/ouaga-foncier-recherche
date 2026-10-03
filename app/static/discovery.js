@@ -1142,7 +1142,12 @@
 
     container.append(svg);
 
-    const dates=element('div','chart-weeks');
+    const legend=element('div','chart-legend');
+    legend.append(
+      element('span','chart-legend-item chart-legend-raw','Annonces du jour'),
+      element('span','chart-legend-item chart-legend-moving','Moyenne mobile 2 jours')
+    );
+
     const detail=element(
       'p',
       'chart-detail',
@@ -1150,24 +1155,7 @@
     );
     detail.setAttribute('aria-live','polite');
 
-    series.forEach((point,index)=>{
-      const button=element('button','chart-week');
-      button.type='button';
-      button.append(
-        element('span','',shortDate(point.date)),
-        element('strong','',decimal.format(point.moyenne_mobile)+' annonces')
-      );
-      button.setAttribute('aria-pressed','false');
-      button.addEventListener('click',()=>{
-        dates.querySelectorAll('button').forEach(current=>current.setAttribute('aria-pressed',String(current===button)));
-        detail.textContent = index === 0
-          ? 'Le '+longDate(point.date)+' : '+fmt.format(point.annonces)+' annonce(s) ce jour. La moyenne mobile commence avec ce premier point.'
-          : 'Du '+longDate(series[index-1].date)+' au '+longDate(point.date)+' : '+fmt.format(series[index-1].annonces)+' + '+fmt.format(point.annonces)+' annonces, soit '+decimal.format(point.moyenne_mobile)+' en moyenne.';
-      });
-      dates.append(button);
-    });
-
-    container.append(dates,detail);
+    container.append(legend,detail);
   }
 
   function renderStats() {
