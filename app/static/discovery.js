@@ -1066,14 +1066,117 @@
     });
   }
 
+  function drawDailyCountChart(container, days, kind) {
+    clearPlotlyContainer(container);
+    if (!days?.length) {
+      container.append(element('p','chart-empty','Aucune donnée disponible.'));
+      return;
+    }
+
+    const raw = days.map(day => ({
+      date: day.date,
+      annonces: Number(day.types?.[kind]?.annonces ?? 0)
+    }));
+
+    // Moyenne mobile sur 2 jours : la valeur du jour J est la moyenne
+    // des annonces de J-1 et J. Ainsi demain utilisera J et J+1.
+    const series = raw.map((point, index) => ({
+      ...point,
+      moyenne_mobile: index === 0
+        ? point.annonces
+        : (raw[index - 1].annonces + point.annonces) / 2
+    }));
+
+    const maximum = Math.max(
+      ...series.map(point => Math.max(point.annonces, point.moyenne_mobile)),
+      1
+    );
+
+    const svg = svgElement('svg',{
+      viewBox:'0 0 520 200',
+      role:'img',
+      'aria-label':'Nombre quotidien de nouvelles annonces avec moyenne mobile sur 2 jours.'
+    });
+
+    for (const ratio of [0,0.5,1]) {
+      const y=154-ratio*118;
+      svg.append(svgElement('line',{x1:62,x2:500,y1:y,y2:y,class:'chart-gridline'}));
+      const axis=svgElement('text',{x:55,y:y+4,'text-anchor':'end',class:'chart-axis'});
+      axis.textContent=fmt.format(maximum*ratio);
+      svg.append(axis);
+    }
+
+    const xFor=index => 80+index*(400/Math.max(series.length-1,1));
+    const yFor=value => 154-value/maximum*118;
+
+    let rawPoints=[];
+    series.forEach((point,index)=>{
+      rawPoints.push(xFor(index)+','+yFor(point.annonces));
+    });
+    svg.append(svgElement('polyline',{
+      points:rawPoints.join(' '),
+      class:'chart-line chart-line-raw'
+    }));
+
+    let movingPoints=[];
+    series.forEach((point,index)=>{
+      movingPoints.push(xFor(index)+','+yFor(point.moyenne_mobile));
+    });
+    svg.append(svgElement('polyline',{
+      points:movingPoints.join(' '),
+      class:'chart-line chart-line-moving'
+    }));
+
+    series.forEach((point,index)=>{
+      const circle=svgElement('circle',{
+        cx:xFor(index),
+        cy:yFor(point.moyenne_mobile),
+        r:4,
+        class:'chart-point'
+      });
+      const title=svgElement('title',{});
+      title.textContent=shortDate(point.date)+' : moyenne mobile '+decimal.format(point.moyenne_mobile)+' annonces';
+      circle.append(title);
+      svg.append(circle);
+    });
+
+    container.append(svg);
+
+    const dates=element('div','chart-weeks');
+    const detail=element(
+      'p',
+      'chart-detail',
+      'Moyenne mobile sur 2 jours : moyenne des annonces du jour et de la veille.'
+    );
+    detail.setAttribute('aria-live','polite');
+
+    series.forEach((point,index)=>{
+      const button=element('button','chart-week');
+      button.type='button';
+      button.append(
+        element('span','',shortDate(point.date)),
+        element('strong','',decimal.format(point.moyenne_mobile)+' annonces')
+      );
+      button.setAttribute('aria-pressed','false');
+      button.addEventListener('click',()=>{
+        dates.querySelectorAll('button').forEach(current=>current.setAttribute('aria-pressed',String(current===button)));
+        detail.textContent = index === 0
+          ? 'Le '+longDate(point.date)+' : '+fmt.format(point.annonces)+' annonce(s) ce jour. La moyenne mobile commence avec ce premier point.'
+          : 'Du '+longDate(series[index-1].date)+' au '+longDate(point.date)+' : '+fmt.format(series[index-1].annonces)+' + '+fmt.format(point.annonces)+' annonces, soit '+decimal.format(point.moyenne_mobile)+' en moyenne.';
+      });
+      dates.append(button);
+    });
+
+    container.append(dates,detail);
+  }
+
   function renderStats() {
     if(!market) return;
     const kind=$('#weekly-property').value;
-    drawChart(
+    drawDailyCountChart(
       $('#weekly-count-chart'),
-      market.semaines || [],
-      kind,
-      'annonces'
+      market.jours || [],
+      kind
     );
     drawPriceChart();
     isolatedNeighborhood=null;
