@@ -372,9 +372,14 @@ function resultTable(results) {
   const fragment=$('#comparison-template').content.cloneNode(true);
   const body=fragment.querySelector('tbody');
 
-  results.forEach(r=>{
+  results.forEach((r,i)=>{
     const row=el('tr');
     row.dataset.resultId=r.id;
+    row.dataset.resultNumber=String(i+1);
+
+    const numberCell=el('th','result-number',String(i+1));
+    numberCell.scope='row';
+    row.append(numberCell);
 
     const locationCell=el('td','location-cell',r.quartier || 'Non précisée');
     if(r.comparaison_annonce){
