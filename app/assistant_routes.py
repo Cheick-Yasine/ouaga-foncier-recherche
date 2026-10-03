@@ -56,7 +56,23 @@ async def assistant_message(payload: AssistantRequest) -> AssistantResponse:
     except MCPAssistantError as error:
         raise HTTPException(status_code=503, detail=str(error)) from None
     except OpenAIError as error:
-        LOGGER.warning("assistant_openai_error type=%s", type(error).__name__)
+        # Le message HTTP reste générique côté navigateur, mais les logs serveur
+        # conservent les informations utiles pour identifier la cause exacte
+        # (clé, modèle, quota, limite, requête invalide, etc.) sans exposer de secret.
+        status_code = getattr(error, "status_code", None)
+        error_code = getattr(error, "code", None)
+        request_id = getattr(error, "request_id", None)
+        error_message = str(error).replace("\n", " ").strip()
+        if len(error_message) > 500:
+            error_message = error_message[:500] + "..."
+        LOGGER.error(
+            "assistant_openai_error type=%s status=%s code=%s request_id=%s message=%s",
+            type(error).__name__,
+            status_code,
+            error_code,
+            request_id,
+            error_message,
+        )
         raise HTTPException(
             status_code=502,
             detail="Le cerveau conversationnel est temporairement indisponible.",
