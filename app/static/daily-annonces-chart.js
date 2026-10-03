@@ -155,7 +155,9 @@
       modeBarButtonsToRemove: ['lasso2d', 'select2d', 'autoScale2d']
     };
 
-    // Remplace entièrement le rendu historique (SVG) : une seule courbe, la moyenne mobile 2 jours.\n    container.replaceChildren();\n    Plotly.react(container, [averageTrace], layout, config);
+    // Remplace entièrement le rendu historique (SVG) : une seule courbe, la moyenne mobile 2 jours.
+    container.replaceChildren();
+    Plotly.react(container, [averageTrace], layout, config);
 
     if (!resizeObserver) {
       resizeObserver = new ResizeObserver(() => {
