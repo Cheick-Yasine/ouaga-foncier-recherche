@@ -1525,7 +1525,14 @@ select,.modal,.modal input,.comparison-shell,.assistant-composer,.secondary-butt
 .chart-gridline{stroke:var(--line);stroke-dasharray:3 5}
 .chart-axis{fill:var(--muted);font-size:11px}
 .chart-line{stroke:var(--blue);fill:none;stroke-width:3;stroke-linejoin:round;stroke-linecap:round}
+.chart-line-raw{opacity:.28;stroke-width:2}
+.chart-line-moving{stroke-width:4}
 .chart-point{fill:var(--surface);stroke:var(--blue);stroke-width:3}
+.chart-legend{display:flex;gap:16px;flex-wrap:wrap;margin:12px 0 0;color:var(--muted);font-size:11px}
+.chart-legend-item{display:inline-flex;align-items:center;gap:7px}
+.chart-legend-item::before{content:"";display:inline-block;width:20px;height:3px;border-radius:3px;background:var(--blue)}
+.chart-legend-raw::before{opacity:.28;height:2px}
+.chart-legend-moving::before{height:4px}
 .chart-weeks{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}
 .chart-week{display:flex;flex-direction:column;gap:7px;align-items:center;border:1px solid transparent;background:transparent;border-radius:9px;padding:9px 3px;color:var(--muted);font:inherit;font-size:10px;cursor:pointer}
 .chart-week strong{color:var(--ink);font-size:12px}
