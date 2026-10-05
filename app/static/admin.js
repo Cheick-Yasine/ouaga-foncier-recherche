@@ -258,7 +258,11 @@
 
   function syncAuth(user) {
     nav.hidden = user?.role !== 'admin';
-    if (user?.role !== 'admin') {\n      const wasOpen = !page.hidden;\n      hidePage();\n      if (wasOpen) document.querySelector('#nav-home')?.click();\n    }
+    if (user?.role !== 'admin') {
+      const wasOpen = !page.hidden;
+      hidePage();
+      if (wasOpen) document.querySelector('#nav-home')?.click();
+    }
   }
 
   nav.addEventListener('click', showPage);
