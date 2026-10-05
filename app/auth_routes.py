@@ -3,7 +3,7 @@
 import logging
 
 import psycopg
-from fastapi import APIRouter, Cookie, HTTPException, Response, status
+from fastapi import APIRouter, Cookie, HTTPException, Request, Response, status
 from pydantic import BaseModel, Field
 
 from app.auth import (
@@ -58,14 +58,15 @@ def _log_database_error(action: str, error: Exception) -> None:
     )
 
 
-def _set_session_cookie(response: Response, token: str) -> None:
-    settings = get_settings()
+def _set_session_cookie(response: Response, token: str, request: Request) -> None:
+    forwarded_proto = request.headers.get("x-forwarded-proto", "").split(",")[0].strip().lower()
+    is_https = request.url.scheme == "https" or forwarded_proto == "https"
     response.set_cookie(
         key=SESSION_COOKIE,
         value=token,
         max_age=int(SESSION_DURATION.total_seconds()),
         httponly=True,
-        secure=settings.app_env != "development",
+        secure=is_https,
         samesite="lax",
         path="/",
     )
@@ -76,7 +77,7 @@ def _set_session_cookie(response: Response, token: str) -> None:
     response_model=UserResponse,
     status_code=status.HTTP_201_CREATED,
 )
-def register(payload: Credentials, response: Response) -> UserResponse:
+def register(payload: Credentials, response: Response, request: Request) -> UserResponse:
     try:
         user = create_user(payload.name, payload.password)
         token = create_session(user.id)
@@ -89,12 +90,12 @@ def register(payload: Credentials, response: Response) -> UserResponse:
             detail="Le service de connexion est temporairement indisponible.",
         ) from None
 
-    _set_session_cookie(response, token)
+    _set_session_cookie(response, token, request)
     return _user_response(user)
 
 
 @router.post("/login", response_model=UserResponse)
-def login(payload: Credentials, response: Response) -> UserResponse:
+def login(payload: Credentials, response: Response, request: Request) -> UserResponse:
     try:
         user = authenticate_user(payload.name, payload.password)
         if user is None:
