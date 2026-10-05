@@ -535,16 +535,22 @@ async def run_assistant(
     client: Any | None = None,
     tool_executor: ToolExecutor | None = None,
 ) -> AssistantOutcome:
-    """Laisse le LLM décider quand appeler la recherche, exécutée via MCP."""
+    """Laisse Gemini décider quand appeler la recherche, exécutée via MCP.
+
+    Gemini est appelé via l'interface OpenAI-compatible officielle de Google.
+    Cela conserve les schémas de tools existants tout en remplaçant le
+    fournisseur sans modifier le contrat MCP.
+    """
 
     current = settings or get_settings()
-    if current.openai_api_key is None and client is None:
+    if current.gemini_api_key is None and client is None:
         raise AssistantNotConfiguredError(
-            "OPENAI_API_KEY n'est pas configurée pour l'assistant."
+            "GEMINI_API_KEY n'est pas configurée pour l'assistant."
         )
 
     api_client = client or AsyncOpenAI(
-        api_key=current.openai_api_key.get_secret_value()
+        api_key=current.gemini_api_key.get_secret_value(),
+        base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
     )
     execute = tool_executor or (
         lambda name, arguments: call_mcp_tool(
@@ -553,7 +559,12 @@ async def run_assistant(
             settings=current,
         )
     )
-    input_items: list[Any] = _conversation_input(
+
+    messages: list[dict[str, Any]] = [
+        {"role": "system", "content": ASSISTANT_INSTRUCTIONS + context_instruction}
+    ] if False else []
+
+    input_items = _conversation_input(
         history,
         message,
         limit=current.assistant_history_limit,
@@ -570,50 +581,44 @@ async def run_assistant(
         "à comprendre le dialogue ; ne réinjecte aucun ancien budget, quartier, "
         "type de bien, superficie ou document qui n'est pas redemandé ici."
     )
+    messages = [{"role": "system", "content": ASSISTANT_INSTRUCTIONS + context_instruction}]
+    messages.extend(input_items)
+
     latest_results: list[dict[str, Any]] = []
     latest_criteria: dict[str, Any] = {}
     latest_analysis: dict[str, Any] | None = None
     latest_mode = "recherche"
     mcp_used = False
-    price_request = conversation_numeric_request(message, history, 'prix')
-    area_request = conversation_numeric_request(message, history, 'superficie')
+    price_request = conversation_numeric_request(message, history, "prix")
+    area_request = conversation_numeric_request(message, history, "superficie")
     user_budget = price_request.price_fcfa if price_request and price_request.price_is_maximum else None
     city_only = conversation_city_only(message, history)
 
     for _ in range(3):
-        response = await api_client.responses.create(
-            model=current.assistant_model,
-            # Preserve the fast, non-reasoning behavior of GPT-4o mini.
-            **({"reasoning": {"effort": "none"}} if current.assistant_model == "gpt-5.6-luna" else {}),
-            instructions=ASSISTANT_INSTRUCTIONS + context_instruction,
-            input=input_items,
-            tools=[SEARCH_TOOL, EVALUATE_TOOL, COMPARE_TOOL],
-            tool_choice=(
-                "none"
-                if mcp_used
-                else "required"
-                if _has_search_intent(message)
-                else "auto"
-            ),
-            store=False,
+        kwargs: dict[str, Any] = {
+            "model": current.assistant_model,
+            "messages": messages,
+            "tools": [
+                {"type": "function", "function": {k: v for k, v in SEARCH_TOOL.items() if k not in {"type", "name", "parameters"}} | {"name": SEARCH_TOOL["name"], "parameters": SEARCH_TOOL["parameters"]}},
+                {"type": "function", "function": {k: v for k, v in EVALUATE_TOOL.items() if k not in {"type", "name", "parameters"}} | {"name": EVALUATE_TOOL["name"], "parameters": EVALUATE_TOOL["parameters"]}},
+                {"type": "function", "function": {k: v for k, v in COMPARE_TOOL.items() if k not in {"type", "name", "parameters"}} | {"name": COMPARE_TOOL["name"], "parameters": COMPARE_TOOL["parameters"]}},
+            ],
+            "parallel_tool_calls": False,
+        }
+        kwargs["tool_choice"] = (
+            "none" if mcp_used else "required" if _has_search_intent(message) else "auto"
         )
-        calls = [
-            item
-            for item in response.output
-            if getattr(item, "type", None) == "function_call"
-        ]
+        response = await api_client.chat.completions.create(**kwargs)
+        assistant_message = response.choices[0].message
+        calls = list(assistant_message.tool_calls or [])
+
         if not calls:
-            answer = (response.output_text or "").strip()
+            answer = (assistant_message.content or "").strip()
             if not answer:
                 answer = "Je n'ai pas pu préparer une réponse. Reformulez votre demande."
             if mcp_used and latest_analysis is not None:
-                # Le modèle ne doit pas recalculer les montants de l'annonce.
-                # Le résumé de l'outil est la source numérique de vérité.
                 answer = _ground_analysis_answer(answer, latest_analysis)
             if mcp_used and latest_mode == "recherche" and latest_analysis is not None and latest_results:
-                # Le LLM peut oublier de détailler les alternatives. Ajout
-                # déterministe des différences réellement calculées, jusqu'à
-                # cinq annonces, pour éviter une réponse générique et répétitive.
                 blocks = ["**À comparer dans la liste :**"]
                 for index, item in enumerate(latest_results[:5], 1):
                     comparison = item.get("comparaison_annonce") or {}
@@ -644,10 +649,7 @@ async def run_assistant(
 
             if mcp_used and latest_mode == "recherche" and price_request is not None:
                 answer, latest_results = _ground_price_search_answer(
-                    message,
-                    answer,
-                    latest_results,
-                    price_request,
+                    message, answer, latest_results, price_request
                 )
             return AssistantOutcome(
                 answer=answer,
@@ -660,90 +662,87 @@ async def run_assistant(
                 mode=latest_mode,
             )
 
-        input_items.extend(response.output)
+        messages.append({
+            "role": "assistant",
+            "content": assistant_message.content,
+            "tool_calls": [
+                {
+                    "id": call.id,
+                    "type": "function",
+                    "function": {
+                        "name": call.function.name,
+                        "arguments": call.function.arguments,
+                    },
+                }
+                for call in calls
+            ],
+        })
+
         for call in calls:
             if mcp_used:
                 payload = {"information": "Utilise le premier résultat : un seul appel immobilier par message est autorisé."}
-            elif call.name not in {"rechercher_annonces", "evaluer_annonce", "comparer_annonces"}:
+            elif call.function.name not in {"rechercher_annonces", "evaluer_annonce", "comparer_annonces"}:
                 payload = {"erreur": "Outil non autorisé."}
             else:
                 try:
-                    arguments = json.loads(call.arguments)
+                    arguments = json.loads(call.function.arguments)
                 except (json.JSONDecodeError, TypeError):
                     raise MCPAssistantError("L'assistant n'a pas pu interpréter la demande. Réessayez.") from None
                 if not isinstance(arguments, dict):
                     raise MCPAssistantError("L'assistant n'a pas pu interpréter la demande. Réessayez.")
+
+                name = call.function.name
                 allowed_arguments = {"description", "criteres_obligatoires"}
-                if call.name == "evaluer_annonce":
+                if name == "evaluer_annonce":
                     allowed_arguments.add("publication")
-                elif call.name == "comparer_annonces":
+                elif name == "comparer_annonces":
                     allowed_arguments = {"description", "references"}
                 arguments = {k: v for k, v in arguments.items() if k in allowed_arguments}
-                if call.name == "evaluer_annonce":
+
+                if name == "evaluer_annonce":
                     arguments["publication"] = _original_publication(message, history, arguments.get("publication", ""))
-                elif (
-                    call.name == "rechercher_annonces"
-                    and normalize_structured_deal_message(message)
-                ):
+                elif name == "rechercher_annonces" and normalize_structured_deal_message(message):
                     arguments["description"] = message
-                if call.name == "rechercher_annonces" and user_budget is not None:
+                if name == "rechercher_annonces" and user_budget is not None:
                     arguments["description"] = budget_description(arguments.get("description", ""), user_budget)
-                if call.name == "rechercher_annonces":
+                if name == "rechercher_annonces":
                     if price_request and not price_request.price_is_maximum:
-                        if (
-                            price_request.price_min_fcfa is not None
-                            or price_request.price_max_fcfa is not None
-                        ):
-                            arguments["description"] = price_range_description(
-                                arguments.get("description", ""),
-                                price_request,
-                            )
+                        if price_request.price_min_fcfa is not None or price_request.price_max_fcfa is not None:
+                            arguments["description"] = price_range_description(arguments.get("description", ""), price_request)
                         else:
-                            arguments["description"] = target_price_description(
-                                arguments.get("description", ""),
-                                price_request.price_fcfa,
-                            )
+                            arguments["description"] = target_price_description(arguments.get("description", ""), price_request.price_fcfa)
                     if area_request:
                         arguments["description"] = area_description(arguments.get("description", ""), area_request)
-                if call.name in {"rechercher_annonces", "evaluer_annonce"} and city_only:
+                if name in {"rechercher_annonces", "evaluer_annonce"} and city_only:
                     arguments["description"] = arguments.get("description", "") + ". Zone limitée à Ouagadougou uniquement."
-                arguments.update(
-                    {
-                        "limit": 10,
-                        "anciennete_jours": max_age_days,
-                        "utiliser_filtre_llm": False,
-                    }
-                )
-                payload = await execute(call.name, arguments)
+
+                arguments.update({
+                    "limit": 10,
+                    "anciennete_jours": max_age_days,
+                    "utiliser_filtre_llm": False,
+                })
+                payload = await execute(name, arguments)
                 mcp_used = True
                 if payload.get("erreur"):
                     raise MCPAssistantError(str(payload["erreur"]))
-                if call.name == "rechercher_annonces" and user_budget is not None:
+                if name == "rechercher_annonces" and user_budget is not None:
                     payload = respect_search_budget(payload, user_budget, arguments["description"])
-                if call.name in {"rechercher_annonces", "evaluer_annonce"}:
+                if name in {"rechercher_annonces", "evaluer_annonce"}:
                     payload = respect_search_scope(payload, city_only, arguments.get("description", ""))
                 latest_criteria = payload.get("criteres", {})
                 latest_analysis = payload.get("analyse")
                 latest_mode = payload.get("mode", "recherche")
                 results = payload.get("results", [])
                 if isinstance(results, list):
-                    latest_results = [
-                        item for item in results if isinstance(item, dict)
-                    ][:10]
+                    latest_results = [item for item in results if isinstance(item, dict)][:10]
 
-            input_items.append(
-                {
-                    "type": "function_call_output",
-                    "call_id": call.call_id,
-                    "output": json.dumps(
-                        _payload_for_llm(payload),
-                        ensure_ascii=False,
-                    ),
-                }
-            )
+            messages.append({
+                "role": "tool",
+                "tool_call_id": call.id,
+                "content": json.dumps(_payload_for_llm(payload), ensure_ascii=False),
+            })
 
     raise MCPAssistantError("L'assistant a effectué trop d'appels successifs.")
-
 
 def _suggestions(results: list[dict[str, Any]], criteria: dict[str, Any]) -> list[dict[str, str]]:
     if not results:
