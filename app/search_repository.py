@@ -324,26 +324,26 @@ def load_recent_candidates(
             parameters = ((max_age_days,) if max_age_days is not None else ()) + ((pool_limit,) if pool_limit is not None else ())
             rows = connection.execute(
                 f"""
-                SELECT
-                    id::text AS id,
-                    url,
-                    date_publication,
-                    type_bien,
-                    type_bien_normalise,
-                    quartier_zone,
-                    superficie_m2,
-                    prix_fcfa,
-                    statut_document,
-                    contacts_whatsapp,
-                    resume_court,
-                    texte_nettoye,
-                    premiere_collecte,
-                    COALESCE(f.is_featured, FALSE) AS is_featured,
-                    COALESCE(f.featured_priority, 0) AS featured_priority
-                FROM public.annonces a
-                LEFT JOIN public.admin_announcement_flags f ON f.announcement_id = a.id::text
-                WHERE COALESCE(f.is_trashed, FALSE) = FALSE
-                  AND {age_clause}
+                WITH active AS (
+                    SELECT a.id::text AS id, a.url, a.date_publication, a.type_bien,
+                           a.type_bien_normalise, a.quartier_zone, a.superficie_m2,
+                           a.prix_fcfa, a.statut_document, a.contacts_whatsapp,
+                           a.resume_court, a.texte_nettoye, a.premiere_collecte,
+                           COALESCE(f.is_featured, FALSE) AS is_featured,
+                           COALESCE(f.featured_priority, 0) AS featured_priority
+                    FROM public.annonces a
+                    LEFT JOIN public.admin_announcement_flags f ON f.announcement_id = a.id::text
+                    WHERE COALESCE(f.is_trashed, FALSE) = FALSE
+                    UNION ALL
+                    SELECT a.id::text, a.url, a.date_publication, NULL::text,
+                           a.type_bien_normalise, a.quartier_zone, a.superficie_m2,
+                           a.prix_fcfa, a.statut_document, a.contacts_whatsapp,
+                           a.resume_court, a.texte_nettoye, a.premiere_collecte,
+                           FALSE, 0
+                    FROM public.admin_added_annonces a
+                )
+                SELECT * FROM active
+                WHERE {age_clause}
                       COALESCE(
                       NULLIF(LOWER(TRIM(type_bien_normalise)), ''),
                       NULLIF(LOWER(TRIM(type_bien)), ''),
