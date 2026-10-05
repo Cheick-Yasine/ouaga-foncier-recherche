@@ -33,6 +33,7 @@ class Credentials(BaseModel):
 class UserResponse(BaseModel):
     id: str
     name: str
+    role: str = "user"
 
 
 class ProfileUpdate(BaseModel):
