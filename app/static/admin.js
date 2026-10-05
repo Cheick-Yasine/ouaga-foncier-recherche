@@ -242,7 +242,13 @@
     if (loaded) return;
     loaded = true;
     try {
-      await Promise.all([loadOverview(), loadRecent(), loadQuestions()]);
+      // Afficher les 15 annonces en priorité : le chargement des statistiques
+      // ou de la liste des questions ne doit plus bloquer l'écran principal.
+      await loadRecent();
+
+      // Les blocs secondaires se chargent ensuite en parallèle.
+      // Une lenteur de l'un d'eux ne masque donc pas les annonces récentes.
+      Promise.allSettled([loadOverview(), loadQuestions()]);
     } catch (error) {
       loaded = false;
       $('#admin-result').hidden = false;
