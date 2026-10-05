@@ -116,6 +116,31 @@
             </div>
             <button id="admin-refresh" class="secondary-button" type="button">Actualiser</button>
           </div>
+          <div class="admin-tools">
+            <button id="admin-show-trash" class="secondary-button" type="button">🗑 Corbeille</button>
+            <button id="admin-show-featured" class="secondary-button" type="button">★ Annonces en avant</button>
+            <button id="admin-show-add" class="secondary-button" type="button">＋ Ajouter une annonce</button>
+          </div>
+          <section id="admin-management" class="admin-management" hidden>
+            <div class="admin-card-heading"><div><h2 id="admin-management-title">Gestion</h2><p class="subtle" id="admin-management-subtitle"></p></div></div>
+            <div id="admin-management-list" class="admin-table-wrap"></div>
+          </section>
+          <section id="admin-add-card" class="admin-card" hidden aria-labelledby="admin-add-title">
+            <div class="admin-card-heading"><div><h2 id="admin-add-title">Ajouter une annonce</h2><p class="subtle">Ajoutez manuellement une annonce qui sera disponible dans les recherches HAKIMO.</p></div></div>
+            <form id="admin-add-form" class="admin-add-form">
+              <textarea id="admin-add-text" rows="6" maxlength="20000" required placeholder="Collez ici le texte exact de l'annonce…"></textarea>
+              <div class="admin-add-grid">
+                <select id="admin-add-type"><option value="parcelle">Parcelle</option><option value="terrain">Terrain</option><option value="maison">Maison</option></select>
+                <input id="admin-add-zone" placeholder="Quartier / zone">
+                <input id="admin-add-price" type="number" min="0" placeholder="Prix FCFA">
+                <input id="admin-add-area" type="number" min="0" placeholder="Superficie m²">
+                <input id="admin-add-doc" placeholder="Document">
+                <input id="admin-add-contact" placeholder="Contact">
+                <input id="admin-add-url" type="url" placeholder="Lien de l'annonce (facultatif)">
+              </div>
+              <button class="primary-wide" type="submit">Ajouter à la base</button>
+            </form>
+          </section>
           <div id="admin-overview" class="admin-overview" aria-live="polite"></div>
           <section class="admin-card admin-recent-card" aria-labelledby="admin-recent-title">
             <div class="admin-card-heading"><div><h2 id="admin-recent-title">Les 15 dernières données</h2><p class="subtle">Les colonnes les plus utiles pour contrôler la qualité de la base.</p></div></div>
