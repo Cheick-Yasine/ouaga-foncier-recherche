@@ -120,7 +120,7 @@ def create_user(name: str, password: str) -> AuthenticatedUser:
             "Un compte existe déjà avec ce nom."
         ) from error
 
-    return AuthenticatedUser(id=user_id, name=normalized, role=row["role"])
+    return AuthenticatedUser(id=user_id, name=normalized)
 
 
 def authenticate_user(name: str, password: str) -> AuthenticatedUser | None:
