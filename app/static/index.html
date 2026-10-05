@@ -10,6 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/styles.css?v=20261001-analysis-2">
+  <link rel="stylesheet" href="/static/admin.css?v=20261005-admin-1">
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@6.11.2/dist/maplibre-gl.css">
   <script src="/static/waiting.js?v=20260906-waiting-1" defer></script>
   <script src="https://cdn.plot.ly/plotly-4.0.0.min.js" charset="utf-8" defer></script>
@@ -17,6 +18,7 @@
   <script src="/static/discovery.js?v=20261003-mobile-average-1" defer></script>
   <script src="/static/daily-annonces-chart.js?v=20261003-chart-2" defer></script>
   <script src="/static/app.js?v=20261001-analysis-2" defer></script>
+  <script src="/static/admin.js?v=20261005-admin-1" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#assistant-input">Aller à la conversation</a>
@@ -31,6 +33,7 @@
           <button id="nav-home" class="nav-link" type="button" data-page="home" aria-current="page"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m3 10 9-7 9 7M5 9v12h5v-7h4v7h5V9"/></svg><span>Accueil</span></button>
           <button id="nav-chat" class="nav-link" type="button" data-page="chat"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M21 11a9 9 0 0 1-9 9H4l-3 2 2-6A9 9 0 1 1 21 11Z"/><path d="M7 10h10M7 14h6"/></svg><span>Parlez-nous de votre projet immobilier</span></button>
           <button id="open-alerts" class="nav-link" type="button" aria-haspopup="dialog"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M9 21h6"/></svg><span>Mes alertes</span></button>
+          <button id="nav-admin-database" class="nav-link admin-only" type="button" data-admin-nav hidden><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="4" y="4" width="16" height="5" rx="1"/><rect x="4" y="10" width="16" height="5" rx="1"/><rect x="4" y="16" width="16" height="4" rx="1"/></svg><span>Interroger la base</span></button>
           <button id="open-saved" class="nav-link" type="button" aria-haspopup="dialog"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8Z"/></svg><span>Favoris</span><span id="saved-count" class="nav-badge">0</span></button>
           <details id="history-section" class="side-section history-section">
             <summary><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 4v5h5M3.5 9a9 9 0 1 1 0 6M12 7v5l3 2"/></svg><span>Historique</span><span id="history-count" class="count">0</span></summary>
@@ -102,6 +105,37 @@
             <div><span class="chat-guide-number">03</span><p><strong>Comparez avec les annonces.</strong><br>Je vous explique ce qui correspond vraiment à votre recherche.</p></div>
           </div>
           <div class="chat-intro-example"><span aria-hidden="true">✦</span><p>Vous pouvez commencer par : <strong>« Je cherche une parcelle à Saaba autour de 6 millions. »</strong></p></div>
+        </section>
+
+        <section id="admin-database-page" class="admin-page" hidden aria-labelledby="admin-database-title">
+          <div class="admin-heading">
+            <div>
+              <p class="admin-eyebrow">Administration · lecture seule</p>
+              <h1 id="admin-database-title">Interroger la base</h1>
+              <p class="subtle">Explorez les données préparées de Neon, vérifiez les annonces et testez vos propres questions.</p>
+            </div>
+            <button id="admin-refresh" class="secondary-button" type="button">Actualiser</button>
+          </div>
+          <div id="admin-overview" class="admin-overview" aria-live="polite"></div>
+          <section class="admin-card admin-recent-card" aria-labelledby="admin-recent-title">
+            <div class="admin-card-heading"><div><h2 id="admin-recent-title">Les 15 dernières données</h2><p class="subtle">Les colonnes les plus utiles pour contrôler la qualité de la base.</p></div></div>
+            <div id="admin-recent" class="admin-table-wrap"><p class="subtle">Chargement…</p></div>
+          </section>
+          <section class="admin-card" aria-labelledby="admin-questions-title">
+            <div class="admin-card-heading">
+              <div><h2 id="admin-questions-title">Questions préparées</h2><p class="subtle">Plus de 35 contrôles fréquents pour connaître la base rapidement.</p></div>
+              <input id="admin-question-search" class="admin-search" type="search" placeholder="Rechercher une question…" autocomplete="off">
+            </div>
+            <div id="admin-question-list" class="admin-question-grid"></div>
+          </section>
+          <section class="admin-card admin-custom-card" aria-labelledby="admin-custom-title">
+            <div class="admin-card-heading"><div><h2 id="admin-custom-title">Poser ma propre question</h2><p class="subtle">HAKIMO transforme votre question en consultation SQL strictement en lecture seule.</p></div></div>
+            <form id="admin-custom-form" class="admin-custom-form">
+              <textarea id="admin-custom-input" rows="3" maxlength="6000" required placeholder="Ex. Combien d'annonces de parcelles à Saaba ont un prix inférieur à 6 millions ?"></textarea>
+              <button id="admin-custom-submit" class="primary-wide" type="submit">Interroger la base</button>
+            </form>
+            <div id="admin-result" class="admin-result" hidden></div>
+          </section>
         </section>
 
         <div id="assistant-messages" class="assistant-messages" role="log" aria-label="Conversation" aria-live="polite" aria-relevant="additions"></div>
