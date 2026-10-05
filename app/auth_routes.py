@@ -46,7 +46,7 @@ router = APIRouter(prefix="/auth", tags=["Authentification"])
 
 
 def _user_response(user: AuthenticatedUser) -> UserResponse:
-    return UserResponse(id=user.id, name=user.name)
+    return UserResponse(id=user.id, name=user.name, role=user.role)
 
 
 def _log_database_error(action: str, error: Exception) -> None:
