@@ -17,3 +17,33 @@ VALUES (
     'admin'
 )
 ON CONFLICT (email) DO UPDATE SET role = 'admin';
+
+
+CREATE TABLE IF NOT EXISTS public.admin_announcement_flags (
+    announcement_id TEXT PRIMARY KEY,
+    is_trashed BOOLEAN NOT NULL DEFAULT FALSE,
+    is_featured BOOLEAN NOT NULL DEFAULT FALSE,
+    featured_priority INTEGER NOT NULL DEFAULT 0,
+    note TEXT,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS admin_flags_trash_idx ON public.admin_announcement_flags(is_trashed);
+CREATE INDEX IF NOT EXISTS admin_flags_featured_idx ON public.admin_announcement_flags(is_featured, featured_priority DESC);
+
+CREATE TABLE IF NOT EXISTS public.admin_added_annonces (
+    id UUID PRIMARY KEY,
+    url TEXT,
+    date_publication TEXT,
+    type_bien_normalise TEXT,
+    quartier_zone TEXT,
+    superficie_m2 NUMERIC,
+    prix_fcfa NUMERIC,
+    statut_document TEXT,
+    contacts_whatsapp TEXT,
+    resume_court TEXT,
+    texte_nettoye TEXT NOT NULL,
+    premiere_collecte TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by UUID REFERENCES public.app_users(id),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS admin_added_annonces_collecte_idx ON public.admin_added_annonces(premiere_collecte DESC);
