@@ -339,8 +339,10 @@ def load_recent_candidates(
                            a.type_bien_normalise, a.quartier_zone, a.superficie_m2,
                            a.prix_fcfa, a.statut_document, a.contacts_whatsapp,
                            a.resume_court, a.texte_nettoye, a.premiere_collecte,
-                           FALSE, 0
+                           COALESCE(f.is_featured, FALSE), COALESCE(f.featured_priority, 0)
                     FROM public.admin_added_annonces a
+                    LEFT JOIN public.admin_announcement_flags f ON f.announcement_id = a.id::text
+                    WHERE COALESCE(f.is_trashed, FALSE) = FALSE
                 )
                 SELECT * FROM active
                 WHERE {age_clause}
