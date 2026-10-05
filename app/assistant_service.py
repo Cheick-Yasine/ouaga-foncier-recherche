@@ -153,10 +153,11 @@ class _GeminiNativeChatCompletions:
     async def create(self, **kwargs: Any) -> Any:
         model = kwargs["model"]
         system_instruction, contents = self._messages_to_gemini(kwargs.get("messages", []))
-        body: dict[str, Any] = {
-            "contents": contents,
-            "tools": self._tools_to_gemini(kwargs.get("tools", [])),
-        }
+        body: dict[str, Any] = {"contents": contents}
+        if kwargs.get("tool_choice") != "none":
+            gemini_tools = self._tools_to_gemini(kwargs.get("tools", []))
+            if gemini_tools:
+                body["tools"] = gemini_tools
         if system_instruction:
             body["systemInstruction"] = {"parts": [{"text": system_instruction}]}
 
