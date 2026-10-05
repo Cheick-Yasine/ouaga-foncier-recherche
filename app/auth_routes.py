@@ -116,7 +116,7 @@ def login(payload: Credentials, response: Response, request: Request) -> UserRes
             detail="Le service de connexion est temporairement indisponible.",
         ) from None
 
-    _set_session_cookie(response, token)
+    _set_session_cookie(response, token, request)
     return _user_response(user)
 
 
