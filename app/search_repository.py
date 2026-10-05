@@ -231,7 +231,8 @@ def load_market_candidates(
                     resume_court,
                     texte_nettoye,
                     premiere_collecte
-                FROM public.annonces
+                FROM public.annonces a
+                 LEFT JOIN public.admin_announcement_flags f ON f.announcement_id = a.id::text
                 WHERE COALESCE(
                       NULLIF(LOWER(TRIM(type_bien_normalise)), ''),
                       NULLIF(LOWER(TRIM(type_bien)), ''),
@@ -332,6 +333,7 @@ def load_recent_candidates(
                            COALESCE(f.is_featured, FALSE) AS is_featured,
                            COALESCE(f.featured_priority, 0) AS featured_priority
                     FROM public.annonces a
+                 LEFT JOIN public.admin_announcement_flags f ON f.announcement_id = a.id::text a
                     LEFT JOIN public.admin_announcement_flags f ON f.announcement_id = a.id::text
                     WHERE COALESCE(f.is_trashed, FALSE) = FALSE
                     UNION ALL
@@ -439,7 +441,8 @@ def load_neighborhood_candidates(
                     quartier_zone,
                     resume_court,
                     texte_nettoye
-                FROM public.annonces
+                FROM public.annonces a
+                 LEFT JOIN public.admin_announcement_flags f ON f.announcement_id = a.id::text
                 WHERE COALESCE(
                       NULLIF(LOWER(TRIM(type_bien_normalise)), ''),
                       NULLIF(LOWER(TRIM(type_bien)), ''),
