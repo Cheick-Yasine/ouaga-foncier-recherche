@@ -10,7 +10,7 @@ from app.sql_assistant import run_sql_assistant
 from app.sql_reader import SQLReadError
 
 
-class Chat:
+class Responses:
     def __init__(self, output):
         self.output = iter(output)
         self.calls = []
