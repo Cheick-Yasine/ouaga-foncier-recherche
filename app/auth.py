@@ -177,7 +177,7 @@ def get_session_user(token: str | None) -> AuthenticatedUser | None:
 
     if row is None:
         return None
-    return AuthenticatedUser(id=row["id"], name=row["name"])
+    return AuthenticatedUser(id=row["id"], name=row["name"], role=row.get("role") or "user")
 
 
 def delete_session(token: str | None) -> None:
