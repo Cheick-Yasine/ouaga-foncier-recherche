@@ -192,24 +192,32 @@ def apply_semantic_filter(
     )
     api_client = client or OpenAI(
         api_key=current.gemini_api_key.get_secret_value(),
+        base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
     )
 
     try:
-        response = api_client.responses.parse(
+        response = api_client.chat.completions.create(
             model=current.llm_model,
-            **({"reasoning": {"effort": "none"}} if current.llm_model == "gpt-5.6-luna" else {}),
-            input=[
+            messages=[
                 {"role": "system", "content": _instructions()},
                 {
                     "role": "user",
                     "content": json.dumps(payload, ensure_ascii=False),
                 },
             ],
-            text_format=SemanticDecisionBatch,
+            response_format={
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "SemanticDecisionBatch",
+                    "strict": True,
+                    "schema": SemanticDecisionBatch.model_json_schema(),
+                },
+            },
         )
-        parsed = response.output_parsed
-        if parsed is None:
+        message = response.choices[0].message
+        if not message.content:
             raise ValueError("Sortie structurée absente")
+        parsed = SemanticDecisionBatch.model_validate(json.loads(message.content))
 
         filtered: list[RankedResult] = []
         seen: set[str] = set()
