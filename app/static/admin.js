@@ -223,7 +223,7 @@
 
   function syncAuth(user) {
     nav.hidden = user?.role !== 'admin';
-    if (user?.role !== 'admin') {\n      const wasOpen = !page.hidden;\n      hidePage();\n      if (wasOpen) $('#nav-home')?.click();\n    }
+    if (user?.role !== 'admin') {\n      const wasOpen = !page.hidden;\n      hidePage();\n      if (wasOpen) document.querySelector('#nav-home')?.click();\n    }
   }
 
   nav.addEventListener('click', showPage);
