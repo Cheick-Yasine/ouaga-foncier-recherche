@@ -62,19 +62,27 @@ def test_payload_never_contains_identifiers_links_or_contacts() -> None:
     assert "client@example.com" not in rendered
 
 
-class _FakeResponses:
+class _FakeChat:
     def __init__(self, parsed):
         self.parsed = parsed
         self.arguments = None
 
-    def parse(self, **kwargs):
+    def create(self, **kwargs):
         self.arguments = kwargs
-        return SimpleNamespace(output_parsed=self.parsed)
+        return SimpleNamespace(
+            choices=[
+                SimpleNamespace(
+                    message=SimpleNamespace(
+                        content=self.parsed.model_dump_json(),
+                    )
+                )
+            ]
+        )
 
 
 class _FakeClient:
     def __init__(self, parsed):
-        self.responses = _FakeResponses(parsed)
+        self.chat = SimpleNamespace(completions=_FakeChat(parsed))
 
 
 def test_llm_filters_and_reorders_candidates() -> None:
@@ -116,7 +124,7 @@ def test_llm_filters_and_reorders_candidates() -> None:
     assert outcome.fallback is False
     assert outcome.model == "gpt-4o-mini"
     assert [item.candidate.identifier for item in outcome.results] == ["real-2"]
-    sent = client.responses.arguments
+    sent = client.chat.completions.arguments
     assert sent["model"] == "gpt-4o-mini"
     assert sent["text_format"] is SemanticDecisionBatch
 
