@@ -26,7 +26,8 @@ def apply_authentication_migration() -> None:
         connect_timeout=10,
     ) as connection:
         with connection.transaction():
-            for migration in migrations:\n                connection.execute(migration)
+            for migration in migrations:
+                connection.execute(migration)
 
 
 def main() -> int:
