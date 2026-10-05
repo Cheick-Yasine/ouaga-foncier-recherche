@@ -15,19 +15,18 @@ def apply_authentication_migration() -> None:
             "DATABASE_URL n'est pas configurée dans l'environnement."
         )
 
-    migration = (
-        Path(__file__).resolve().parents[1]
-        / "db"
-        / "migrations"
-        / "001_authentication.sql"
-    ).read_text(encoding="utf-8")
+    root = Path(__file__).resolve().parents[1]
+    migrations = [
+        (root / "db" / "migrations" / "001_authentication.sql").read_text(encoding="utf-8"),
+        (root / "db" / "migrations" / "002_admin_database.sql").read_text(encoding="utf-8"),
+    ]
 
     with psycopg.connect(
         settings.database_url.get_secret_value(),
         connect_timeout=10,
     ) as connection:
         with connection.transaction():
-            connection.execute(migration)
+            for migration in migrations:\n                connection.execute(migration)
 
 
 def main() -> int:
