@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from typing import Any
+from uuid import uuid4
 
 import psycopg
 from fastapi import APIRouter, Cookie, HTTPException
@@ -59,12 +60,15 @@ QUESTIONS = [
     ("derniere_publication", "Afficher la date de publication la plus récente", "Dernière publication", "dates"),
 ]
 
-ANNONCE_SQL = """SELECT id, premiere_collecte, date_publication, type_bien_normalise, quartier_zone,
-    prix_fcfa, superficie_m2, statut_document, resume_court, texte_nettoye
-    FROM public.annonces_preparees"""
+ANNONCE_SQL = """SELECT a.id, a.premiere_collecte, a.date_publication, a.type_bien_normalise, a.quartier_zone,
+    a.prix_fcfa, a.superficie_m2, a.statut_document, a.resume_court, a.texte_nettoye,
+    COALESCE(f.is_featured, FALSE) AS is_featured
+    FROM public.annonces_preparees a
+    LEFT JOIN public.admin_announcement_flags f ON f.announcement_id = a.id::text
+    WHERE COALESCE(f.is_trashed, FALSE) = FALSE"""
 
 SQL = {
-    "recentes": ANNONCE_SQL + " ORDER BY premiere_collecte DESC NULLS LAST, id DESC LIMIT 15",
+    "recentes": ANNONCE_SQL + " ORDER BY is_featured DESC, premiere_collecte DESC NULLS LAST, id DESC LIMIT 15",
     "moins_1m": ANNONCE_SQL + " WHERE prix_fcfa IS NOT NULL AND prix_fcfa < 1000000 ORDER BY prix_fcfa ASC LIMIT 100",
     "plus_100m": ANNONCE_SQL + " WHERE prix_fcfa IS NOT NULL AND prix_fcfa > 100000000 ORDER BY prix_fcfa DESC LIMIT 100",
     "moins_5m": ANNONCE_SQL + " WHERE prix_fcfa IS NOT NULL AND prix_fcfa < 5000000 ORDER BY prix_fcfa ASC LIMIT 100",
@@ -200,3 +204,81 @@ def run_question(question_id: str, session_token: str | None = Cookie(default=No
     if sql is None:
         raise HTTPException(status_code=404, detail="Question inconnue.")
     return {"question_id": question_id, "rows": _execute(sql)}
+
+
+class AnnouncementFlagRequest(BaseModel):
+    trashed: bool | None = None
+    featured: bool | None = None
+    priority: int = Field(default=0, ge=0, le=1000)
+    note: str | None = Field(default=None, max_length=1000)
+
+class ManualAnnouncementRequest(BaseModel):
+    texte: str = Field(min_length=3, max_length=20000)
+    url: str | None = Field(default=None, max_length=2000)
+    type_bien: str = Field(default="parcelle", min_length=3, max_length=40)
+    quartier: str | None = Field(default=None, max_length=200)
+    prix_fcfa: float | None = Field(default=None, ge=0)
+    superficie_m2: float | None = Field(default=None, ge=0)
+    document: str | None = Field(default=None, max_length=200)
+    contact: str | None = Field(default=None, max_length=500)
+
+@router.get("/trash")
+def trash(session_token: str | None = Cookie(default=None, alias=SESSION_COOKIE)) -> dict[str, Any]:
+    _require_admin(session_token)
+    return {"rows": _execute("""SELECT a.id::text AS id, a.premiere_collecte, a.date_publication,
+        a.type_bien_normalise, a.quartier_zone, a.prix_fcfa, a.superficie_m2,
+        a.statut_document, a.resume_court, a.texte_nettoye
+        FROM public.annonces_preparees a
+        JOIN public.admin_announcement_flags f ON f.announcement_id = a.id::text
+        WHERE f.is_trashed = TRUE ORDER BY f.updated_at DESC LIMIT 200""")}
+
+@router.get("/featured")
+def featured(session_token: str | None = Cookie(default=None, alias=SESSION_COOKIE)) -> dict[str, Any]:
+    _require_admin(session_token)
+    return {"rows": _execute("""SELECT a.id::text AS id, a.premiere_collecte, a.date_publication,
+        a.type_bien_normalise, a.quartier_zone, a.prix_fcfa, a.superficie_m2,
+        a.statut_document, a.resume_court, a.texte_nettoye, f.featured_priority
+        FROM public.annonces_preparees a
+        JOIN public.admin_announcement_flags f ON f.announcement_id = a.id::text
+        WHERE f.is_featured = TRUE AND f.is_trashed = FALSE
+        ORDER BY f.featured_priority DESC, a.premiere_collecte DESC LIMIT 200""")}
+
+@router.post("/flag/{announcement_id}")
+def flag_announcement(announcement_id: str, payload: AnnouncementFlagRequest,
+                      session_token: str | None = Cookie(default=None, alias=SESSION_COOKIE)) -> dict[str, Any]:
+    _require_admin(session_token)
+    check = _execute("SELECT id::text AS id FROM public.annonces_preparees WHERE id::text = '" + announcement_id.replace("'", "''") + "'")
+    if not check:
+        raise HTTPException(status_code=404, detail="Annonce introuvable.")
+    with psycopg.connect(_db_url()) as connection:
+        connection.execute("""INSERT INTO public.admin_announcement_flags
+            (announcement_id, is_trashed, is_featured, featured_priority, note)
+            VALUES (%s, COALESCE(%s,FALSE), COALESCE(%s,FALSE), %s, %s)
+            ON CONFLICT (announcement_id) DO UPDATE SET
+              is_trashed=COALESCE(EXCLUDED.is_trashed, admin_announcement_flags.is_trashed),
+              is_featured=COALESCE(EXCLUDED.is_featured, admin_announcement_flags.is_featured),
+              featured_priority=EXCLUDED.featured_priority, note=EXCLUDED.note, updated_at=CURRENT_TIMESTAMP""",
+            (announcement_id, payload.trashed, payload.featured, payload.priority, payload.note))
+    return {"ok": True, "id": announcement_id}
+
+@router.delete("/trash/{announcement_id}")
+def restore_announcement(announcement_id: str, session_token: str | None = Cookie(default=None, alias=SESSION_COOKIE)) -> dict[str, Any]:
+    _require_admin(session_token)
+    with psycopg.connect(_db_url()) as connection:
+        connection.execute("UPDATE public.admin_announcement_flags SET is_trashed=FALSE, updated_at=CURRENT_TIMESTAMP WHERE announcement_id=%s", (announcement_id,))
+    return {"ok": True, "id": announcement_id}
+
+@router.post("/add")
+def add_manual_announcement(payload: ManualAnnouncementRequest,
+                            session_token: str | None = Cookie(default=None, alias=SESSION_COOKIE)) -> dict[str, Any]:
+    user = _require_admin(session_token)
+    announcement_id = str(uuid4())
+    with psycopg.connect(_db_url()) as connection:
+        connection.execute("""INSERT INTO public.admin_added_annonces
+            (id,url,date_publication,type_bien_normalise,quartier_zone,superficie_m2,prix_fcfa,
+             statut_document,contacts_whatsapp,resume_court,texte_nettoye,created_by)
+            VALUES (%s,%s,CURRENT_DATE::text,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+            (announcement_id, payload.url, payload.type_bien.strip().lower(), payload.quartier,
+             payload.superficie_m2, payload.prix_fcfa, payload.document, payload.contact,
+             payload.texte[:500], payload.texte, user.id))
+    return {"ok": True, "id": announcement_id}
