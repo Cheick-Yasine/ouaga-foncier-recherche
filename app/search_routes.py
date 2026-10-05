@@ -304,7 +304,11 @@ async def search(
         semantic.fallback,
     )
 
-    ranked = semantic.results[: payload.limit]
+    ranked = sorted(
+        semantic.results,
+        key=lambda item: (item.candidate.is_featured, item.candidate.featured_priority, item.score),
+        reverse=True,
+    )[: payload.limit]
     total_ms = (perf_counter() - total_started) * 1_000
     LOGGER.info(
         (
