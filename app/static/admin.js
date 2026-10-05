@@ -43,6 +43,41 @@
     return fmt(value);
   }
 
+  function renderManagementTable(rows, mode) {
+    const target = $('#admin-management-list');
+    target.replaceChildren();
+    if (!rows?.length) { const p=document.createElement('p'); p.className='subtle'; p.textContent='Aucune annonce.'; target.append(p); return; }
+    const table=document.createElement('table'); table.className='admin-table';
+    const tbody=document.createElement('tbody');
+    rows.forEach(row=>{
+      const tr=document.createElement('tr');
+      const info=document.createElement('td');
+      info.innerHTML='<strong></strong><br><span></span><br><small></small>';
+      info.querySelector('strong').textContent=(row.quartier_zone||'Zone inconnue')+' · '+(row.type_bien_normalise||'bien');
+      info.querySelector('span').textContent=(row.prix_fcfa==null?'Prix non précisé':money.format(row.prix_fcfa)+' FCFA')+' · '+(row.superficie_m2==null?'Superficie non précisée':decimal.format(row.superficie_m2)+' m²');
+      info.querySelector('small').textContent=(row.texte_nettoye||'').slice(0,240);
+      tr.append(info);
+      const actions=document.createElement('td');
+      if(mode==='trash'){
+        const b=document.createElement('button'); b.className='secondary-button'; b.textContent='Restaurer'; b.onclick=async()=>{await api('/admin/database/trash/'+encodeURIComponent(row.id),{method:'DELETE'}); loadManagement('trash');};
+        actions.append(b);
+      } else {
+        const b=document.createElement('button'); b.className='secondary-button'; b.textContent='Retirer de l’avant'; b.onclick=async()=>{await api('/admin/database/flag/'+encodeURIComponent(row.id),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({featured:false,priority:0})}); loadManagement('featured');};
+        actions.append(b);
+      }
+      tr.append(actions); tbody.append(tr);
+    });
+    table.append(tbody); target.append(table);
+  }
+
+  async function loadManagement(mode) {
+    const box=$('#admin-management'); box.hidden=false; $('#admin-add-card').hidden=true;
+    $('#admin-management-title').textContent=mode==='trash'?'Corbeille':'Annonces mises en avant';
+    $('#admin-management-subtitle').textContent=mode==='trash'?'Ces annonces sont masquées des recherches utilisateur.':'Ces annonces apparaissent en priorité dans les résultats.';
+    const data=await api('/admin/database/'+mode);
+    renderManagementTable(data.rows,mode);
+  }
+
   function renderTable(rows, target) {
     target.replaceChildren();
     if (!rows?.length) {
@@ -230,6 +265,23 @@
   $('#admin-refresh').addEventListener('click', refresh);
   $('#admin-question-search').addEventListener('input', e => renderQuestions(e.target.value));
   $('#admin-custom-form').addEventListener('submit', customQuestion);
+  $('#admin-show-trash').addEventListener('click', () => loadManagement('trash'));
+  $('#admin-show-featured').addEventListener('click', () => loadManagement('featured'));
+  $('#admin-show-add').addEventListener('click', () => { $('#admin-management').hidden=true; $('#admin-add-card').hidden=false; });
+  $('#admin-add-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const button=e.currentTarget.querySelector('button[type="submit"]'); button.disabled=true;
+    try {
+      await api('/admin/database/add',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+        texte:$('#admin-add-text').value.trim(), type_bien:$('#admin-add-type').value,
+        quartier:$('#admin-add-zone').value.trim()||null, prix_fcfa:$('#admin-add-price').value?Number($('#admin-add-price').value):null,
+        superficie_m2:$('#admin-add-area').value?Number($('#admin-add-area').value):null, document:$('#admin-add-doc').value.trim()||null,
+        contact:$('#admin-add-contact').value.trim()||null, url:$('#admin-add-url').value.trim()||null
+      })});
+      e.currentTarget.reset(); $('#admin-add-card').hidden=true; loaded=false; await load();
+      alert('Annonce ajoutée à la base et disponible dans les recherches.');
+    } catch(error) { alert(error.message); } finally { button.disabled=false; }
+  });
   document.addEventListener('hakimo:auth', e => syncAuth(e.detail || null));
 
   fetch('/auth/me').then(r => r.ok ? r.json() : null).then(syncAuth).catch(() => syncAuth(null));
