@@ -166,6 +166,8 @@ def _candidate_from_row(
         collected_at=collected_at.isoformat() if collected_at else None,
         contact=_optional_text(row.get("contacts_whatsapp")),
         pricing_note=None,
+        is_featured=bool(row.get("is_featured")),
+        featured_priority=int(row.get("featured_priority") or 0),
     )
 
 
@@ -335,16 +337,20 @@ def load_recent_candidates(
                     contacts_whatsapp,
                     resume_court,
                     texte_nettoye,
-                    premiere_collecte
-                FROM public.annonces
-                WHERE {age_clause}
+                    premiere_collecte,
+                    COALESCE(f.is_featured, FALSE) AS is_featured,
+                    COALESCE(f.featured_priority, 0) AS featured_priority
+                FROM public.annonces a
+                LEFT JOIN public.admin_announcement_flags f ON f.announcement_id = a.id::text
+                WHERE COALESCE(f.is_trashed, FALSE) = FALSE
+                  AND {age_clause}
                       COALESCE(
                       NULLIF(LOWER(TRIM(type_bien_normalise)), ''),
                       NULLIF(LOWER(TRIM(type_bien)), ''),
                       ''
                   ) IN ('terrain', 'parcelle', 'maison')
                   AND NOT (prix_fcfa IS NULL AND superficie_m2 IS NULL)
-                ORDER BY premiere_collecte DESC NULLS LAST, id
+                ORDER BY is_featured DESC, featured_priority DESC, premiere_collecte DESC NULLS LAST, id
                 {limit_clause}
                 """,
                 parameters,
