@@ -31,6 +31,7 @@ class AuthenticationError(ValueError):
 class AuthenticatedUser:
     id: str
     name: str
+    role: str = "user"
 
 
 def normalize_name(name: str) -> str:
@@ -119,7 +120,7 @@ def create_user(name: str, password: str) -> AuthenticatedUser:
             "Un compte existe déjà avec ce nom."
         ) from error
 
-    return AuthenticatedUser(id=user_id, name=normalized)
+    return AuthenticatedUser(id=user_id, name=normalized, role=row["role"])
 
 
 def authenticate_user(name: str, password: str) -> AuthenticatedUser | None:
@@ -130,7 +131,7 @@ def authenticate_user(name: str, password: str) -> AuthenticatedUser | None:
     ) as connection:
         row = connection.execute(
             """
-            SELECT id::text AS id, email AS name, password_hash
+            SELECT id::text AS id, email AS name, password_hash, role
             FROM public.app_users
             WHERE email = %s
             """,
@@ -139,7 +140,7 @@ def authenticate_user(name: str, password: str) -> AuthenticatedUser | None:
 
     if row is None or not verify_password(password, row["password_hash"]):
         return None
-    return AuthenticatedUser(id=row["id"], name=row["name"])
+    return AuthenticatedUser(id=row["id"], name=row["name"], role=row.get("role") or "user")
 
 
 def create_session(user_id: str) -> str:
@@ -165,7 +166,7 @@ def get_session_user(token: str | None) -> AuthenticatedUser | None:
     ) as connection:
         row = connection.execute(
             """
-            SELECT users.id::text AS id, users.email AS name
+            SELECT users.id::text AS id, users.email AS name, users.role
             FROM public.user_sessions AS sessions
             JOIN public.app_users AS users ON users.id = sessions.user_id
             WHERE sessions.token_hash = %s
@@ -199,7 +200,7 @@ def update_user(user_id: str, name: str, current_password: str,
     try:
         with psycopg.connect(_database_url(), row_factory=dict_row) as connection:
             row = connection.execute(
-                'SELECT password_hash FROM public.app_users WHERE id = %s FOR UPDATE',
+                'SELECT password_hash, role FROM public.app_users WHERE id = %s FOR UPDATE',
                 (user_id,),
             ).fetchone()
             if row is None or not verify_password(current_password, row['password_hash']):
