@@ -11,6 +11,7 @@ from pydantic import BaseModel
 from app.announcement_routes import router as announcement_router
 from app.assistant_routes import router as assistant_router
 from app.auth_routes import router as auth_router
+from app.admin_database_routes import router as admin_database_router
 from app.config import get_settings
 from app.database import DatabaseNotConfiguredError, check_database_connection
 from app.search_routes import router as search_router
@@ -36,6 +37,7 @@ app = FastAPI(
 app.include_router(search_router)
 app.include_router(assistant_router)
 app.include_router(auth_router)
+app.include_router(admin_database_router)
 app.include_router(announcement_router)
 app.include_router(market_router)
 
