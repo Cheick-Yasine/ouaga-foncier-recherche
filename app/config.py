@@ -17,8 +17,8 @@ class Settings(BaseSettings):
     assistant_database_url: SecretStr | None = None
     max_ad_age_days: int | None = Field(default=None, ge=1, le=365)
     gemini_api_key: SecretStr | None = None
-    llm_model: str = "gemini-2.5-flash-lite"
-    assistant_model: str = "gemini-2.5-flash-lite"
+    llm_model: str = "gemini-3.5-flash-lite"
+    assistant_model: str = "gemini-3.5-flash-lite"
     mcp_server_url: str = "http://127.0.0.1:8001/mcp"
     assistant_history_limit: int = Field(default=12, ge=2, le=30)
     llm_candidate_limit: int = Field(default=15, ge=10, le=30)
