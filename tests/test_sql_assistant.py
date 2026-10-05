@@ -10,14 +10,35 @@ from app.sql_assistant import run_sql_assistant
 from app.sql_reader import SQLReadError
 
 
-class Responses:
+class Chat:
     def __init__(self, output):
         self.output = iter(output)
         self.calls = []
 
     async def create(self, **kwargs):
-        self.calls.append(kwargs)
-        return next(self.output)
+        call = dict(kwargs)
+        messages = kwargs.get("messages", [])
+        call["input"] = messages[1:] if messages else []
+        self.calls.append(call)
+        raw = next(self.output)
+        tool_calls = []
+        for item in getattr(raw, "output", []) or []:
+            if getattr(item, "type", None) != "function_call":
+                continue
+            tool_calls.append(SimpleNamespace(
+                id=item.call_id,
+                function=SimpleNamespace(name=item.name, arguments=item.arguments),
+            ))
+        message = SimpleNamespace(
+            content=getattr(raw, "output_text", None) or None,
+            tool_calls=tool_calls,
+        )
+        return SimpleNamespace(choices=[SimpleNamespace(message=message)])
+
+
+class Client:
+    def __init__(self, output):
+        self.chat = SimpleNamespace(completions=Chat(output))
 
 
 def tool(name, args, call_id='call1'):
@@ -47,7 +68,7 @@ async def test_gpt_writes_sql_and_decides_final_order():
         return [row('a'), row('b', 8000000)]
     result = await run_sql_assistant('Cherche une parcelle', [], max_age_days=30,
         settings=Settings(assistant_model='gpt-5.6-luna'),
-        client=SimpleNamespace(responses=responses), query_executor=execute)
+        client=SimpleNamespace(chat=SimpleNamespace(completions=responses)), query_executor=execute)
     assert seen == [sql]
     assert [r['id'] for r in result.results] == [b, a]
     assert result.results[0]['recommande_par_gpt'] is True
@@ -68,7 +89,7 @@ async def test_bad_sql_can_be_corrected_and_unknown_selection_is_rejected():
             raise SQLReadError('SELECT uniquement')
         return [row('a')]
     result = await run_sql_assistant('Parcelle', [], max_age_days=30,
-        settings=Settings(), client=SimpleNamespace(responses=responses), query_executor=execute)
+        settings=Settings(), client=SimpleNamespace(chat=SimpleNamespace(completions=responses)), query_executor=execute)
     assert [r['id'] for r in result.results] == [ref]
 
 
@@ -76,7 +97,7 @@ async def test_bad_sql_can_be_corrected_and_unknown_selection_is_rejected():
 async def test_greeting_needs_no_database_or_mcp():
     responses = Responses([SimpleNamespace(output=[], output_text='Bonjour !')])
     result = await run_sql_assistant('Bonjour', [], max_age_days=30,
-        settings=Settings(), client=SimpleNamespace(responses=responses))
+        settings=Settings(), client=SimpleNamespace(chat=SimpleNamespace(completions=responses)))
     assert result.answer == 'Bonjour !'
     assert not result.data_used
 
@@ -88,4 +109,4 @@ async def test_database_failure_is_not_reported_as_no_matches():
         raise SQLReadError('Indisponible')
     with pytest.raises(SQLReadError):
         await run_sql_assistant('Parcelle', [], max_age_days=30, settings=Settings(),
-            client=SimpleNamespace(responses=responses), query_executor=execute)
+            client=SimpleNamespace(chat=SimpleNamespace(completions=responses)), query_executor=execute)
