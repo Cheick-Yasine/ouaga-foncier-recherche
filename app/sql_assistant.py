@@ -150,95 +150,232 @@ def public_row(row, now):
 
 async def run_sql_assistant(message, history, *, max_age_days, settings=None,
                             client=None, query_executor=None, reference_executor=None):
+    """Exécute l'assistant SQL avec Gemini via la compatibilité OpenAI."""
+
     current = settings or get_settings()
-    if current.openai_api_key is None and client is None:
-        raise AssistantNotConfiguredError("OPENAI_API_KEY n'est pas configurée pour l'assistant.")
-    api = client or AsyncOpenAI(api_key=current.openai_api_key.get_secret_value())
+    if current.gemini_api_key is None and client is None:
+        raise AssistantNotConfiguredError(
+            "GEMINI_API_KEY n'est pas configurée pour l'assistant."
+        )
+
+    api = client or AsyncOpenAI(
+        api_key=current.gemini_api_key.get_secret_value(),
+        base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
+    )
     now = datetime.now(timezone.utc)
-    instructions = INSTRUCTIONS + '\nDate UTC : ' + now.isoformat() + '\nPériode choisie : ' + str(max_age_days) + ' jours. Début ISO : ' + (now - timedelta(days=max_age_days)).isoformat()
-    # Preserve user intent and public references; no keyword-based search or ranking.
-    items = [{'role': m.role, 'content': m.content[:6000]} for m in list(history)[-current.assistant_history_limit:] if m.role in {'user', 'assistant'}]
-    items.append({'role': 'user', 'content': message[:6000]})
-    pool = {}
+    instructions = (
+        INSTRUCTIONS
+        + "\nDate UTC : "
+        + now.isoformat()
+        + "\nPériode choisie : "
+        + str(max_age_days)
+        + " jours. Début ISO : "
+        + (now - timedelta(days=max_age_days)).isoformat()
+    )
+
+    messages = [{"role": "system", "content": instructions}]
+    messages.extend(
+        {
+            "role": m.role,
+            "content": m.content[:6000],
+        }
+        for m in list(history)[-current.assistant_history_limit:]
+        if m.role in {"user", "assistant"}
+    )
+    messages.append({"role": "user", "content": message[:6000]})
+
+    pool: dict[str, dict[str, Any]] = {}
     queried = False
     successes = 0
     calls_used = 0
+
+    def as_tool(declaration):
+        return {
+            "type": "function",
+            "function": {
+                "name": declaration["name"],
+                "description": declaration["description"],
+                "parameters": declaration["parameters"],
+                **({"strict": declaration["strict"]} if "strict" in declaration else {}),
+            },
+        }
+
+    tools = [
+        as_tool(SQL_TOOL),
+        as_tool(REFERENCES_TOOL),
+        as_tool(GEO_TOOL),
+        as_tool(FINAL_TOOL),
+    ]
+
     for step in range(7):
-        started = perf_counter()
-        response = await api.responses.create(
-            model=current.assistant_model, instructions=instructions, input=items,
-            tools=[SQL_TOOL, REFERENCES_TOOL, GEO_TOOL, FINAL_TOOL],
-            tool_choice={'type': 'function', 'name': 'presenter_selection'} if calls_used >= 4 else 'auto',
-            parallel_tool_calls=False, store=False,
-            **({'reasoning': {'effort': 'none'}} if current.assistant_model == 'gpt-5.6-luna' else {}))
-        LOGGER.info('assistant_sql_model pass=%d seconds=%.3f', step, perf_counter() - started)
-        calls = [item for item in response.output if getattr(item, 'type', None) == 'function_call']
+        kwargs = {
+            "model": current.assistant_model,
+            "messages": messages,
+            "tools": tools,
+            "parallel_tool_calls": False,
+            "tool_choice": (
+                {"type": "function", "function": {"name": "presenter_selection"}}
+                if calls_used >= 4
+                else "auto"
+            ),
+        }
+        response = await api.chat.completions.create(**kwargs)
+        assistant_message = response.choices[0].message
+        calls = list(assistant_message.tool_calls or [])
+
         if not calls:
             if queried:
-                items.extend(response.output)
-                items.append({'role': 'developer', 'content': 'Termine avec presenter_selection pour synchroniser le texte et le tableau.'})
+                messages.append({
+                    "role": "assistant",
+                    "content": assistant_message.content or "",
+                })
+                messages.append({
+                    "role": "system",
+                    "content": "Termine avec presenter_selection pour synchroniser le texte et le tableau.",
+                })
                 calls_used = 4
                 continue
-            return SQLOutcome(answer=response.output_text or 'Reformulez votre demande.', results=[], model=current.assistant_model)
-        items.extend(response.output)
+            return SQLOutcome(
+                answer=assistant_message.content or "Reformulez votre demande.",
+                results=[],
+                model=current.assistant_model,
+            )
+
+        messages.append({
+            "role": "assistant",
+            "content": assistant_message.content,
+            "tool_calls": [
+                {
+                    "id": call.id,
+                    "type": "function",
+                    "function": {
+                        "name": call.function.name,
+                        "arguments": call.function.arguments,
+                    },
+                }
+                for call in calls
+            ],
+        })
+
         if len(calls) != 1:
-            raise SQLReadError('La réponse contient plusieurs actions simultanées. Réessayez.')
+            raise SQLReadError("La réponse contient plusieurs actions simultanées. Réessayez.")
+
         call = calls[0]
         try:
-            args = json.loads(call.arguments)
+            args = json.loads(call.function.arguments)
             if not isinstance(args, dict):
                 raise ValueError()
-        except (TypeError, ValueError):
+        except (TypeError, ValueError, json.JSONDecodeError):
             raise SQLReadError("L'assistant a produit une action illisible. Réessayez.") from None
+
         payload = {}
         try:
-            if call.name == 'presenter_selection':
+            if call.function.name == "presenter_selection":
                 if queried and not successes:
                     raise SQLReadError("La consultation des annonces a échoué. Réessayez dans un instant.")
-                refs = args.get('references', [])
-                recommendation = args.get('recommandee')
-                if not isinstance(refs, list) or len(refs) > 10 or any(not isinstance(ref, str) or ref not in pool for ref in refs):
-                    raise ValueError('Choisis uniquement des références reçues dans les outils.')
-                if len(set(refs)) != len(refs) or (recommendation is not None and recommendation not in refs):
-                    raise ValueError('La recommandation doit appartenir à la sélection, sans doublons.')
+                refs = args.get("references", [])
+                recommendation = args.get("recommandee")
+                if (
+                    not isinstance(refs, list)
+                    or len(refs) > 10
+                    or any(not isinstance(ref, str) or ref not in pool for ref in refs)
+                ):
+                    raise ValueError("Choisis uniquement des références reçues dans les outils.")
+                if len(set(refs)) != len(refs) or (
+                    recommendation is not None and recommendation not in refs
+                ):
+                    raise ValueError("La recommandation doit appartenir à la sélection, sans doublons.")
                 if recommendation and refs[0] != recommendation:
-                    raise ValueError('Place ton annonce recommandée en première position.')
-                answer = args.get('answer')
-                mode = args.get('mode')
-                description = args.get('description_recherche')
-                if not isinstance(answer, str) or not answer.strip() or mode not in {'recherche', 'analyse', 'comparaison'} or not isinstance(description, str):
-                    raise ValueError('Réponse finale incomplète.')
-                results = [dict(pool[ref], recommande_par_gpt=(ref == recommendation)) for ref in refs]
-                return SQLOutcome(answer=answer, results=results, model=current.assistant_model,
-                                  data_used=queried, criteria={'description': description, 'anciennete_maximale_jours': max_age_days},
-                                  suggestions=_suggestions(results, {}) if queried else [],
-                                  analysis={'origine': 'gpt_sql'} if mode == 'analyse' else None, mode=mode)
+                    raise ValueError("Place ton annonce recommandée en première position.")
+                answer = args.get("answer")
+                mode = args.get("mode")
+                description = args.get("description_recherche")
+                if (
+                    not isinstance(answer, str)
+                    or not answer.strip()
+                    or mode not in {"recherche", "analyse", "comparaison"}
+                    or not isinstance(description, str)
+                ):
+                    raise ValueError("Réponse finale incomplète.")
+                results = [
+                    dict(pool[ref], recommande_par_gpt=(ref == recommendation))
+                    for ref in refs
+                ]
+                return SQLOutcome(
+                    answer=answer,
+                    results=results,
+                    model=current.assistant_model,
+                    data_used=queried,
+                    criteria={
+                        "description": description,
+                        "anciennete_maximale_jours": max_age_days,
+                    },
+                    suggestions=_suggestions(results, {}) if queried else [],
+                    analysis={"origine": "gemini_sql"} if mode == "analyse" else None,
+                    mode=mode,
+                )
+
             if calls_used >= 4:
-                raise ValueError('Le nombre de consultations est atteint. Termine avec presenter_selection.')
+                raise ValueError(
+                    "Le nombre de consultations est atteint. Termine avec presenter_selection."
+                )
             calls_used += 1
-            if call.name in {'consulter_annonces_sql', 'relire_annonces'}:
+
+            if call.function.name in {"consulter_annonces_sql", "relire_annonces"}:
                 queried = True
                 started = perf_counter()
-                if call.name == 'consulter_annonces_sql':
-                    rows = await query_executor(args['sql']) if query_executor else await asyncio.to_thread(query_annonces, args['sql'], settings=current)
+                if call.function.name == "consulter_annonces_sql":
+                    rows = (
+                        await query_executor(args["sql"])
+                        if query_executor
+                        else await asyncio.to_thread(query_annonces, args["sql"], settings=current)
+                    )
                 else:
-                    rows = await reference_executor(args['references']) if reference_executor else await asyncio.to_thread(read_references, args['references'], settings=current)
+                    rows = (
+                        await reference_executor(args["references"])
+                        if reference_executor
+                        else await asyncio.to_thread(read_references, args["references"], settings=current)
+                    )
                 public = [public_row(row, now) for row in rows]
-                pool.update({row['id']: row for row in public})
+                pool.update({row["id"]: row for row in public})
                 successes += 1
-                payload = {'annonces': [{k: v for k, v in row.items() if k != 'facebook_url'} for row in public],
-                           'limite': 100, 'exhaustif': False}
-                LOGGER.info('assistant_sql_query seconds=%.3f rows=%d', perf_counter() - started, len(public))
-            elif call.name == 'quartiers_proches':
-                origin = args['quartier']
-                names = {point['name'] for point in _locations().values() if point}
-                payload = {'quartiers': [{'quartier': name, **relation} for name in sorted(names)
-                           if (relation := neighborhood_relation(origin, name))],
-                           'precision': 'Distances approximatives en ligne droite entre quartiers.'}
+                payload = {
+                    "annonces": [
+                        {k: v for k, v in row.items() if k != "facebook_url"}
+                        for row in public
+                    ],
+                    "limite": 100,
+                    "exhaustif": False,
+                }
+                LOGGER.info(
+                    "assistant_sql_query seconds=%.3f rows=%d",
+                    perf_counter() - started,
+                    len(public),
+                )
+            elif call.function.name == "quartiers_proches":
+                origin = args["quartier"]
+                names = {point["name"] for point in _locations().values() if point}
+                payload = {
+                    "quartiers": [
+                        {"quartier": name, **relation}
+                        for name in sorted(names)
+                        if (relation := neighborhood_relation(origin, name))
+                    ],
+                    "precision": "Distances approximatives en ligne droite entre quartiers.",
+                }
             else:
-                raise ValueError('Outil inconnu.')
+                raise ValueError("Outil inconnu.")
         except (ValueError, KeyError, TypeError) as error:
-            payload = {'erreur': str(error) if isinstance(error, ValueError) else 'Arguments incomplets.', 'corriger': True}
-        items.append({'type': 'function_call_output', 'call_id': call.call_id,
-                      'output': json.dumps(payload, ensure_ascii=False, default=str)})
+            payload = {
+                "erreur": str(error) if isinstance(error, ValueError) else "Arguments incomplets.",
+                "corriger": True,
+            }
+
+        messages.append({
+            "role": "tool",
+            "tool_call_id": call.id,
+            "content": json.dumps(payload, ensure_ascii=False, default=str),
+        })
+
     raise SQLReadError("L'assistant n'a pas terminé sa sélection. Réessayez en précisant votre demande.")
+
