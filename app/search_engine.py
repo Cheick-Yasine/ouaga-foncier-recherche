@@ -128,6 +128,8 @@ class SearchCandidate:
     collected_at: str | None = None
     contact: str | None = None
     pricing_note: str | None = None
+    is_featured: bool = False
+    featured_priority: int = 0
 
 
 @dataclass(frozen=True)
