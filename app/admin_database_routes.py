@@ -92,7 +92,7 @@ SQL = {
     "sans_superficie": ANNONCE_SQL + " AND superficie_m2 IS NULL ORDER BY premiere_collecte DESC NULLS LAST LIMIT 100",
     "sans_prix_superficie": ANNONCE_SQL + " AND prix_fcfa IS NULL AND superficie_m2 IS NULL ORDER BY premiere_collecte DESC NULLS LAST LIMIT 100",
     "avec_document": ANNONCE_SQL + " AND statut_document IS NOT NULL AND LOWER(statut_document) NOT IN ('non_precise','non_precisee') ORDER BY premiere_collecte DESC NULLS LAST LIMIT 100",
-    "sans_document": ANNONCE_SQL + " AND statut_document IS NULL OR LOWER(statut_document) IN ('non_precise','non_precisee') ORDER BY premiere_collecte DESC NULLS LAST LIMIT 100",
+    "sans_document": ANNONCE_SQL + " AND (statut_document IS NULL OR LOWER(statut_document) IN ('non_precise','non_precisee')) ORDER BY premiere_collecte DESC NULLS LAST LIMIT 100",
     "attestation": ANNONCE_SQL + " AND LOWER(COALESCE(statut_document,'')) LIKE '%attestation%' ORDER BY premiere_collecte DESC NULLS LAST LIMIT 100",
     "puh": ANNONCE_SQL + " AND LOWER(COALESCE(statut_document,'') || ' ' || COALESCE(texte_nettoye,'')) LIKE '%puh%' ORDER BY premiere_collecte DESC NULLS LAST LIMIT 100",
     "eau": ANNONCE_SQL + " AND LOWER(COALESCE(texte_nettoye,'')) LIKE '%eau%' ORDER BY premiere_collecte DESC NULLS LAST LIMIT 100",
