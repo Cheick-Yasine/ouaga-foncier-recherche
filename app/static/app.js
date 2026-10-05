@@ -647,6 +647,7 @@ function updateAccount() {
       : 'Bonjour.';
   }
   renderSidebar(); updateSaveButtons();
+  document.dispatchEvent(new CustomEvent('hakimo:auth', {detail: currentUser}));
 }
 function openSettings() {
   requireLogin(()=>{ $('#settings-form').reset(); $('#profile-name').value=currentUser.name; $('#settings-feedback').textContent=''; $('#settings-dialog').showModal(); },'Connectez-vous pour modifier les informations de votre compte.');
@@ -691,6 +692,7 @@ async function init() {
 $('#open-saved').addEventListener('click',()=>{renderSidebar();$('#saved-dialog').showModal();});
 $('#open-alerts').addEventListener('click',()=>{renderSidebar();$('#alerts-dialog').showModal();});
 function showPage(page) {
+  if (page !== 'chat' && window.HakimoAdmin) window.HakimoAdmin.hidePage();
   activePage = page === 'chat' ? 'chat' : 'home';
   main.dataset.page=activePage;
   const chat=activePage==='chat';
