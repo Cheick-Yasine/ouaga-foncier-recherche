@@ -247,7 +247,8 @@ def featured(session_token: str | None = Cookie(default=None, alias=SESSION_COOK
 def flag_announcement(announcement_id: str, payload: AnnouncementFlagRequest,
                       session_token: str | None = Cookie(default=None, alias=SESSION_COOKIE)) -> dict[str, Any]:
     _require_admin(session_token)
-    check = _execute("SELECT id::text AS id FROM public.annonces_preparees WHERE id::text = '" + announcement_id.replace("'", "''") + "'")
+    safe_id = announcement_id.replace("'", "''")
+    check = _execute("SELECT id::text AS id FROM public.annonces_preparees WHERE id::text = '" + safe_id + "' UNION ALL SELECT id::text FROM public.admin_added_annonces WHERE id::text = '" + safe_id + "' LIMIT 1")
     if not check:
         raise HTTPException(status_code=404, detail="Annonce introuvable.")
     with psycopg.connect(_db_url()) as connection:
