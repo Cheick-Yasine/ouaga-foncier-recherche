@@ -67,19 +67,64 @@ class _GeminiNativeChatCompletions:
         self.api_key = api_key
 
     @staticmethod
+    def _schema_to_gemini(schema: Any) -> Any:
+        """Convertit un JSON Schema OpenAI vers le schema accepté par Gemini."""
+        if isinstance(schema, list):
+            return [_GeminiNativeChatCompletions._schema_to_gemini(item) for item in schema]
+        if not isinstance(schema, dict):
+            return schema
+
+        # Gemini REST ne reconnaît pas certains mots-clés JSON Schema,
+        # notamment additionalProperties. On conserve récursivement les
+        # champs pris en charge par le schema des FunctionDeclaration.
+        allowed = {
+            "type",
+            "format",
+            "title",
+            "description",
+            "nullable",
+            "enum",
+            "items",
+            "properties",
+            "required",
+            "minItems",
+            "maxItems",
+            "minProperties",
+            "maxProperties",
+            "minimum",
+            "maximum",
+            "minLength",
+            "maxLength",
+            "pattern",
+        }
+        converted: dict[str, Any] = {}
+        for key, value in schema.items():
+            if key not in allowed:
+                continue
+            if key == "properties" and isinstance(value, dict):
+                converted[key] = {
+                    name: _GeminiNativeChatCompletions._schema_to_gemini(prop)
+                    for name, prop in value.items()
+                }
+            else:
+                converted[key] = _GeminiNativeChatCompletions._schema_to_gemini(value)
+        return converted
+
+    @staticmethod
     def _tools_to_gemini(tools: list[dict[str, Any]]) -> list[dict[str, Any]]:
         declarations = []
         for tool in tools or []:
             function = tool.get("function", {})
             if not function.get("name"):
                 continue
+            parameters = function.get(
+                "parameters",
+                {"type": "object", "properties": {}},
+            )
             declarations.append({
                 "name": function["name"],
                 "description": function.get("description", ""),
-                "parameters": function.get(
-                    "parameters",
-                    {"type": "object", "properties": {}, "additionalProperties": False},
-                ),
+                "parameters": _GeminiNativeChatCompletions._schema_to_gemini(parameters),
             })
         return [{"functionDeclarations": declarations}] if declarations else []
 
