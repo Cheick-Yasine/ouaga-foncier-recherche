@@ -647,6 +647,10 @@ function updateAccount() {
       : 'Bonjour.';
   }
   renderSidebar(); updateSaveButtons();
+  // Navigation administrateur : l'état est piloté directement depuis la session courante.
+  // Cela évite toute dépendance à l'ordre de chargement des modules JS.
+  const adminNav = $('#nav-admin-database');
+  if (adminNav) adminNav.hidden = currentUser?.role !== 'admin';
   document.dispatchEvent(new CustomEvent('hakimo:auth', {detail: currentUser}));
 }
 function openSettings() {
