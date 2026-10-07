@@ -21,8 +21,7 @@ COLUMNS = frozenset({
     'id', 'date_publication', 'premiere_collecte', 'type_bien',
     'type_bien_normalise', 'quartier_zone', 'superficie_m2', 'prix_fcfa',
     'statut_document', 'resume_court', 'texte_nettoye',
-    'document_etat', 'eau_etat', 'electricite_etat', 'dans_ouagadougou',
-})
+    })
 # Closed grammar: no user functions, joins, subqueries, catalogs or locking clauses.
 NODES = frozenset({
     'Select', 'From', 'Table', 'Identifier', 'Column', 'Where', 'Order',
@@ -92,7 +91,7 @@ def query_annonces(sql: str, *, settings=None) -> list[dict[str, Any]]:
                     SELECT id::text AS id, url, date_publication, premiere_collecte,
                            type_bien, type_bien_normalise, quartier_zone,
                            superficie_m2, prix_fcfa, statut_document,
-                           resume_court, texte_nettoye, qualite_preparee, base_prix
+                           resume_court, texte_nettoye
                     FROM public.annonces WHERE id::text = ANY(%s)
                 ''', (ids,)).fetchall()
         by_id = {row['id']: row for row in rows}
@@ -134,7 +133,7 @@ def read_references(references: list[str], *, settings=None, include_contacts=Fa
                 contact_column = ', contacts_whatsapp' if include_contacts else ''
                 rows = connection.execute(f'''SELECT id::text AS id, url, date_publication,
                     premiere_collecte, type_bien, type_bien_normalise, quartier_zone,
-                    superficie_m2, prix_fcfa, statut_document, resume_court, texte_nettoye, qualite_preparee, base_prix {contact_column}
+                    superficie_m2, prix_fcfa, statut_document, resume_court, texte_nettoye {contact_column}
                     FROM public.annonces WHERE id::text = ANY(%s)''', (ids,)).fetchall()
                 by_id = {row['id']: row for row in rows}
                 return [by_id[identifier] for identifier in ids if identifier in by_id]
