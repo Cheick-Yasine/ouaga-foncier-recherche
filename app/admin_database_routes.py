@@ -68,7 +68,7 @@ ANNONCE_SQL = """SELECT a.id, a.premiere_collecte, a.date_publication, a.type_bi
     WHERE COALESCE(f.is_trashed, FALSE) = FALSE"""
 
 SQL = {
-    "recentes": ANNONCE_SQL + " ORDER BY is_featured DESC, premiere_collecte DESC NULLS LAST, id DESC LIMIT 15",
+    "recentes": ANNONCE_SQL + " ORDER BY premiere_collecte DESC NULLS LAST, id DESC LIMIT 15",
     "moins_1m": ANNONCE_SQL + " AND prix_fcfa IS NOT NULL AND prix_fcfa < 1000000 ORDER BY prix_fcfa ASC LIMIT 100",
     "plus_100m": ANNONCE_SQL + " AND prix_fcfa IS NOT NULL AND prix_fcfa > 100000000 ORDER BY prix_fcfa DESC LIMIT 100",
     "moins_5m": ANNONCE_SQL + " AND prix_fcfa IS NOT NULL AND prix_fcfa < 5000000 ORDER BY prix_fcfa ASC LIMIT 100",
