@@ -46,7 +46,7 @@ def function(name, description, properties):
 
 SQL_TOOL = function('consulter_annonces_sql',
     'Exécute le SELECT PostgreSQL que tu écris. Aucun classement après SQL. '
-    'Écris SELECT id FROM public.annonces_preparees WHERE ... ORDER BY ... LIMIT 100. '
+    'Écris SELECT id FROM public.annonces WHERE ... ORDER BY ... LIMIT 100. '
     'Les détails des annonces sélectionnées seront joints automatiquement. '
     'Une table sans alias ; pas de jointure, sous-requête, agrégat, cast ou écriture. '
     'Opérations disponibles : AND, OR, NOT, IN, BETWEEN, IS NULL, LIKE, ILIKE, '
@@ -79,7 +79,7 @@ FINAL_TOOL = function('presenter_selection',
 
 INSTRUCTIONS = '''Tu es HAKIMO, le conseiller de HAKILAB IMMOBILIER.
 Tu comprends la demande, écris toi-même le SQL, analyses les données et choisis
-les recommandations. Tu consultes uniquement annonces_preparees : ventes retenues dans le périmètre, un lot par ligne. Les valeurs manquantes restent inconnues. Aucun moteur ne reclasse les résultats après toi.
+les recommandations. Tu consultes uniquement annonces : ventes retenues dans le périmètre, un lot par ligne. Les valeurs manquantes restent inconnues. Aucun moteur ne reclasse les résultats après toi.
 Agis avec les informations disponibles, sans interroger longuement l'utilisateur.
 Utilise le français simple. Donne ton avis et un conseil concret avant le tableau,
 en 3 ou 4 phrases pour une recherche. Ne répète pas la liste des annonces dans le texte.
