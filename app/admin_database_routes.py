@@ -63,7 +63,7 @@ QUESTIONS = [
 ANNONCE_SQL = """SELECT a.id, a.premiere_collecte, a.date_publication, a.type_bien_normalise, a.quartier_zone,
     a.prix_fcfa, a.superficie_m2, a.statut_document, a.resume_court, a.texte_nettoye,
     COALESCE(f.is_featured, FALSE) AS is_featured
-    FROM public.annonces_preparees a
+    FROM public.annonces a
     LEFT JOIN public.admin_announcement_flags f ON f.announcement_id = a.id::text
     WHERE COALESCE(f.is_trashed, FALSE) = FALSE"""
 
@@ -82,12 +82,12 @@ SQL = {
         ROUND(AVG(prix_fcfa)) AS prix_moyen, MIN(prix_fcfa) AS prix_min,
         MAX(prix_fcfa) AS prix_max,
         PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY prix_fcfa) AS prix_median
-        FROM public.annonces_preparees""",
+        FROM public.annonces""",
     "surface_stats": """SELECT COUNT(*) AS total, COUNT(superficie_m2) AS avec_superficie,
         ROUND(AVG(superficie_m2)::numeric, 2) AS superficie_moyenne,
         MIN(superficie_m2) AS superficie_min, MAX(superficie_m2) AS superficie_max,
         PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY superficie_m2) AS superficie_mediane
-        FROM public.annonces_preparees""",
+        FROM public.annonces""",
     "sans_prix": ANNONCE_SQL + " AND prix_fcfa IS NULL ORDER BY premiere_collecte DESC NULLS LAST LIMIT 100",
     "sans_superficie": ANNONCE_SQL + " AND superficie_m2 IS NULL ORDER BY premiere_collecte DESC NULLS LAST LIMIT 100",
     "sans_prix_superficie": ANNONCE_SQL + " AND prix_fcfa IS NULL AND superficie_m2 IS NULL ORDER BY premiere_collecte DESC NULLS LAST LIMIT 100",
@@ -101,21 +101,21 @@ SQL = {
     "parcelles": ANNONCE_SQL + " AND type_bien_normalise = 'parcelle' ORDER BY premiere_collecte DESC NULLS LAST LIMIT 100",
     "maisons": ANNONCE_SQL + " AND type_bien_normalise = 'maison' ORDER BY premiere_collecte DESC NULLS LAST LIMIT 100",
     "comptage_types": """SELECT COALESCE(type_bien_normalise,'non_precise') AS type_bien, COUNT(*) AS total
-        FROM public.annonces_preparees a WHERE NOT EXISTS (SELECT 1 FROM public.admin_announcement_flags f WHERE f.announcement_id=a.id::text AND f.is_trashed) GROUP BY type_bien_normalise ORDER BY total DESC""",
+        FROM public.annonces a WHERE NOT EXISTS (SELECT 1 FROM public.admin_announcement_flags f WHERE f.announcement_id=a.id::text AND f.is_trashed) GROUP BY type_bien_normalise ORDER BY total DESC""",
     "comptage_quartiers": """SELECT COALESCE(quartier_zone,'non_precise') AS quartier, COUNT(*) AS total
-        FROM public.annonces_preparees a WHERE NOT EXISTS (SELECT 1 FROM public.admin_announcement_flags f WHERE f.announcement_id=a.id::text AND f.is_trashed) GROUP BY quartier_zone ORDER BY total DESC""",
+        FROM public.annonces a WHERE NOT EXISTS (SELECT 1 FROM public.admin_announcement_flags f WHERE f.announcement_id=a.id::text AND f.is_trashed) GROUP BY quartier_zone ORDER BY total DESC""",
     "quartiers_plus_annonces": """SELECT COALESCE(quartier_zone,'non_precise') AS quartier, COUNT(*) AS total
-        FROM public.annonces_preparees a WHERE NOT EXISTS (SELECT 1 FROM public.admin_announcement_flags f WHERE f.announcement_id=a.id::text AND f.is_trashed) GROUP BY quartier_zone ORDER BY total DESC LIMIT 20""",
+        FROM public.annonces a WHERE NOT EXISTS (SELECT 1 FROM public.admin_announcement_flags f WHERE f.announcement_id=a.id::text AND f.is_trashed) GROUP BY quartier_zone ORDER BY total DESC LIMIT 20""",
     "saaba": ANNONCE_SQL + " AND LOWER(COALESCE(quartier_zone,'')) LIKE '%saaba%' ORDER BY premiere_collecte DESC NULLS LAST LIMIT 100",
     "pabre": ANNONCE_SQL + " AND LOWER(COALESCE(quartier_zone,'')) LIKE '%pabre%' ORDER BY premiere_collecte DESC NULLS LAST LIMIT 100",
     "koubri": ANNONCE_SQL + " AND LOWER(COALESCE(quartier_zone,'')) LIKE '%koubri%' ORDER BY premiere_collecte DESC NULLS LAST LIMIT 100",
-    "aujourdhui": "SELECT COUNT(*) AS total FROM public.annonces_preparees WHERE premiere_collecte >= CURRENT_DATE AND premiere_collecte < CURRENT_DATE + INTERVAL '1 day'",
-    "hier": "SELECT COUNT(*) AS total FROM public.annonces_preparees WHERE premiere_collecte >= CURRENT_DATE - INTERVAL '1 day' AND premiere_collecte < CURRENT_DATE",
-    "semaine": "SELECT COUNT(*) AS total FROM public.annonces_preparees WHERE premiere_collecte >= date_trunc('week', CURRENT_TIMESTAMP)",
+    "aujourdhui": "SELECT COUNT(*) AS total FROM public.annonces WHERE premiere_collecte >= CURRENT_DATE AND premiere_collecte < CURRENT_DATE + INTERVAL '1 day'",
+    "hier": "SELECT COUNT(*) AS total FROM public.annonces WHERE premiere_collecte >= CURRENT_DATE - INTERVAL '1 day' AND premiere_collecte < CURRENT_DATE",
+    "semaine": "SELECT COUNT(*) AS total FROM public.annonces WHERE premiere_collecte >= date_trunc('week', CURRENT_TIMESTAMP)",
     "plus_grandes": ANNONCE_SQL + " AND superficie_m2 IS NOT NULL ORDER BY superficie_m2 DESC LIMIT 20",
     "plus_cheres": ANNONCE_SQL + " AND prix_fcfa IS NOT NULL ORDER BY prix_fcfa DESC LIMIT 20",
     "moins_cheres": ANNONCE_SQL + " AND prix_fcfa IS NOT NULL ORDER BY prix_fcfa ASC LIMIT 20",
-    "derniere_publication": "SELECT MAX(CASE WHEN date_publication LIKE '__/__/____' THEN TO_DATE(date_publication, 'DD/MM/YYYY') WHEN date_publication LIKE '____-__-__%' THEN SUBSTRING(date_publication, 1, 10)::date ELSE NULL END) AS derniere_date_publication FROM public.annonces_preparees",
+    "derniere_publication": "SELECT MAX(CASE WHEN date_publication LIKE '__/__/____' THEN TO_DATE(date_publication, 'DD/MM/YYYY') WHEN date_publication LIKE '____-__-__%' THEN SUBSTRING(date_publication, 1, 10)::date ELSE NULL END) AS derniere_date_publication FROM public.annonces",
 }
 
 
@@ -160,7 +160,7 @@ def _overview() -> dict[str, Any]:
         COUNT(*) FILTER (WHERE type_bien_normalise='parcelle') AS parcelles,
         COUNT(*) FILTER (WHERE type_bien_normalise='maison') AS maisons,
         MAX(premiere_collecte) AS derniere_collecte
-        FROM public.annonces_preparees""")
+        FROM public.annonces""")
     return rows[0]
 
 
@@ -228,7 +228,7 @@ def trash(session_token: str | None = Cookie(default=None, alias=SESSION_COOKIE)
     return {"rows": _execute("""SELECT a.id::text AS id, a.premiere_collecte, a.date_publication,
         a.type_bien_normalise, a.quartier_zone, a.prix_fcfa, a.superficie_m2,
         a.statut_document, a.resume_court, a.texte_nettoye
-        FROM public.annonces_preparees a
+        FROM public.annonces a
         JOIN public.admin_announcement_flags f ON f.announcement_id = a.id::text
         WHERE f.is_trashed = TRUE ORDER BY f.updated_at DESC LIMIT 200""")}
 
@@ -238,7 +238,7 @@ def featured(session_token: str | None = Cookie(default=None, alias=SESSION_COOK
     return {"rows": _execute("""SELECT a.id::text AS id, a.premiere_collecte, a.date_publication,
         a.type_bien_normalise, a.quartier_zone, a.prix_fcfa, a.superficie_m2,
         a.statut_document, a.resume_court, a.texte_nettoye, f.featured_priority
-        FROM public.annonces_preparees a
+        FROM public.annonces a
         JOIN public.admin_announcement_flags f ON f.announcement_id = a.id::text
         WHERE f.is_featured = TRUE AND f.is_trashed = FALSE
         ORDER BY f.featured_priority DESC, a.premiere_collecte DESC LIMIT 200""")}
@@ -248,7 +248,7 @@ def flag_announcement(announcement_id: str, payload: AnnouncementFlagRequest,
                       session_token: str | None = Cookie(default=None, alias=SESSION_COOKIE)) -> dict[str, Any]:
     _require_admin(session_token)
     safe_id = announcement_id.replace("'", "''")
-    check = _execute("SELECT id::text AS id FROM public.annonces_preparees WHERE id::text = '" + safe_id + "' UNION ALL SELECT id::text FROM public.admin_added_annonces WHERE id::text = '" + safe_id + "' LIMIT 1")
+    check = _execute("SELECT id::text AS id FROM public.annonces WHERE id::text = '" + safe_id + "' UNION ALL SELECT id::text FROM public.admin_added_annonces WHERE id::text = '" + safe_id + "' LIMIT 1")
     if not check:
         raise HTTPException(status_code=404, detail="Annonce introuvable.")
     with psycopg.connect(_db_url()) as connection:
