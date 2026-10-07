@@ -333,8 +333,7 @@ def load_recent_candidates(
                            COALESCE(f.is_featured, FALSE) AS is_featured,
                            COALESCE(f.featured_priority, 0) AS featured_priority
                     FROM public.annonces a
-                 LEFT JOIN public.admin_announcement_flags f ON f.announcement_id = a.id::text a
-                    LEFT JOIN public.admin_announcement_flags f ON f.announcement_id = a.id::text
+                 LEFT JOIN public.admin_announcement_flags f ON f.announcement_id = a.id::text
                     WHERE COALESCE(f.is_trashed, FALSE) = FALSE
                     UNION ALL
                     SELECT a.id::text, a.url, a.date_publication, NULL::text,
