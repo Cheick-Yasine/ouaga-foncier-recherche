@@ -51,12 +51,13 @@ SQL_TOOL = function('consulter_annonces_sql',
     'Une table sans alias ; pas de jointure, sous-requête, agrégat, cast ou écriture. '
     'Opérations disponibles : AND, OR, NOT, IN, BETWEEN, IS NULL, LIKE, ILIKE, '
     'comparaisons, arithmétique, LOWER, UPPER, COALESCE, NULLIF, ABS, ROUND. '
-    'Colonnes : id, type_bien, type_bien_normalise, quartier_zone, prix_fcfa, '
-    'superficie_m2, statut_document, texte_nettoye, resume_court, '
-    'date_publication (texte, peut être imprécis), premiere_collecte (timestamp). '
-    'Colonnes préparées : document_etat, eau_etat, electricite_etat, dans_ouagadougou (booléen). '
-    'Pour Ouagadougou seule : dans_ouagadougou = TRUE. Les proximités sont dans texte_nettoye. '
-    'prix_fcfa est le prix TOTAL préparé du lot ; ne multiplie pas une seconde fois par la superficie. '
+    'Colonnes réelles de public.annonces : id, url, type_bien, type_bien_normalise, '
+    'quartier_zone, prix_fcfa, superficie_m2, statut_document, resume_court, '
+    'texte_nettoye, date_publication, premiere_collecte. '
+    'document, eau, électricité et proximités doivent être recherchés dans '
+    'statut_document ou texte_nettoye lorsque nécessaire ; il n’existe pas de '
+    'colonnes document_etat, eau_etat, electricite_etat ou dans_ouagadougou dans cette table. '
+    'prix_fcfa est le prix TOTAL de l’annonce ; ne le multiplie pas une seconde fois par la superficie. '
     'Pour trier par prix/m² : prix_fcfa / NULLIF(superficie_m2, 0). '
     'Pour les dates utilise des chaînes ISO fournies dans le contexte, sans NOW(). '
     'La limite de 100 concerne cet échantillon, pas la taille du marché.',
@@ -77,9 +78,12 @@ FINAL_TOOL = function('presenter_selection',
      'description_recherche': {'type': 'string'},
      'mode': {'type': 'string', 'enum': ['recherche', 'analyse', 'comparaison']}})
 
+
 INSTRUCTIONS = '''Tu es HAKIMO, le conseiller de HAKILAB IMMOBILIER.
 Tu comprends la demande, écris toi-même le SQL, analyses les données et choisis
-les recommandations. Tu consultes uniquement annonces : ventes retenues dans le périmètre, un lot par ligne. Les valeurs manquantes restent inconnues. Aucun moteur ne reclasse les résultats après toi.
+les recommandations. Tu consultes uniquement public.annonces : ventes retenues
+dans le périmètre, un lot par ligne. Les valeurs manquantes restent inconnues.
+Aucun moteur ne reclasse les résultats après toi.
 Agis avec les informations disponibles, sans interroger longuement l'utilisateur.
 Utilise le français simple. Donne ton avis et un conseil concret avant le tableau,
 en 3 ou 4 phrases pour une recherche. Ne répète pas la liste des annonces dans le texte.
@@ -91,11 +95,12 @@ d'une annonce copiée en contraintes de recherche de l'acheteur.
 Seules les ventes de parcelles, terrains et maisons dans la zone couverte sont
 pertinentes : exclue locations, recherches d'achat et villas. Ouagadougou seul
 signifie la ville, sans périphérie ajoutée. Les environs ne sont inclus que sur demande.
-Écris des WHERE adaptés à la demande ; consulte le texte si les colonnes sont
-incomplètes. Vérifie dans les résultats le prix total, la période et la localisation.
-Ne prétends pas avoir trouvé toutes les annonces : les résultats sont limités.
-S'il manque des offres, corrige ton SQL ou effectue une autre recherche ciblée.
-N'augmente jamais le budget de toi-même. Si aucune offre ne convient, dis-le.
+Écris des WHERE adaptés à la demande ; consulte statut_document et texte_nettoye
+si les colonnes structurées sont incomplètes. Vérifie dans les résultats le prix total,
+la période et la localisation. Ne prétends pas avoir trouvé toutes les annonces :
+les résultats sont limités. S'il manque des offres, corrige ton SQL ou effectue une
+autre recherche ciblée. N'augmente jamais le budget de toi-même. Si aucune offre
+ne convient, dis-le.
 
 Pour une bonne affaire, privilégie les annonces respectant les critères et les
 mieux renseignées en documents, eau, électricité et proximités, puis le prix au
@@ -165,9 +170,11 @@ async def run_sql_assistant(message, history, *, max_age_days, settings=None,
     now = datetime.now(timezone.utc)
     instructions = (
         INSTRUCTIONS
-        + "\nDate UTC : "
+        + "
+Date UTC : "
         + now.isoformat()
-        + "\nPériode choisie : "
+        + "
+Période choisie : "
         + str(max_age_days)
         + " jours. Début ISO : "
         + (now - timedelta(days=max_age_days)).isoformat()
@@ -365,6 +372,7 @@ async def run_sql_assistant(message, history, *, max_age_days, settings=None,
                 }
             else:
                 raise ValueError("Outil inconnu.")
+
         except (ValueError, KeyError, TypeError) as error:
             payload = {
                 "erreur": str(error) if isinstance(error, ValueError) else "Arguments incomplets.",
@@ -378,4 +386,3 @@ async def run_sql_assistant(message, history, *, max_age_days, settings=None,
         })
 
     raise SQLReadError("L'assistant n'a pas terminé sa sélection. Réessayez en précisant votre demande.")
-
