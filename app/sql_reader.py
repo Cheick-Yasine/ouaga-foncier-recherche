@@ -21,7 +21,7 @@ COLUMNS = frozenset({
     'id', 'date_publication', 'premiere_collecte', 'type_bien',
     'type_bien_normalise', 'quartier_zone', 'superficie_m2', 'prix_fcfa',
     'statut_document', 'resume_court', 'texte_nettoye',
-    })
+})
 # Closed grammar: no user functions, joins, subqueries, catalogs or locking clauses.
 NODES = frozenset({
     'Select', 'From', 'Table', 'Identifier', 'Column', 'Where', 'Order',
@@ -69,15 +69,20 @@ def validate_select(sql: str) -> str:
     return query.sql(dialect='postgres')
 
 
+def _database_url(settings):
+    """Le module de requêtes admin doit utiliser la même base que l'application."""
+    if settings.database_url is None:
+        raise SQLReadError('La connexion à la base des annonces est absente.')
+    return settings.database_url.get_secret_value()
+
+
 def query_annonces(sql: str, *, settings=None) -> list[dict[str, Any]]:
     """No ranking or business filtering: preserve the database result order."""
     validated = validate_select(sql)
     current = settings or get_settings()
-    url = current.assistant_database_url or current.database_url
-    if url is None:
-        raise SQLReadError('La connexion à la base des annonces est absente.')
+    url = _database_url(current)
     try:
-        with psycopg.connect(url.get_secret_value(), row_factory=dict_row) as connection:
+        with psycopg.connect(url, row_factory=dict_row) as connection:
             with connection.transaction():
                 connection.execute('SET TRANSACTION READ ONLY')
                 connection.execute("SET LOCAL search_path = pg_catalog")
@@ -108,11 +113,9 @@ def read_references(references: list[str], *, settings=None, include_contacts=Fa
     ):
         raise SQLReadError('Fournis entre 1 et 10 références publiques reçues précédemment.')
     current = settings or get_settings()
-    url = current.database_url if include_contacts else (current.assistant_database_url or current.database_url)
-    if url is None:
-        raise SQLReadError('La connexion à la base des annonces est absente.')
+    url = _database_url(current)
     try:
-        with psycopg.connect(url.get_secret_value(), row_factory=dict_row) as connection:
+        with psycopg.connect(url, row_factory=dict_row) as connection:
             with connection.transaction():
                 connection.execute('SET TRANSACTION READ ONLY')
                 connection.execute("SET LOCAL statement_timeout = '20s'")
