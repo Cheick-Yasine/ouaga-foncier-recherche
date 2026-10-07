@@ -115,9 +115,7 @@ SQL = {
     "plus_grandes": ANNONCE_SQL + " AND superficie_m2 IS NOT NULL ORDER BY superficie_m2 DESC LIMIT 20",
     "plus_cheres": ANNONCE_SQL + " AND prix_fcfa IS NOT NULL ORDER BY prix_fcfa DESC LIMIT 20",
     "moins_cheres": ANNONCE_SQL + " AND prix_fcfa IS NOT NULL ORDER BY prix_fcfa ASC LIMIT 20",
-    "derniere_publication": """SELECT MAX(
-        CASE
-            WHEN date_publication ~ '^\\d{2}/\\d{2}/\\d{4}
+    "derniere_publication": "SELECT MAX(CASE WHEN date_publication ~ '^\\d{2}/\\d{2}/\\d{4}
 }
 
 
@@ -285,14 +283,7 @@ def add_manual_announcement(payload: ManualAnnouncementRequest,
              payload.superficie_m2, payload.prix_fcfa, payload.document, payload.contact,
              payload.texte[:500], payload.texte, user.id))
     return {"ok": True, "id": announcement_id}
-
-                THEN TO_DATE(date_publication, 'DD/MM/YYYY')
-            WHEN date_publication ~ '^\\d{4}-\\d{2}-\\d{2}'
-                THEN SUBSTRING(date_publication, 1, 10)::date
-            ELSE NULL
-        END
-    ) AS derniere_date_publication
-    FROM public.annonces_preparees""",
+ THEN TO_DATE(date_publication, 'DD/MM/YYYY') WHEN date_publication ~ '^\\d{4}-\\d{2}-\\d{2}' THEN SUBSTRING(date_publication, 1, 10)::date ELSE NULL END) AS derniere_date_publication FROM public.annonces_preparees",
 }
 
 
