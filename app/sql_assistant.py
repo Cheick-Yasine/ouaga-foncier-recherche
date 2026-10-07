@@ -170,11 +170,9 @@ async def run_sql_assistant(message, history, *, max_age_days, settings=None,
     now = datetime.now(timezone.utc)
     instructions = (
         INSTRUCTIONS
-        + "
-Date UTC : "
+        + "\nDate UTC : "
         + now.isoformat()
-        + "
-Période choisie : "
+        + "\nPériode choisie : "
         + str(max_age_days)
         + " jours. Début ISO : "
         + (now - timedelta(days=max_age_days)).isoformat()
