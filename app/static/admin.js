@@ -6,7 +6,6 @@
   const page = $('#admin-database-page');
   if (!nav || !page) return;
 
-  let questions = [];
   let loaded = false;
   const money = new Intl.NumberFormat('fr-FR', {maximumFractionDigits: 0});
   const decimal = new Intl.NumberFormat('fr-FR', {maximumFractionDigits: 2});
@@ -239,25 +238,15 @@
   }
 
   async function load() {
-    if (loaded) return;
+    // L'écran d'administration ne charge plus de questions prédéfinies,
+    // de statistiques ni de tableau d'annonces : il est dédié aux questions libres.
     loaded = true;
-    try {
-      // Afficher les 15 annonces en priorité : le chargement des statistiques
-      // ou de la liste des questions ne doit plus bloquer l'écran principal.
-      await loadRecent();
-
-      // Les blocs secondaires se chargent ensuite en parallèle.
-      // Une lenteur de l'un d'eux ne masque donc pas les annonces récentes.
-      Promise.allSettled([loadOverview(), loadQuestions()]);
-    } catch (error) {
-      loaded = false;
-      $('#admin-result').hidden = false;
-      $('#admin-result').innerHTML = '<p class="admin-error"></p>';
-      $('#admin-result').querySelector('p').textContent = error.message;
-    }
   }
 
   async function refresh() {
+    $('#admin-custom-input').value = '';
+    $('#admin-result').replaceChildren();
+    $('#admin-result').hidden = true;
     loaded = false;
     await load();
   }
@@ -273,25 +262,8 @@
 
   nav.addEventListener('click', showPage);
   $('#admin-refresh').addEventListener('click', refresh);
-  $('#admin-question-search').addEventListener('input', e => renderQuestions(e.target.value));
   $('#admin-custom-form').addEventListener('submit', customQuestion);
-  $('#admin-show-trash').addEventListener('click', () => loadManagement('trash'));
-  $('#admin-show-featured').addEventListener('click', () => loadManagement('featured'));
-  $('#admin-show-add').addEventListener('click', () => { $('#admin-management').hidden=true; $('#admin-add-card').hidden=false; });
-  $('#admin-add-form').addEventListener('submit', async e => {
-    e.preventDefault();
-    const button=e.currentTarget.querySelector('button[type="submit"]'); button.disabled=true;
-    try {
-      await api('/admin/database/add',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
-        texte:$('#admin-add-text').value.trim(), type_bien:$('#admin-add-type').value,
-        quartier:$('#admin-add-zone').value.trim()||null, prix_fcfa:$('#admin-add-price').value?Number($('#admin-add-price').value):null,
-        superficie_m2:$('#admin-add-area').value?Number($('#admin-add-area').value):null, document:$('#admin-add-doc').value.trim()||null,
-        contact:$('#admin-add-contact').value.trim()||null, url:$('#admin-add-url').value.trim()||null
-      })});
-      e.currentTarget.reset(); $('#admin-add-card').hidden=true; loaded=false; await load();
-      alert('Annonce ajoutée à la base et disponible dans les recherches.');
-    } catch(error) { alert(error.message); } finally { button.disabled=false; }
-  });
+
   document.addEventListener('hakimo:auth', e => syncAuth(e.detail || null));
 
   fetch('/auth/me').then(r => r.ok ? r.json() : null).then(syncAuth).catch(() => syncAuth(null));
