@@ -75,7 +75,7 @@ async def test_gpt_writes_sql_and_decides_final_order():
     assert result.data_used and not result.mcp_used
     assert result.results[0]['prix_fcfa'] == 8000000
     assert all('contact' not in r for r in result.results)
-    assert any(isinstance(x, dict) and x.get('type') == 'function_call_output' for x in responses.calls[-1]['input'])
+    assert any(isinstance(x, dict) and x.get('role') == 'tool' for x in responses.calls[-1]['messages'])
 
 
 @pytest.mark.anyio
