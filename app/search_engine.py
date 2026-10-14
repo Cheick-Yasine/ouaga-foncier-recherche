@@ -172,6 +172,14 @@ def parse_search_description(description: str) -> SearchCriteria:
         " ",
         numeric_text,
     )
+    # Les annonces immobilières utilisent parfois des formes compactes :
+    # « 40MillionsFCFA ». Séparer l’unité monétaire avant la normalisation.
+    numeric_text = re.sub(
+        r"(?i)(millions?|milliards?)(fcfa|f\s*cfa|cfa)\b",
+        r"\1 \2",
+        numeric_text,
+    )
+
     normalized = normalize_text(numeric_text).replace("decimalmark", ".")
 
     area_range = re.search(
