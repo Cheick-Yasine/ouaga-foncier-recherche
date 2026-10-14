@@ -155,7 +155,7 @@ def public_row(row, now):
 
 async def run_sql_assistant(message, history, *, max_age_days, settings=None,
                             client=None, query_executor=None, reference_executor=None):
-    """Exécute l'assistant SQL avec Gemini via la compatibilité OpenAI."""
+    """Exécute l’assistant SQL avec l’API OpenAI native."""
 
     current = settings or get_settings()
     if current.openai_api_key is None and client is None:
