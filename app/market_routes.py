@@ -15,8 +15,9 @@ from app.neighborhood_geo import location_for
 router = APIRouter(prefix='/market', tags=['Accueil'])
 
 # Les statistiques d'accueil changent moins vite que les requêtes utilisateurs.
-# Une durée courte limite les lectures et calculs Neon sans figer les nouvelles annonces.
-_MARKET_CACHE_TTL_SECONDS = 300.0
+# Une durée de 6 heures limite les lectures et calculs Neon, au prix d'un
+# possible décalage des statistiques après l'ajout de nouvelles annonces.
+_MARKET_CACHE_TTL_SECONDS = 6 * 60 * 60.0
 _market_cache: dict[tuple, tuple[float, object]] = {}
 _market_cache_lock = Lock()
 _T = TypeVar("_T")
