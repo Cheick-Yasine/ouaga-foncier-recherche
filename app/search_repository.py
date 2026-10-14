@@ -16,6 +16,7 @@ from app.config import Settings, get_settings
 from app.database import DatabaseNotConfiguredError
 from app.market_stats import publication_time
 from app.search_engine import SearchCandidate
+from app.text_features import extract_viability
 
 _CANDIDATE_CACHE_TTL_SECONDS = 300.0
 _candidate_cache: dict[
@@ -158,7 +159,7 @@ def _candidate_from_row(
         # Ces deux champs ne sont pas encore des colonnes de public.annonces.
         # On ne les reconstruit plus à partir du texte : absence = non précisé.
         proximity=None,
-        viability=None,
+        viability=extract_viability(text),
         document_status=_optional_text(row.get("statut_document")),
         age_days=age_days,
         url=_optional_text(row.get("url")),
