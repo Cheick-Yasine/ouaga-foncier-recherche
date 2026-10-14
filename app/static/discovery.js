@@ -1069,12 +1069,7 @@
   function renderStats() {
     if(!market) return;
     const kind=$('#weekly-property').value;
-    drawChart(
-      $('#weekly-count-chart'),
-      market.semaines || [],
-      kind,
-      'annonces'
-    );
+    // #weekly-count-chart est rendu uniquement par daily-annonces-chart.js.
     drawPriceChart();
     isolatedNeighborhood=null;
     scheduleNeighborhoodDraw();
