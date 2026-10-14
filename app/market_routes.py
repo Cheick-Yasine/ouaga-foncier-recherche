@@ -17,7 +17,7 @@ def market_stats() -> dict:
     try:
         # La limite du pool de recherche ne doit pas tronquer les totaux. Les
         # dates publiées sont filtrées avant analyse, indépendamment de la collecte.
-        return summarize_market(load_market_candidates(publication_days=60))
+        return summarize_market(load_market_candidates(publication_days=None))
     except (DatabaseNotConfiguredError, psycopg.Error):
         raise HTTPException(status_code=503, detail='Les chiffres ne sont pas disponibles pour le moment.') from None
 

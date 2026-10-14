@@ -40,6 +40,31 @@ class MarketStatsTests(unittest.TestCase):
         self.assertEqual(stats['annonces_quartier_principal'], 3)
         self.assertEqual(stats['perimetre'], 'Ouagadougou et environs')
 
+    def test_historical_daily_series_keeps_old_announcements_without_changing_recent_totals(self):
+        rows = [
+            self.candidate(
+                "recent",
+                publication_label=(self.now - timedelta(days=5)).isoformat(),
+            ),
+            self.candidate(
+                "old",
+                publication_label=(self.now - timedelta(days=400)).isoformat(),
+            ),
+        ]
+
+        stats = summarize_market(rows, now=self.now)
+
+        self.assertEqual(stats["annonces_30_jours"], 1)
+        historical = {
+            day["date"]: day["types"]["tous"]["annonces"]
+            for day in stats["jours_historique"]
+        }
+        old_day = (self.now - timedelta(days=400)).date().isoformat()
+        recent_day = (self.now - timedelta(days=5)).date().isoformat()
+        self.assertEqual(historical[old_day], 1)
+        self.assertEqual(historical[recent_day], 1)
+        self.assertGreater(len(stats["jours_historique"]), 365)
+
     def test_known_publication_date_takes_precedence_over_collection(self):
         rows=[self.candidate('recent', collected_at='2020-01-01T00:00:00Z'), self.candidate('old', publication_label='2020-01-01T00:00:00Z', collected_at=self.now.isoformat())]
         self.assertEqual(summarize_market(rows, now=self.now)['annonces_30_jours'], 1)

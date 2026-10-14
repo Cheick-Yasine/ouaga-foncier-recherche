@@ -48,7 +48,7 @@ def summarize_market(candidates: Iterable[SearchCandidate], *, now: datetime | N
     pool, seen = [], set()
     for candidate in candidates:
         published = publication_time(candidate.publication_label)
-        if published is None or not min(start, week_start) <= published <= current:
+        if published is None or published > current:
             continue
         if (
             not sale_eligible(candidate.text)
@@ -63,7 +63,26 @@ def summarize_market(candidates: Iterable[SearchCandidate], *, now: datetime | N
             continue
         seen.add(identity)
         pool.append(candidate)
-    rows = [c for c in pool if publication_time(c.publication_label) >= start]
+    recent_pool = [
+        candidate
+        for candidate in pool
+        if min(start, week_start) <= publication_time(candidate.publication_label) <= current
+    ]
+    rows = [
+        candidate
+        for candidate in pool
+        if start <= publication_time(candidate.publication_label) <= current
+    ]
+    historical_dates = [
+        publication_time(candidate.publication_label).astimezone(timezone.utc).date()
+        for candidate in pool
+        if publication_time(candidate.publication_label) is not None
+    ]
+    historical_start = (
+        datetime.combine(min(historical_dates), datetime.min.time(), tzinfo=timezone.utc)
+        if historical_dates
+        else start
+    )
     units = [price_per_square_metre(c) for c in rows]
     units = [unit for unit in units if unit is not None]
     neighborhoods = Counter(c.neighborhood for c in rows if c.neighborhood and c.neighborhood not in CITY_LEVEL_AREAS)
@@ -76,44 +95,49 @@ def summarize_market(candidates: Iterable[SearchCandidate], *, now: datetime | N
         'annonces_quartier_principal': neighborhoods[top[0]] if top else 0,
         'depuis': start.isoformat(), 'jusqu_a': current.isoformat(),
         'perimetre': 'Ouagadougou et environs', 'date_utilisee': 'date_publication',
-        'semaines': weekly_market(pool, week_start),
-        'jours': daily_market(pool, start, current),
+        'semaines': weekly_market(recent_pool, week_start),
+        'jours': daily_market(rows, start, current),
+        'jours_historique': daily_market(pool, historical_start, current),
     }
 
 
 def daily_market(candidates, start, current):
-    """Compte les nouvelles annonces chaque jour sur les 30 derniers jours."""
+    """Compte les nouvelles annonces par jour sur une période donnée."""
+    counts_by_date = {}
+    for candidate in candidates:
+        published = publication_time(candidate.publication_label)
+        if published is None or published > current:
+            continue
+        published = published.astimezone(timezone.utc)
+        day = published.date()
+        if day < start.date() or day > current.date():
+            continue
+        counts = counts_by_date.setdefault(
+            day,
+            {"tous": 0, "parcelle": 0, "terrain": 0, "maison": 0},
+        )
+        counts["tous"] += 1
+        if candidate.property_type in {"parcelle", "terrain", "maison"}:
+            counts[candidate.property_type] += 1
+
     days = []
     cursor = start.date()
     end = current.date()
-
     while cursor <= end:
-        day_start = datetime(
-            cursor.year, cursor.month, cursor.day, tzinfo=timezone.utc
+        counts = counts_by_date.get(
+            cursor,
+            {"tous": 0, "parcelle": 0, "terrain": 0, "maison": 0},
         )
-        day_end = day_start + timedelta(days=1)
-        rows = [
-            candidate
-            for candidate in candidates
-            if (
-                (published := publication_time(candidate.publication_label)) is not None
-                and day_start <= published < day_end
-            )
-        ]
-        by_type = {}
-        for kind in ("tous", "parcelle", "terrain", "maison"):
-            selected = rows if kind == "tous" else [
-                candidate for candidate in rows if candidate.property_type == kind
-            ]
-            by_type[kind] = {"annonces": len(selected)}
         days.append({
             "date": cursor.isoformat(),
-            "types": by_type,
+            "types": {
+                kind: {"annonces": counts[kind]}
+                for kind in ("tous", "parcelle", "terrain", "maison")
+            },
         })
         cursor += timedelta(days=1)
 
     return days
-
 
 def weekly_market(candidates, start):
     weeks = []

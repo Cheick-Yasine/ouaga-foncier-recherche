@@ -471,3 +471,27 @@ body.chart-fullscreen-open {
   max-width:16px !important;
   max-height:16px !important;
 }
+
+
+/* Filtres de période du graphique quotidien des annonces. */
+.daily-period-control {
+  display:grid;
+  gap:7px;
+  margin:10px 0 2px;
+}
+.daily-period-buttons {
+  gap:4px;
+}
+.daily-period-buttons .trend-pill {
+  min-width:38px;
+  padding:6px 8px;
+}
+@media(max-width:600px) {
+  .daily-period-buttons {
+    gap:2px;
+  }
+  .daily-period-buttons .trend-pill {
+    min-width:34px;
+    padding:6px 7px;
+  }
+}

@@ -25,7 +25,7 @@
 
   const css = document.createElement('link');
   css.rel = 'stylesheet';
-  css.href = '/static/dashboard.css?v=20260926-chart-fullscreen-1';
+  css.href = '/static/dashboard.css?v=20261014-daily-periods-1';
   document.head.append(css);
 
   function areaRange(value) {
