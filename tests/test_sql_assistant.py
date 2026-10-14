@@ -67,7 +67,7 @@ async def test_gpt_writes_sql_and_decides_final_order():
         seen.append(statement)
         return [row('a'), row('b', 8000000)]
     result = await run_sql_assistant('Cherche une parcelle', [], max_age_days=30,
-        settings=Settings(assistant_model='gpt-5.6-luna'),
+        settings=Settings(assistant_model='gpt-6-luna'),
         client=SimpleNamespace(chat=SimpleNamespace(completions=responses)), query_executor=execute)
     assert seen == [sql]
     assert [r['id'] for r in result.results] == [b, a]
@@ -75,7 +75,7 @@ async def test_gpt_writes_sql_and_decides_final_order():
     assert result.data_used and not result.mcp_used
     assert result.results[0]['prix_fcfa'] == 8000000
     assert all('contact' not in r for r in result.results)
-    assert any(isinstance(x, dict) and x.get('type') == 'function_call_output' for x in responses.calls[-1]['input'])
+    assert any(isinstance(x, dict) and x.get('role') == 'tool' for x in responses.calls[-1]['messages'])
 
 
 @pytest.mark.anyio

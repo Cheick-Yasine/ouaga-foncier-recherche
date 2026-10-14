@@ -70,7 +70,7 @@ sont exclus. Une seule valeur manquante ne suffit pas à exclure une annonce.
 Configuration locale :
 ```dotenv
 OPENAI_API_KEY=votre_cle_locale
-ASSISTANT_MODEL=gpt-5.6-luna
+ASSISTANT_MODEL=gpt-6-luna
 DATABASE_URL=postgresql://...
 MCP_SERVER_URL=http://127.0.0.1:8001/mcp
 ```
