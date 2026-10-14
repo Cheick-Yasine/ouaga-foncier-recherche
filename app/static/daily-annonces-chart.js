@@ -183,9 +183,14 @@
       modeBarButtonsToRemove: ['lasso2d', 'select2d', 'autoScale2d']
     };
 
+    // discovery.js dessine encore un ancien SVG dans ce même conteneur.
+    // Le retirer avant la première initialisation Plotly évite de superposer les deux graphiques.
+    // Une fois Plotly initialisé, on conserve le graphe pour les mises à jour suivantes.
+    if (!container.classList.contains('js-plotly-plot')) {
+      container.replaceChildren();
+    }
     // Une seule courbe simple : le nombre réel d'annonces par jour.
     // Sans marqueurs ni légende, le graphique reste lisible sur les longues périodes.
-    // Plotly.react met à jour le graphique existant sans détruire son état.
     Plotly.react(container, [trace], layout, config);
 
     if (!resizeObserver) {
