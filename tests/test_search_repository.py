@@ -3,6 +3,7 @@
 from datetime import datetime, timedelta, timezone
 
 from app.config import Settings
+from app.search_engine import SearchCriteria, score_candidate
 from app.search_repository import (
     _candidate_from_row,
     _is_prepared_candidate,
@@ -39,7 +40,7 @@ def test_row_is_mapped_to_search_candidate() -> None:
     assert candidate.neighborhood == "Saaba"
     assert candidate.price_fcfa == 5_000_000
     assert candidate.area_m2 == 300
-    assert candidate.viability is None
+    assert candidate.viability == "eau"
     assert candidate.document_status == "PUH"
     assert candidate.age_days == 2
     assert candidate.publication_label == "Il y a 2 heures"
@@ -389,3 +390,38 @@ def test_market_loader_falls_back_to_raw_property_type_in_sql(monkeypatch):
     assert "type_bien_normalise" in query
     assert "type_bien" in query
     assert "type_bien_normalise IS NOT NULL" not in query
+
+def test_dayoubsi_water_and_electricity_are_extracted_for_search() -> None:
+    now = datetime(2026, 10, 14, 12, tzinfo=timezone.utc)
+    candidate = _candidate_from_row(
+        {
+            "id": "dayoubsi-water-electricity",
+            "type_bien": "Parcelle",
+            "type_bien_normalise": "parcelle",
+            "quartier_zone": "Dayoubsi",
+            "superficie_m2": 100,
+            "prix_fcfa": 800_000,
+            "statut_document": None,
+            "resume_court": None,
+            "texte_nettoye": (
+                "Parcelles de 100m2 à 800 mille à Dayoubsi. "
+                "Bien viabilisé eau et courant électrique disponible. "
+                "Attestation de vente délivrée par un huissier."
+            ),
+            "premiere_collecte": now,
+        },
+        now=now,
+    )
+
+    assert candidate.viability == "eau_et_electricite"
+    result = score_candidate(
+        SearchCriteria(
+            description="parcelle avec eau et électricité",
+            property_type="parcelle",
+            viability="eau_et_electricite",
+        ),
+        candidate,
+    )
+    assert result is not None
+    assert result.components["viabilite"] == 1.0
+
