@@ -160,51 +160,6 @@
     renderTable(data.rows, target);
   }
 
-  function renderQuestions(filter = '') {
-    const target = $('#admin-question-list');
-    target.replaceChildren();
-    const needle = filter.trim().toLowerCase();
-    questions.filter(q => !needle || (q.label+' '+q.title+' '+q.category).toLowerCase().includes(needle))
-      .forEach(q => {
-        const b = document.createElement('button');
-        b.type = 'button';
-        b.className = 'admin-question';
-        const strong = document.createElement('strong'); strong.textContent = q.label;
-        const small = document.createElement('small'); small.textContent = q.category;
-        b.append(strong, small);
-        b.addEventListener('click', () => runQuestion(q));
-        target.append(b);
-      });
-    if (!target.children.length) {
-      const p=document.createElement('p'); p.className='subtle'; p.textContent='Aucune question ne correspond à votre recherche.'; target.append(p);
-    }
-  }
-
-  async function loadQuestions() {
-    if (questions.length) return;
-    const data = await api('/admin/database/questions');
-    questions = data.questions || [];
-    renderQuestions();
-  }
-
-  async function runQuestion(q) {
-    const target = $('#admin-result');
-    target.hidden = false;
-    target.innerHTML = '<p class="admin-loading">Consultation de Neon…</p>';
-    try {
-      const data = await api('/admin/database/run/'+encodeURIComponent(q.id), {method:'POST'});
-      const title = document.createElement('h3'); title.textContent = q.title;
-      const count = document.createElement('p'); count.className='subtle'; count.textContent = data.rows.length+' résultat(s)';
-      const wrap = document.createElement('div');
-      target.replaceChildren(title,count,wrap);
-      renderTable(data.rows, wrap);
-      target.scrollIntoView({behavior:'smooth', block:'nearest'});
-    } catch (error) {
-      target.innerHTML = '<p class="admin-error"></p>';
-      target.querySelector('p').textContent = error.message;
-    }
-  }
-
   async function customQuestion(event) {
     event.preventDefault();
     const input = $('#admin-custom-input');
