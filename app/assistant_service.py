@@ -618,12 +618,7 @@ async def run_assistant(
     client: Any | None = None,
     tool_executor: ToolExecutor | None = None,
 ) -> AssistantOutcome:
-    """Laisse Gemini décider quand appeler la recherche, exécutée via MCP.
-
-    Gemini est appelé via l'interface OpenAI-compatible officielle de Google.
-    Cela conserve les schémas de tools existants tout en remplaçant le
-    fournisseur sans modifier le contrat MCP.
-    """
+    """Laisse OpenAI décider quand appeler la recherche, exécutée via MCP."""
 
     current = settings or get_settings()
     if current.openai_api_key is None and client is None:
