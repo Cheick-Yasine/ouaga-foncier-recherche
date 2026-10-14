@@ -25,7 +25,18 @@ def test_free_description_is_interpreted() -> None:
     assert criteria.document_status == "puh"
 
 
-def test_compact_price_formats_are_parsed() -> None:\n    for publication in (\n        "Parcelle de 2667 m², prix 40MillionsFCFA",\n        "Parcelle de 2667 m², prix 40 millions FCFA",\n        "Parcelle de 2667 m², Prix : 40MillionsFCFA face au goudron",\n    ):\n        criteria = parse_search_description(publication)\n        assert criteria.price_fcfa == 40_000_000, publication\n        assert criteria.area_m2 == 2667, publication\n\n\ndef test_cosine_is_normalized() -> None:
+def test_compact_price_formats_are_parsed() -> None:
+    for publication in (
+        "Parcelle de 2667 m², prix 40MillionsFCFA",
+        "Parcelle de 2667 m², prix 40 millions FCFA",
+        "Parcelle de 2667 m², Prix : 40MillionsFCFA face au goudron",
+    ):
+        criteria = parse_search_description(publication)
+        assert criteria.price_fcfa == 40_000_000, publication
+        assert criteria.area_m2 == 2667, publication
+
+
+def test_cosine_is_normalized() -> None:
     assert cosine_similarity("terrain à Saaba", "terrain à Saaba") == 1
     assert cosine_similarity("terrain à Saaba", "maison à Karpala") < 1
     assert cosine_similarity("", "terrain") == 0
