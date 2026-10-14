@@ -182,7 +182,7 @@ def apply_semantic_filter(
     """Filtre et reclasse les meilleurs résultats; revient au local en cas d'échec."""
 
     current = settings or get_settings()
-    if not results or current.gemini_api_key is None:
+    if not results or current.openai_api_key is None:
         return SemanticFilterOutcome(results, False, None, bool(results))
 
     payload, key_map = build_anonymized_payload(
@@ -191,13 +191,13 @@ def apply_semantic_filter(
         candidate_limit=current.llm_candidate_limit,
     )
     api_client = client or OpenAI(
-        api_key=current.gemini_api_key.get_secret_value(),
-        base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
+        api_key=current.openai_api_key.get_secret_value(),
     )
 
     try:
         response = api_client.chat.completions.create(
             model=current.llm_model,
+            reasoning_effort="none",
             messages=[
                 {"role": "system", "content": _instructions()},
                 {
