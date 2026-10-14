@@ -158,14 +158,13 @@ async def run_sql_assistant(message, history, *, max_age_days, settings=None,
     """Exécute l'assistant SQL avec Gemini via la compatibilité OpenAI."""
 
     current = settings or get_settings()
-    if current.gemini_api_key is None and client is None:
+    if current.openai_api_key is None and client is None:
         raise AssistantNotConfiguredError(
-            "GEMINI_API_KEY n'est pas configurée pour l'assistant."
+            "OPENAI_API_KEY n'est pas configurée pour l'assistant."
         )
 
     api = client or AsyncOpenAI(
-        api_key=current.gemini_api_key.get_secret_value(),
-        base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
+        api_key=current.openai_api_key.get_secret_value(),
     )
     now = datetime.now(timezone.utc)
     instructions = (
@@ -215,6 +214,7 @@ async def run_sql_assistant(message, history, *, max_age_days, settings=None,
     for step in range(7):
         kwargs = {
             "model": current.assistant_model,
+            "reasoning_effort": "none",
             "messages": messages,
             "tools": tools,
             "parallel_tool_calls": False,
@@ -316,7 +316,7 @@ async def run_sql_assistant(message, history, *, max_age_days, settings=None,
                         "anciennete_maximale_jours": max_age_days,
                     },
                     suggestions=_suggestions(results, {}) if queried else [],
-                    analysis={"origine": "gemini_sql"} if mode == "analyse" else None,
+                    analysis={"origine": "openai_sql"} if mode == "analyse" else None,
                     mode=mode,
                 )
 
