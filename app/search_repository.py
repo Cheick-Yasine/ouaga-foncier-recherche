@@ -190,7 +190,7 @@ def load_market_candidates(
     settings: Settings | None = None,
     *,
     now: datetime | None = None,
-    publication_days: int = 60,
+    publication_days: int | None = 60,
 ) -> list[SearchCandidate]:
     """Charge les annonces pour les statistiques sans filtre géographique strict.
 
@@ -243,7 +243,11 @@ def load_market_candidates(
                 """
             ).fetchall()
 
-    start = current_time - timedelta(days=publication_days)
+    start = (
+        current_time - timedelta(days=publication_days)
+        if publication_days is not None
+        else None
+    )
     dated_rows = [
         row for row in rows
         if (
@@ -251,7 +255,8 @@ def load_market_candidates(
                 _optional_text(row.get("date_publication"))
             )
         ) is not None
-        and start <= published <= current_time
+        and published <= current_time
+        and (start is None or start <= published)
     ]
 
     candidates = [
