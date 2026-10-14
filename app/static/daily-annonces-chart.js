@@ -1,11 +1,10 @@
-/* Graphique quotidien des annonces : moyenne mobile 2 jours.
- * Ce module complète le rendu existant sans modifier les autres graphiques.
- */
+/* Graphique quotidien des annonces : moyenne mobile 3 jours et filtres de période. */
 (() => {
   'use strict';
 
   let marketStats = null;
   let currentKind = 'tous';
+  let currentPeriod = '1m';
   let resizeObserver = null;
 
   const $ = selector => document.querySelector(selector);
@@ -41,8 +40,39 @@
 
   function movingAverage(rows) {
     return rows.map((row, index) => {
-      if (index === 0) return null;
-      return (rows[index - 1].annonces + row.annonces) / 2;
+      if (index < 2) return null;
+      return (
+        rows[index - 2].annonces
+        + rows[index - 1].annonces
+        + row.annonces
+      ) / 3;
+    });
+  }
+
+  const periodDays = {
+    '7d': 7,
+    '14d': 14,
+    '1m': 30,
+    '3m': 90,
+    '6m': 183,
+    '1y': 365,
+    '3y': 365 * 3,
+    '5y': 365 * 5,
+    max: null
+  };
+
+  function selectedDays(rows) {
+    if (currentPeriod === 'max' || !rows.length) return rows;
+    const days = periodDays[currentPeriod] || 30;
+    const last = new Date(rows[rows.length - 1].date + 'T00:00:00Z');
+    last.setUTCDate(last.getUTCDate() - days + 1);
+    const cutoff = last.toISOString().slice(0, 10);
+    return rows.filter(row => row.date >= cutoff);
+  }
+
+  function syncPeriodControls() {
+    document.querySelectorAll('[data-daily-period]').forEach(button => {
+      button.setAttribute('aria-pressed', String(button.dataset.dailyPeriod === currentPeriod));
     });
   }
 
@@ -50,10 +80,12 @@
     const container = $('#weekly-count-chart');
     if (!container || !window.Plotly || !marketStats) return;
 
-    const rows = (marketStats.jours || []).map(day => ({
+    const sourceDays = marketStats.jours_historique || marketStats.jours || [];
+    const allRows = sourceDays.map(day => ({
       date: day.date,
       annonces: Number(day.types?.[currentKind]?.annonces ?? 0)
     }));
+    const rows = selectedDays(allRows);
 
     if (!rows.length) {
       container.replaceChildren();
@@ -72,7 +104,7 @@
       y: average,
       type: 'scatter',
       mode: 'lines+markers',
-      name: 'Moyenne mobile · 2 jours',
+      name: 'Moyenne mobile · 3 jours',
       line: {
         color: t.blue,
         width: 3.5,
@@ -155,7 +187,7 @@
       modeBarButtonsToRemove: ['lasso2d', 'select2d', 'autoScale2d']
     };
 
-    // Remplace entièrement le rendu historique (SVG) : une seule courbe, la moyenne mobile 2 jours.
+    // Une seule courbe : moyenne mobile sur trois jours.
     container.replaceChildren();
     Plotly.react(container, [averageTrace], layout, config);
 
@@ -187,6 +219,16 @@
       currentKind = filter.value || 'tous';
       draw();
     });
+
+    const periodFilter = $('#daily-chart-periods');
+    periodFilter?.addEventListener('click', event => {
+      const button = event.target.closest('[data-daily-period]');
+      if (!button) return;
+      currentPeriod = button.dataset.dailyPeriod || '1m';
+      syncPeriodControls();
+      draw();
+    });
+    syncPeriodControls();
 
     const observer = new MutationObserver(() => {
       if (marketStats) draw();
