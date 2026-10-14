@@ -20,8 +20,19 @@
     };
   }
 
-  function dateLabel(value) {
-    return new Date(value + 'T00:00:00Z').toLocaleDateString('fr-FR', {
+  function dateLabel(value, spanDays) {
+    const date = new Date(value + 'T00:00:00Z');
+    if (spanDays > 1000) {
+      return date.toLocaleDateString('fr-FR', {year: 'numeric', timeZone: 'UTC'});
+    }
+    if (spanDays > 365) {
+      return date.toLocaleDateString('fr-FR', {
+        month: 'short',
+        year: '2-digit',
+        timeZone: 'UTC'
+      });
+    }
+    return date.toLocaleDateString('fr-FR', {
       day: '2-digit',
       month: 'short',
       timeZone: 'UTC'
@@ -119,7 +130,14 @@
     };
 
     const span = rows.length;
-    const tickStep = span <= 10 ? 1 : span <= 18 ? 2 : span <= 31 ? 3 : 7;
+    const tickStep =
+      span <= 10 ? 1 :
+      span <= 18 ? 2 :
+      span <= 31 ? 3 :
+      span <= 90 ? 7 :
+      span <= 180 ? 14 :
+      span <= 400 ? 30 :
+      span <= 1000 ? 90 : 365;
     const tickvals = rows
       .filter((_, index) => index % tickStep === 0)
       .map(row => row.date);
@@ -154,7 +172,7 @@
         type: 'date',
         tickmode: 'array',
         tickvals,
-        ticktext: tickvals.map(dateLabel),
+        ticktext: tickvals.map(value => dateLabel(value, span)),
         tickfont: {color: t.muted, size: 10},
         showgrid: false,
         zeroline: false,
