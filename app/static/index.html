@@ -16,7 +16,7 @@
   <script src="https://cdn.plot.ly/plotly-4.0.0.min.js" charset="utf-8" defer></script>
   <script src="/static/maplibre-compat.js?v=20260929-maplibre-1" defer></script>
   <script src="/static/discovery.js?v=20261003-mobile-average-1" defer></script>
-  <script src="/static/daily-annonces-chart.js?v=20261003-chart-2" defer></script>
+  <script src="/static/daily-annonces-chart.js?v=20261014-3day-periods-1" defer></script>
   <script src="/static/app.js?v=20261005-admin-3" defer></script>
   <script src="/static/admin.js?v=20261014-free-question-1" defer></script>
 </head>
@@ -76,9 +76,24 @@
             <button type="button" id="project-prompt" data-action="project"><span class="prompt-icon" aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M21 11a9 9 0 0 1-9 9H4l-3 2 2-6A9 9 0 1 1 21 11Z"/><path d="M7 10h10M7 14h6"/></svg></span><strong>Décrire mon projet</strong><span>Votre quartier, votre budget, vos envies. Construisons votre sélection.</span></button>
           </div>
           <section class="market-overview" aria-labelledby="market-title" aria-busy="true" id="market-overview">
-            <div class="section-heading"><div><h2 id="market-title">Le marché, jour après jour</h2><p class="subtle">Évolution quotidienne · moyenne mobile sur 2 jours · Ouagadougou et environs · Ventes</p></div><label class="chart-filter">Afficher<select id="weekly-property"><option value="tous" selected>Tous les biens</option><option value="parcelle">Parcelles</option><option value="terrain">Terrains</option><option value="maison">Maisons</option></select></label></div>
+            <div class="section-heading"><div><h2 id="market-title">Le marché, jour après jour</h2><p class="subtle">Évolution quotidienne · moyenne mobile sur 3 jours · Ouagadougou et environs · Ventes</p></div><label class="chart-filter">Afficher<select id="weekly-property"><option value="tous" selected>Tous les biens</option><option value="parcelle">Parcelles</option><option value="terrain">Terrains</option><option value="maison">Maisons</option></select></label></div>
             <div class="weekly-grid">
-              <article class="weekly-card"><span class="chart-kicker">Les nouvelles annonces</span><h3>Combien de nouvelles offres chaque jour ?</h3><div id="weekly-count-chart"></div></article>
+              <article class="weekly-card"><span class="chart-kicker">Les nouvelles annonces</span><h3>Combien de nouvelles offres chaque jour ?</h3>
+                <div class="daily-period-control">
+                  <span class="trend-control-label">Période</span>
+                  <div id="daily-chart-periods" class="trend-period-buttons daily-period-buttons" role="group" aria-label="Période du graphique des nouvelles annonces">
+                    <button type="button" class="trend-pill" data-daily-period="7d" aria-pressed="false" title="7 derniers jours">7 j</button>
+                    <button type="button" class="trend-pill" data-daily-period="14d" aria-pressed="false" title="14 derniers jours">14 j</button>
+                    <button type="button" class="trend-pill" data-daily-period="1m" aria-pressed="true" title="Dernier mois">1 m</button>
+                    <button type="button" class="trend-pill" data-daily-period="3m" aria-pressed="false" title="3 derniers mois">3 m</button>
+                    <button type="button" class="trend-pill" data-daily-period="6m" aria-pressed="false" title="6 derniers mois">6 m</button>
+                    <button type="button" class="trend-pill" data-daily-period="1y" aria-pressed="false" title="Dernière année">1 an</button>
+                    <button type="button" class="trend-pill" data-daily-period="3y" aria-pressed="false" title="3 dernières années">3 ans</button>
+                    <button type="button" class="trend-pill" data-daily-period="5y" aria-pressed="false" title="5 dernières années">5 ans</button>
+                    <button type="button" class="trend-pill" data-daily-period="max" aria-pressed="false" title="Toute la base">Max</button>
+                  </div>
+                </div>
+                <div id="weekly-count-chart"></div></article>
               <article class="weekly-card price-chart-card">
                 <span class="chart-kicker">Les prix demandés</span>
                 <h3>Comment évolue le prix au m² ?</h3>
