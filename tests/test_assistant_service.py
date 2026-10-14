@@ -150,11 +150,11 @@ async def test_assistant_executes_search_through_mcp_and_returns_results(model) 
     assert client.chat.completions.calls[1]["tool_choice"] == "none"
     second_input = client.chat.completions.calls[1]["input"]
     outputs = [item for item in second_input if isinstance(item, dict)]
-    assert any(item.get("type") == "function_call_output" for item in outputs)
+    assert any(item.get("role") == "tool" for item in outputs)
     serialized_output = next(
-        item["output"]
+        item["content"]
         for item in outputs
-        if item.get("type") == "function_call_output"
+        if item.get("role") == "tool"
     )
     assert "example.test" not in serialized_output
     assert "70 12 34 56" not in serialized_output
@@ -278,7 +278,7 @@ async def test_search_budget_is_kept_before_mcp_and_before_the_advisory_reply():
     assert outcome.criteria['prix_fcfa']==10_000_000
     assert [r['id'] for r in outcome.results]==['within-budget']
     assert outcome.answer.startswith('Je privilégierais')
-    tool_output=next(item['output'] for item in client.chat.completions.calls[1]['input'] if isinstance(item,dict) and item.get('type')=='function_call_output')
+    tool_output=next(item['content'] for item in client.chat.completions.calls[1]['input'] if isinstance(item,dict) and item.get('role')=='tool')
     assert [r['id'] for r in json.loads(tool_output)['results']]==['within-budget']
 
 
