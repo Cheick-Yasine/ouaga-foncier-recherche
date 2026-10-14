@@ -74,7 +74,7 @@ def summarize_market(candidates: Iterable[SearchCandidate], *, now: datetime | N
         if start <= publication_time(candidate.publication_label) <= current
     ]
     historical_dates = [
-        publication_time(candidate.publication_label).date()
+        publication_time(candidate.publication_label).astimezone(timezone.utc).date()
         for candidate in pool
         if publication_time(candidate.publication_label) is not None
     ]
@@ -108,6 +108,7 @@ def daily_market(candidates, start, current):
         published = publication_time(candidate.publication_label)
         if published is None or published > current:
             continue
+        published = published.astimezone(timezone.utc)
         day = published.date()
         if day < start.date() or day > current.date():
             continue
