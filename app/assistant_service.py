@@ -27,6 +27,7 @@ from app.assistant_constraints import (
     target_price_description,
 )
 from app.semantic_filter import sanitize_external_text
+from openai import AsyncOpenAI
 
 
 LOGGER = logging.getLogger("uvicorn.error")
@@ -59,238 +60,6 @@ class AssistantOutcome:
 
 
 ToolExecutor = Callable[[str, dict[str, Any]], Awaitable[dict[str, Any]]]
-
-class _GeminiNativeChatCompletions:
-    """Adaptateur interne vers l'API Gemini native generateContent."""
-
-    def __init__(self, api_key: str):
-        self.api_key = api_key
-
-    @staticmethod
-    def _schema_to_gemini(schema: Any) -> Any:
-        """Convertit un JSON Schema OpenAI vers le schema accepté par Gemini."""
-        if isinstance(schema, list):
-            return [_GeminiNativeChatCompletions._schema_to_gemini(item) for item in schema]
-        if not isinstance(schema, dict):
-            return schema
-
-        # Gemini REST ne reconnaît pas certains mots-clés JSON Schema,
-        # notamment additionalProperties. On conserve récursivement les
-        # champs pris en charge par le schema des FunctionDeclaration.
-        allowed = {
-            "type",
-            "format",
-            "title",
-            "description",
-            "nullable",
-            "enum",
-            "items",
-            "properties",
-            "required",
-            "minItems",
-            "maxItems",
-            "minProperties",
-            "maxProperties",
-            "minimum",
-            "maximum",
-            "minLength",
-            "maxLength",
-            "pattern",
-        }
-        converted: dict[str, Any] = {}
-        for key, value in schema.items():
-            if key not in allowed:
-                continue
-            if key == "properties" and isinstance(value, dict):
-                converted[key] = {
-                    name: _GeminiNativeChatCompletions._schema_to_gemini(prop)
-                    for name, prop in value.items()
-                }
-            else:
-                converted[key] = _GeminiNativeChatCompletions._schema_to_gemini(value)
-        return converted
-
-    @staticmethod
-    def _tools_to_gemini(tools: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        declarations = []
-        for tool in tools or []:
-            function = tool.get("function", {})
-            if not function.get("name"):
-                continue
-            parameters = function.get(
-                "parameters",
-                {"type": "object", "properties": {}},
-            )
-            declarations.append({
-                "name": function["name"],
-                "description": function.get("description", ""),
-                "parameters": _GeminiNativeChatCompletions._schema_to_gemini(parameters),
-            })
-        return [{"functionDeclarations": declarations}] if declarations else []
-
-    @staticmethod
-    def _messages_to_gemini(messages: list[dict[str, Any]]) -> tuple[str | None, list[dict[str, Any]]]:
-        system_instruction = None
-        contents: list[dict[str, Any]] = []
-        call_names: dict[str, str] = {}
-
-        for item in messages:
-            role = item.get("role")
-            if role == "system":
-                system_instruction = item.get("content", "")
-                continue
-
-            if role == "user":
-                contents.append({
-                    "role": "user",
-                    "parts": [{"text": str(item.get("content", ""))}],
-                })
-                continue
-
-            if role == "assistant":
-                native_content = item.get("_gemini_content")
-                if native_content:
-                    contents.append(native_content)
-                    for call in item.get("tool_calls", []) or []:
-                        call_names[call.get("id", "")] = call.get("function", {}).get("name", "")
-                    continue
-
-                parts = []
-                if item.get("content"):
-                    parts.append({"text": str(item["content"])})
-                for call in item.get("tool_calls", []) or []:
-                    function = call.get("function", {})
-                    call_id = call.get("id", "")
-                    name = function.get("name", "")
-                    call_names[call_id] = name
-                    try:
-                        args = json.loads(function.get("arguments", "{}"))
-                    except (TypeError, json.JSONDecodeError):
-                        args = {}
-                    parts.append({
-                        "functionCall": {"id": call_id, "name": name, "args": args}
-                    })
-                if parts:
-                    contents.append({"role": "model", "parts": parts})
-                continue
-
-            if role == "tool":
-                call_id = item.get("tool_call_id", "")
-                name = call_names.get(call_id, "")
-                raw = item.get("content", "")
-                try:
-                    result = json.loads(raw)
-                except (TypeError, json.JSONDecodeError):
-                    result = {"output": str(raw)}
-                contents.append({
-                    "role": "user",
-                    "parts": [{
-                        "functionResponse": {
-                            "id": call_id,
-                            "name": name,
-                            "response": {"result": result},
-                        }
-                    }],
-                })
-
-        return system_instruction, contents
-
-    async def create(self, **kwargs: Any) -> Any:
-        model = kwargs["model"]
-        system_instruction, contents = self._messages_to_gemini(kwargs.get("messages", []))
-        body: dict[str, Any] = {"contents": contents}
-        if kwargs.get("tool_choice") != "none":
-            gemini_tools = self._tools_to_gemini(kwargs.get("tools", []))
-            if gemini_tools:
-                body["tools"] = gemini_tools
-        if system_instruction:
-            body["systemInstruction"] = {"parts": [{"text": system_instruction}]}
-
-        tool_choice = kwargs.get("tool_choice")
-        if tool_choice == "required":
-            body["toolConfig"] = {"functionCallingConfig": {"mode": "ANY"}}
-        elif tool_choice == "none":
-            body["toolConfig"] = {"functionCallingConfig": {"mode": "NONE"}}
-
-        url = (
-            "https://generativelanguage.googleapis.com/v1beta/"
-            f"models/{model}:generateContent"
-        )
-        async with httpx.AsyncClient(timeout=90.0) as http:
-            response = await http.post(
-                url,
-                headers={
-                    "x-goog-api-key": self.api_key,
-                    "Content-Type": "application/json",
-                },
-                json=body,
-            )
-        if response.is_error:
-            raise RuntimeError(
-                f"Gemini native API HTTP {response.status_code}: {response.text[:2000]}"
-            )
-
-        data = response.json()
-        candidate = (data.get("candidates") or [{}])[0]
-        native_content = candidate.get("content") or {"role": "model", "parts": []}
-        parts = native_content.get("parts") or []
-
-        text_parts = [
-            part["text"] for part in parts
-            if isinstance(part, dict) and part.get("text")
-        ]
-        tool_calls = []
-        for part in parts:
-            function_call = part.get("functionCall") if isinstance(part, dict) else None
-            if not function_call:
-                continue
-            call_id = function_call.get("id") or f"gemini-call-{len(tool_calls) + 1}"
-            tool_calls.append(
-                type(
-                    "GeminiToolCall",
-                    (),
-                    {
-                        "id": call_id,
-                        "function": type(
-                            "GeminiFunction",
-                            (),
-                            {
-                                "name": function_call.get("name", ""),
-                                "arguments": json.dumps(
-                                    function_call.get("args") or {},
-                                    ensure_ascii=False,
-                                ),
-                            },
-                        )(),
-                    },
-                )()
-            )
-
-        message = type(
-            "GeminiMessage",
-            (),
-            {
-                "content": "\n".join(text_parts).strip() or None,
-                "tool_calls": tool_calls,
-                "_gemini_content": native_content,
-            },
-        )()
-        return type(
-            "GeminiCompletion",
-            (),
-            {"choices": [type("GeminiChoice", (), {"message": message})()]},
-        )()
-
-
-class _GeminiNativeClient:
-    def __init__(self, api_key: str):
-        self.chat = type(
-            "GeminiChat",
-            (),
-            {"completions": _GeminiNativeChatCompletions(api_key)},
-        )()
-
-
 
 SEARCH_TOOL = {
     "type": "function",
@@ -857,13 +626,13 @@ async def run_assistant(
     """
 
     current = settings or get_settings()
-    if current.gemini_api_key is None and client is None:
+    if current.openai_api_key is None and client is None:
         raise AssistantNotConfiguredError(
-            "GEMINI_API_KEY n'est pas configurée pour l'assistant."
+            "OPENAI_API_KEY n'est pas configurée pour l'assistant."
         )
 
-    api_client = client or _GeminiNativeClient(
-        current.gemini_api_key.get_secret_value()
+    api_client = client or AsyncOpenAI(
+        api_key=current.openai_api_key.get_secret_value()
     )
     execute = tool_executor or (
         lambda name, arguments: call_mcp_tool(
@@ -910,6 +679,7 @@ async def run_assistant(
     for _ in range(3):
         kwargs: dict[str, Any] = {
             "model": current.assistant_model,
+            "reasoning_effort": "none",
             "messages": messages,
             "tools": [
                 {"type": "function", "function": {k: v for k, v in SEARCH_TOOL.items() if k not in {"type", "name", "parameters"}} | {"name": SEARCH_TOOL["name"], "parameters": SEARCH_TOOL["parameters"]}},
@@ -978,7 +748,6 @@ async def run_assistant(
         messages.append({
             "role": "assistant",
             "content": assistant_message.content,
-            "_gemini_content": getattr(assistant_message, "_gemini_content", None),
             "tool_calls": [
                 {
                     "id": call.id,
