@@ -63,6 +63,11 @@ def summarize_market(candidates: Iterable[SearchCandidate], *, now: datetime | N
             continue
         seen.add(identity)
         pool.append(candidate)
+    recent_pool = [
+        candidate
+        for candidate in pool
+        if min(start, week_start) <= publication_time(candidate.publication_label) <= current
+    ]
     rows = [
         candidate
         for candidate in pool
@@ -90,7 +95,7 @@ def summarize_market(candidates: Iterable[SearchCandidate], *, now: datetime | N
         'annonces_quartier_principal': neighborhoods[top[0]] if top else 0,
         'depuis': start.isoformat(), 'jusqu_a': current.isoformat(),
         'perimetre': 'Ouagadougou et environs', 'date_utilisee': 'date_publication',
-        'semaines': weekly_market(rows, week_start),
+        'semaines': weekly_market(recent_pool, week_start),
         'jours': daily_market(rows, start, current),
         'jours_historique': daily_market(pool, historical_start, current),
     }
