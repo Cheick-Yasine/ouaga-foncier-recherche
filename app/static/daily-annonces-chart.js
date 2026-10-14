@@ -99,6 +99,9 @@
     const rows = selectedDays(allRows);
 
     if (!rows.length) {
+      if (container.classList.contains('js-plotly-plot')) {
+        Plotly.purge(container);
+      }
       container.replaceChildren();
       const empty = document.createElement('p');
       empty.className = 'chart-empty';
@@ -206,7 +209,9 @@
     };
 
     // Une seule courbe : moyenne mobile sur trois jours.
-    container.replaceChildren();
+    // Plotly.react met à jour le graphique existant. Ne pas supprimer ses
+    // enfants avant l'appel : cela détruit l'état interne de Plotly et peut
+    // laisser le graphique vide lors d'un changement de période.
     Plotly.react(container, [averageTrace], layout, config);
 
     if (!resizeObserver) {
