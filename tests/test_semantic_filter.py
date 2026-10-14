@@ -108,8 +108,8 @@ def test_llm_filters_and_reorders_candidates() -> None:
         )
     )
     settings = Settings(
-        gemini_api_key="test-key",
-        llm_model="gpt-4o-mini",
+        openai_api_key="test-key",
+        llm_model="gpt-6-luna",
         llm_relevance_threshold=55,
     )
 
@@ -122,10 +122,10 @@ def test_llm_filters_and_reorders_candidates() -> None:
 
     assert outcome.used is True
     assert outcome.fallback is False
-    assert outcome.model == "gpt-4o-mini"
+    assert outcome.model == "gpt-6-luna"
     assert [item.candidate.identifier for item in outcome.results] == ["real-2"]
     sent = client.chat.completions.arguments
-    assert sent["model"] == "gpt-4o-mini"
+    assert sent["model"] == "gpt-6-luna"
     assert sent["text_format"] is SemanticDecisionBatch
 
 
@@ -134,7 +134,7 @@ def test_missing_key_keeps_local_results_without_external_call() -> None:
     outcome = apply_semantic_filter(
         SearchCriteria(description="terrain à Karpala"),
         [result],
-        settings=Settings(gemini_api_key=None),
+        settings=Settings(openai_api_key=None),
     )
 
     assert outcome.results == [result]
@@ -152,7 +152,7 @@ def test_remote_failure_keeps_local_results() -> None:
     outcome = apply_semantic_filter(
         SearchCriteria(description="terrain à Karpala"),
         [result],
-        settings=Settings(gemini_api_key="test-key"),
+        settings=Settings(openai_api_key="test-key"),
         client=client,
     )
 
@@ -189,7 +189,7 @@ def test_semantic_filter_preserves_completeness_before_price():
         SemanticDecision(candidate_key='c1',pertinent=True,score_pertinence=100,raison='Petit prix.'),
         SemanticDecision(candidate_key='c2',pertinent=True,score_pertinence=70,raison='Annonce complète.'),
     ]))
-    outcome=apply_semantic_filter(criteria,[bare,complete],settings=Settings(gemini_api_key='test-key',llm_relevance_threshold=55),client=client)
+    outcome=apply_semantic_filter(criteria,[bare,complete],settings=Settings(openai_api_key='test-key',llm_relevance_threshold=55),client=client)
     assert outcome.used is True
     assert outcome.fallback is False
     assert [item.candidate.identifier for item in outcome.results]==['complete','bare']
