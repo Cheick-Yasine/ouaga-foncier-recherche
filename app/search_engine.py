@@ -172,7 +172,7 @@ def parse_search_description(description: str) -> SearchCriteria:
         " ",
         numeric_text,
     )
-    normalized = normalize_text(numeric_text).replace("decimalmark", ".")
+    # Les annonces immobilières utilisent parfois des formes compactes :\n    # « 40MillionsFCFA ». Séparer l’unité monétaire avant la normalisation.\n    numeric_text = re.sub(\n        r"(?i)(millions?|milliards?)(fcfa|f\\s*cfa|cfa)\\b",\n        r"\\1 \\2",\n        numeric_text,\n    )\n\n    normalized = normalize_text(numeric_text).replace("decimalmark", ".")
 
     area_range = re.search(
         r"\bsuperficie entre (\d+(?:\.\d+)?) et (\d+(?:\.\d+)?) m2\b",
