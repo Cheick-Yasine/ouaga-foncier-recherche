@@ -1,4 +1,4 @@
-/* Graphique simple des nouvelles annonces par jour et filtres de période. */
+/* Graphique quotidien des annonces : moyenne mobile 3 jours et filtres de période. */
 (() => {
   'use strict';
 
@@ -46,6 +46,17 @@
       month: 'long',
       year: 'numeric',
       timeZone: 'UTC'
+    });
+  }
+
+  function movingAverage(rows) {
+    return rows.map((row, index) => {
+      if (index < 2) return null;
+      return (
+        rows[index - 2].annonces
+        + rows[index - 1].annonces
+        + row.annonces
+      ) / 3;
     });
   }
 
@@ -99,19 +110,25 @@
       return;
     }
 
+    const average = movingAverage(rows);
     const t = theme();
-    const trace = {
+
+    const averageTrace = {
       x: rows.map(row => row.date),
-      y: rows.map(row => row.annonces),
+      y: average,
       type: 'scatter',
-      mode: 'lines',
-      name: 'Nouvelles annonces',
+      mode: 'lines+markers',
+      name: 'Moyenne mobile · 3 jours',
       line: {
         color: t.blue,
-        width: 2.5,
+        width: 3.5,
         shape: 'linear'
       },
-      hovertemplate: '%{customdata}<br><b>%{y:.0f}</b> annonce(s)<extra></extra>',
+      marker: {
+        color: t.blue,
+        size: 6
+      },
+      hovertemplate: '%{customdata}<br><b>%{y:.1f}</b> annonce(s) en moyenne<extra></extra>',
       customdata: rows.map(row => fullDate(row.date))
     };
 
@@ -131,8 +148,8 @@
 
     const layout = {
       autosize: true,
-      height: 260,
-      margin: {l: 48, r: 12, t: 12, b: 42},
+      height: 285,
+      margin: {l: 58, r: 18, t: 18, b: 58},
       paper_bgcolor: 'rgba(0,0,0,0)',
       plot_bgcolor: 'rgba(0,0,0,0)',
       font: {
@@ -140,11 +157,19 @@
         color: t.ink,
         size: 11
       },
-      hovermode: 'closest',
+      hovermode: 'x unified',
       hoverlabel: {
         bgcolor: t.surface,
         bordercolor: t.line,
         font: {color: t.ink}
+      },
+      legend: {
+        orientation: 'h',
+        x: 0,
+        y: 1.08,
+        xanchor: 'left',
+        yanchor: 'bottom',
+        font: {size: 11}
       },
       xaxis: {
         type: 'date',
@@ -159,8 +184,8 @@
       },
       yaxis: {
         title: {
-          text: 'Annonces',
-          font: {color: t.muted, size: 10}
+          text: 'Nombre d’annonces',
+          font: {color: t.muted, size: 11}
         },
         tickformat: ',d',
         rangemode: 'tozero',
@@ -183,15 +208,12 @@
       modeBarButtonsToRemove: ['lasso2d', 'select2d', 'autoScale2d']
     };
 
-    // discovery.js dessine encore un ancien SVG dans ce même conteneur.
-    // Le retirer avant la première initialisation Plotly évite de superposer les deux graphiques.
-    // Une fois Plotly initialisé, on conserve le graphe pour les mises à jour suivantes.
-    if (!container.classList.contains('js-plotly-plot')) {
-      container.replaceChildren();
-    }
-    // Une seule courbe simple : le nombre réel d'annonces par jour.
-    // Sans marqueurs ni légende, le graphique reste lisible sur les longues périodes.
-    Plotly.react(container, [trace], layout, config);
+    // Ce script est le seul propriétaire de #weekly-count-chart.
+    // Une seule courbe : moyenne mobile sur trois jours.
+    // Plotly.react met à jour le graphique existant. Ne pas supprimer ses
+    // enfants avant l'appel : cela détruit l'état interne de Plotly et peut
+    // laisser le graphique vide lors d'un changement de période.
+    Plotly.react(container, [averageTrace], layout, config);
 
     if (!resizeObserver) {
       resizeObserver = new ResizeObserver(() => {
