@@ -126,7 +126,7 @@ def test_llm_filters_and_reorders_candidates() -> None:
     assert [item.candidate.identifier for item in outcome.results] == ["real-2"]
     sent = client.chat.completions.arguments
     assert sent["model"] == "gpt-6-luna"
-    assert sent["text_format"] is SemanticDecisionBatch
+    assert sent["response_format"]["type"] == "json_schema" and sent["response_format"]["json_schema"]["schema"] == SemanticDecisionBatch.model_json_schema()
 
 
 def test_missing_key_keeps_local_results_without_external_call() -> None:
