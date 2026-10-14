@@ -20,8 +20,9 @@ def test_stats_are_public_aggregates_without_search_pool_limit(monkeypatch):
     monkeypatch.setattr('app.market_routes.load_market_candidates',load)
     response=client.get('/market/stats')
     assert response.status_code==200
-    assert calls==[60]
+    assert calls==[None]
     assert len(response.json()['semaines']) == 4
+    assert response.json()['jours_historique']
     assert response.json()['annonces_30_jours']==1
     assert response.json()['prix_m2_moyen_fcfa']==10_000
     assert '70 12 34 56' not in response.text
