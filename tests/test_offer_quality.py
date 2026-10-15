@@ -130,3 +130,20 @@ def test_runtime_quality_does_not_mark_explicitly_absent_current_as_available() 
     assert q["electricite_etat"] == "absent"
     assert q["eau_etat"] == "absent"
     assert q["document_etat"] == "absent"
+
+
+
+def test_electricity_and_water_synonyms_are_detected_but_not_confused_with_availability() -> None:
+    from app.offer_quality import offer_quality_from_neon
+
+    near = offer_quality_from_neon(
+        offer(text="Poteau électrique à proximité, puits dans le quartier.")
+    )
+    assert near["electricite_etat"] == "proximite"
+    assert near["eau_etat"] == "proximite"
+
+    absent = offer_quality_from_neon(
+        offer(text="Pas d'électricité et pas d'eau.")
+    )
+    assert absent["electricite_etat"] == "absent"
+    assert absent["eau_etat"] == "absent"
