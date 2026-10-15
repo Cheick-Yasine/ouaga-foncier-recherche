@@ -133,66 +133,13 @@ def offer_quality(candidate: SearchCandidate) -> dict[str, Any]:
 
 
 def offer_quality_from_neon(candidate: SearchCandidate) -> dict[str, Any]:
-    """Runtime : utilise uniquement les champs structurés chargés depuis Neon.
+    """Analyse les caractéristiques textuelles et utilise les champs structurés en repli.
 
-    Le texte brut n'est jamais relu ici. Cette fonction est utilisée par la
-    recherche et l'assistant. ``offer_quality`` reste disponible uniquement
-    pour les scripts de préparation/audit qui analysent encore du texte brut.
+    Le texte de l'annonce est la source principale pour reconnaître les synonymes
+    (courant, SONABEL, CEG, lycée, etc.) et les négations. Les champs structurés
+    ne servent qu'en complément lorsque le texte ne permet pas de conclure.
     """
-    raw_document = candidate.document_status
-    document = extract_document_status(raw_document, "") if raw_document else None
-    if document == "non_precise":
-        document = raw_document
-    document_state = "mentionne" if raw_document else "non_precise"
-
-    viability = candidate.viability
-    water = "mentionne" if viability in {"eau", "eau_et_electricite"} else "non_precise"
-    electricity = "mentionne" if viability in {"electricite", "eau_et_electricite"} else "non_precise"
-    proximities = {
-        value for value in (candidate.proximity or '').split('+')
-        if value in PROXIMITY_LABELS
-    }
-
-    strengths: list[str] = []
-    warnings: list[str] = []
-    if raw_document:
-        strengths.append(DOCUMENT_LABELS.get(document, str(document)) + " mentionné")
-    else:
-        warnings.append("Document non précisé")
-    if water == "mentionne":
-        strengths.append("Eau mentionnée")
-    if electricity == "mentionne":
-        strengths.append("Électricité mentionnée")
-    if water == electricity == "non_precise":
-        warnings.append("Eau et électricité non précisées")
-    strengths.extend(PROXIMITY_LABELS[p] for p in sorted(proximities))
-    if not proximities:
-        warnings.append("Proximités non précisées")
-    if candidate.price_fcfa is None or candidate.area_m2 is None:
-        warnings.append("Prix au m² non calculable")
-
-    complete = (
-        document_state == "mentionne"
-        and water == "mentionne"
-        and electricity == "mentionne"
-        and bool(proximities)
-    )
-    return {
-        "informations_completes": complete,
-        "document": document,
-        "document_etat": document_state,
-        "document_libelle": "Mentionné, disponibilité à confirmer" if raw_document else "Document non précisé",
-        "eau_etat": water,
-        "electricite_etat": electricity,
-        "proximites": sorted(proximities),
-        "atouts": strengths,
-        "vigilances": warnings,
-        "indices": {
-            "document": 0.7 if raw_document else 0.0,
-            "viabilite": (int(water == "mentionne") + int(electricity == "mentionne")) / 2,
-            "proximite": min(len(proximities), 2) / 2,
-        },
-    }
+    return offer_quality(candidate)
 
 def land_family_from_neon(candidate: SearchCandidate) -> str:
     """Classe un bien sans relire le texte brut."""
