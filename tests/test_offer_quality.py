@@ -100,3 +100,33 @@ class OfferQualityTests(unittest.TestCase):
     def test_promised_utilities_do_not_make_complete_offer(self):
         q=offer_quality(offer(text='PUH disponible. Eau et électricité en cours. Proche du goudron.'))
         self.assertFalse(q['informations_completes'])
+
+
+
+def test_runtime_quality_reads_synonyms_and_school_landmarks_from_announcement() -> None:
+    from app.offer_quality import offer_quality_from_neon
+
+    candidate = offer(
+        text="Parcelle derrière le lycée. Courant disponible, forage dans le quartier. PUH disponible.",
+        viability="non_precisee",
+        document_status=None,
+    )
+    q = offer_quality_from_neon(candidate)
+    assert q["electricite_etat"] == "annonce_disponible"
+    assert q["eau_etat"] == "proximite"
+    assert "ecole" in q["proximites"]
+    assert q["document"] == "puh"
+
+
+def test_runtime_quality_does_not_mark_explicitly_absent_current_as_available() -> None:
+    from app.offer_quality import offer_quality_from_neon
+
+    candidate = offer(
+        text="Pas de courant. Eau absente. Aucun titre foncier.",
+        viability="eau_et_electricite",
+        document_status="titre_foncier",
+    )
+    q = offer_quality_from_neon(candidate)
+    assert q["electricite_etat"] == "absent"
+    assert q["eau_etat"] == "absent"
+    assert q["document_etat"] == "absent"
