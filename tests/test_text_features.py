@@ -195,3 +195,18 @@ def test_document_statuses_keep_multiple_detected_documents() -> None:
         None,
         "PUH disponible avec titre foncier et croquis",
     ) == ("titre_foncier", "puh", "croquis")
+
+
+
+def test_school_landmarks_do_not_require_the_exact_phrase_proche() -> None:
+    assert extract_proximity("Parcelle, lycée à 200 m") == "ecole"
+    assert extract_proximity("École primaire dans le quartier") == "ecole"
+    assert extract_proximity("Terrain au secteur du CEG") == "ecole"
+    assert extract_proximity("Parcelle derrière le complexe scolaire") == "ecole"
+    assert extract_proximity("Terrain d'un hectare. Destination école.") == "non_precisee"
+
+
+def test_viability_does_not_count_explicitly_absent_utilities() -> None:
+    assert extract_viability("Terrain sans eau ni courant") == "non_precisee"
+    assert extract_viability("Pas d'électricité, forage disponible") == "eau"
+    assert extract_viability("Courant disponible, eau absente") == "electricite"
