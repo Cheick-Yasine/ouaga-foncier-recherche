@@ -169,4 +169,3 @@ def land_family(candidate: SearchCandidate) -> str:
     if (candidate.area_m2 or 0) > 2500 or re.search(r'\b(?:hectare\w*|agricole|ferme|bas fond|bafon)\b', text):
         return 'grand_terrain'
     return candidate.property_type or 'foncier'
-, before) or re.match(r'\s+(?:absente?|indisponible|non disponible|non raccorde)', after):
