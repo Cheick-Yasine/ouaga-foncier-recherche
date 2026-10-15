@@ -16,7 +16,7 @@ from app.config import Settings, get_settings
 from app.database import DatabaseNotConfiguredError
 from app.market_stats import publication_time
 from app.search_engine import SearchCandidate
-from app.text_features import extract_viability
+from app.text_features import extract_document_status, extract_proximity_details, extract_viability
 
 _CANDIDATE_CACHE_TTL_SECONDS = 300.0
 _candidate_cache: dict[
@@ -123,11 +123,11 @@ def _candidate_from_row(
     now: datetime,
     preserve_raw_neighborhood: bool = False,
 ) -> SearchCandidate:
-    """Construit un candidat uniquement à partir des colonnes structurées Neon.
+    """Construit un candidat depuis Neon et extrait les critères décrits dans le texte.
 
-    Le texte reste disponible pour l'affichage et la similarité textuelle, mais
-    il ne sert plus à recalculer quartier, type, document, prix ou superficie.
-    Neon est la source de vérité pour ces champs.
+    Quartier, type, prix et superficie restent issus des colonnes structurées.
+    Les équipements, proximités et documents sont aussi détectés dans l'annonce,
+    car leurs formulations varient souvent d'un vendeur à l'autre.
     """
     text = (
         _optional_text(row.get("texte_nettoye"))
@@ -156,11 +156,11 @@ def _candidate_from_row(
         neighborhood=_optional_text(row.get("quartier_zone")),
         price_fcfa=_optional_float(row.get("prix_fcfa")),
         area_m2=_optional_float(row.get("superficie_m2")),
-        # Ces deux champs ne sont pas encore des colonnes de public.annonces.
-        # On ne les reconstruit plus à partir du texte : absence = non précisé.
-        proximity=None,
+        proximity=extract_proximity_details(text),
         viability=extract_viability(text),
-        document_status=_optional_text(row.get("statut_document")),
+        document_status=(
+            lambda status: None if status == "non_precise" else status
+        )(extract_document_status(row.get("statut_document"), text)),
         age_days=age_days,
         url=_optional_text(row.get("url")),
         publication_label=_optional_text(row.get("date_publication")),
