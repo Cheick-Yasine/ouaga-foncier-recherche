@@ -55,9 +55,12 @@ _PAVED_ACCESS_PATTERN = re.compile(
 _ROAD_PATTERN = re.compile(
     r"\b(route|voie principale|axe principal|grande voie|rn\s*\d+)\b"
 )
-_WATER_PATTERN = re.compile(r"\b(eau|onea|forage)\b")
+_WATER_PATTERN = re.compile(
+    r"\b(eau|onea|forage|puits|borne fontaine|robinet)\b"
+)
 _ELECTRICITY_PATTERN = re.compile(
-    r"\b(electricite|sonabel|courant|reseau electrique)\b"
+    r"\b(electricite|sonabel|courant|reseau electrique|poteau electrique"
+    r"|ligne electrique|compteur electrique)\b"
 )
 _DOCUMENT_PATTERNS = {
     "titre_foncier": re.compile(r"\b(titre foncier|tf)\b"),
