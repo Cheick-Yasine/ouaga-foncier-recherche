@@ -425,3 +425,48 @@ def test_dayoubsi_water_and_electricity_are_extracted_for_search() -> None:
     assert result is not None
     assert result.components["viabilite"] == 1.0
 
+
+
+
+def test_row_extracts_school_synonyms_and_documents_from_text() -> None:
+    now = datetime(2026, 10, 15, 12, tzinfo=timezone.utc)
+    candidate = _candidate_from_row(
+        {
+            "id": "school-synonyms",
+            "type_bien": "Parcelle",
+            "type_bien_normalise": "parcelle",
+            "quartier_zone": "Saaba",
+            "superficie_m2": 300,
+            "prix_fcfa": 5_000_000,
+            "statut_document": None,
+            "texte_nettoye": (
+                "Parcelle derrière le lycée, courant disponible, "
+                "forage dans le quartier, APFR disponible."
+            ),
+            "premiere_collecte": now,
+        },
+        now=now,
+    )
+    assert candidate.proximity is not None
+    assert "ecole" in candidate.proximity.split("+")
+    assert candidate.viability == "eau_et_electricite"
+    assert candidate.document_status == "apfr"
+
+
+def test_row_does_not_infer_absent_utility_as_available() -> None:
+    now = datetime(2026, 10, 15, 12, tzinfo=timezone.utc)
+    candidate = _candidate_from_row(
+        {
+            "id": "absent-utilities",
+            "type_bien": "Parcelle",
+            "type_bien_normalise": "parcelle",
+            "quartier_zone": "Saaba",
+            "superficie_m2": 300,
+            "prix_fcfa": 5_000_000,
+            "statut_document": None,
+            "texte_nettoye": "Parcelle sans eau ni courant.",
+            "premiere_collecte": now,
+        },
+        now=now,
+    )
+    assert candidate.viability == "non_precisee"
