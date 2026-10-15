@@ -563,7 +563,7 @@ def score_candidate(
     requested_documents = _requested_documents(criteria)
     candidate_documents = extract_document_statuses(
         candidate.document_status,
-        "",
+        candidate.text,
     )
     document_match = bool(
         requested_documents
@@ -664,8 +664,9 @@ def score_candidate(
                 else float(_normalized_equal(expected, observed))
             )
     if requested_documents:
-        document_state = "mentionne" if candidate.document_status else "non_precise"
-        acceptable_document_states = {"mentionne"}
+        document_quality = offer_quality_from_neon(candidate)
+        document_state = document_quality["document_etat"]
+        acceptable_document_states = {"mentionne", "annonce_disponible"}
         if any(
             requested in {"recepisse", "croquis"}
             for requested in requested_documents
