@@ -94,8 +94,17 @@ def offer_quality(candidate: SearchCandidate) -> dict[str, Any]:
     # goudron » à l'eau annoncée disponible dans la phrase précédente.
     text = " | ".join(normalize_text(part) for part in re.split(r"[.!?;\n]+", candidate.text))
     document, state, doc_label, doc_score = document_evidence(candidate)
-    water, water_score = _utility(text, r'\b(?:eau|onea|forage)\b', candidate.viability in {'eau','eau_et_electricite'})
-    electricity, elec_score = _utility(text, r'\b(?:electricite|sonabel|courant|reseau electrique)\b', candidate.viability in {'electricite','eau_et_electricite'})
+    water, water_score = _utility(
+        text,
+        r'\b(?:eau|onea|forage|puits|borne fontaine|robinet)\b',
+        candidate.viability in {'eau','eau_et_electricite'},
+    )
+    electricity, elec_score = _utility(
+        text,
+        r'\b(?:electricite|sonabel|courant|reseau electrique|poteau electrique'
+        r'|ligne electrique|compteur electrique)\b',
+        candidate.viability in {'electricite','eau_et_electricite'},
+    )
     if re.search(r'\bnon viabilise\w*\b', text):
         water_score = elec_score = 0.0
         water = electricity = 'non_precise'
