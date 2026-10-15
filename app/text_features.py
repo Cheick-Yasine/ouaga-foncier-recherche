@@ -13,9 +13,16 @@ from app.villa_exclusion import build_villa_exclusion_audit
 
 _PROXIMITY_CUE = (
     r"(?:proche|proximite|non loin|a cote|en face|devant|derriere"
-    r"|a moins de|a \d+\s*(?:m|km))"
+    r"|a moins de|a \d+\s*(?:m|km)|dans le quartier|dans le secteur"
+    r"|quartier|secteur|zone de|au niveau de|a quelques pas|a deux pas"
+    r"|a l angle de)"
 )
-_SCHOOL_PLACE = r"(?:ecole|lycee|college|universite|institut|etablissement scolaire)"
+_SCHOOL_PLACE = (
+    r"(?:groupe scolaire|complexe scolaire|etablissement scolaire"
+    r"|ecole(?: primaire| secondaire| privee| publique)?"
+    r"|lycee(?: technique)?|college|ceg|universite|faculte"
+    r"|institut(?: superieur)?|centre de formation)"
+)
 _HEALTH_PLACE = r"(?:hopital|clinique|centre de sante|centre medical|csps|cma|dispensaire)"
 
 _PROXIMITY_PATTERNS = {
@@ -144,10 +151,35 @@ def extract_proximity(*texts: Any) -> str:
     return next(iter(detected))
 
 
+def _utility_is_explicitly_absent(text: str, match: re.Match[str]) -> bool:
+    before = text[max(0, match.start() - 48):match.start()]
+    after = text[match.end():match.end() + 48]
+    return bool(
+        re.search(
+            r"\\b(?:sans|aucun|aucune|ni|absence de|absence d|pas de|pas d)"
+            r"(?:\\s+\\w+){0,3}\\s*$",
+            before,
+        )
+        or re.match(
+            r"\\s*(?:absent(?:e)?|indisponible|non disponible|non raccorde"
+            r"|non branche|pas disponible)\\b",
+            after,
+        )
+    )
+
+
+def _has_non_negated_utility(text: str, pattern: re.Pattern[str]) -> bool:
+    return any(
+        not _utility_is_explicitly_absent(text, match)
+        for match in pattern.finditer(text)
+    )
+
+
 def extract_viability(*texts: Any) -> str:
+    """Repère les équipements cités sans compter une absence explicitement annoncée."""
     searchable = normalize_text(" ".join(str(text or "") for text in texts))
-    has_water = bool(_WATER_PATTERN.search(searchable))
-    has_electricity = bool(_ELECTRICITY_PATTERN.search(searchable))
+    has_water = _has_non_negated_utility(searchable, _WATER_PATTERN)
+    has_electricity = _has_non_negated_utility(searchable, _ELECTRICITY_PATTERN)
     if has_water and has_electricity:
         return "eau_et_electricite"
     if has_water:
