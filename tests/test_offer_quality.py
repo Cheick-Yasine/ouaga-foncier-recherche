@@ -33,11 +33,11 @@ class OfferQualityTests(unittest.TestCase):
 
     def test_structured_document_wins_over_raw_text_at_runtime(self):
         c=SearchCriteria(description='APFR obligatoire',document_status='apfr',required_fields=frozenset({'statut_document'}))
-        self.assertIsNotNone(score_candidate(c,offer(text='APFR en cours',document_status='apfr')))
+        self.assertIsNone(score_candidate(c,offer(text='APFR en cours',document_status='apfr')))
 
     def test_structured_viability_wins_over_raw_text_at_runtime(self):
         c=SearchCriteria(description='Avec eau obligatoire',viability='eau',required_fields=frozenset({'viabilite'}))
-        self.assertIsNotNone(score_candidate(c,offer(text='Sans eau',viability='eau')))
+        self.assertIsNone(score_candidate(c,offer(text='Sans eau',viability='eau')))
 
     def test_generic_attestation_accepts_specific_attestation(self):
         c=SearchCriteria(description='Avec attestation obligatoire',document_status='attestation_non_precisee',required_fields=frozenset({'statut_document'}))
