@@ -153,11 +153,125 @@
     });
   }
 
+  let recentRows = [];
+  let recentSortKey = 'premiere_collecte';
+  let recentSortDirection = -1;
+
+  function recentCell(key, value) {
+    if (key === 'prix_fcfa') return value == null ? '—' : money.format(Number(value)) + ' FCFA';
+    if (key === 'superficie_m2') return value == null ? '—' : decimal.format(Number(value)) + ' m²';
+    if (key === 'premiere_collecte' || key === 'date_publication') return value == null ? '—' : String(value);
+    if (key === 'texte_nettoye' || key === 'resume_court') return value == null ? '—' : String(value);
+    if (value == null || value === '') return '—';
+    return String(value);
+  }
+
+  function filteredRecentRows() {
+    const query = ($('#admin-recent-search')?.value || '').trim().toLocaleLowerCase('fr');
+    return recentRows.filter(row => !query || Object.entries(row).some(([key, value]) =>
+      (key + ' ' + (value == null ? '' : String(value))).toLocaleLowerCase('fr').includes(query)
+    )).sort((a, b) => {
+      const av = a[recentSortKey], bv = b[recentSortKey];
+      if (av == null && bv == null) return 0;
+      if (av == null) return 1;
+      if (bv == null) return -1;
+      const an = Number(av), bn = Number(bv);
+      const cmp = av !== '' && bv !== '' && Number.isFinite(an) && Number.isFinite(bn)
+        ? an - bn : String(av).localeCompare(String(bv), 'fr', {numeric:true, sensitivity:'base'});
+      return cmp * recentSortDirection;
+    });
+  }
+
+  function csvValue(value) {
+    const text = value == null ? '' : String(value);
+    return '"' + text.replaceAll('"', '""') + '"';
+  }
+
+  function recentCsv() {
+    const rows = filteredRecentRows();
+    const keys = recentRows.length ? Object.keys(recentRows[0]) : [];
+    return '\uFEFF' + [keys.map(csvValue).join(';'), ...rows.map(row => keys.map(key => csvValue(row[key])).join(';'))].join('\r\n');
+  }
+
+  function renderRecentTable() {
+    const target = $('#admin-recent');
+    const rows = filteredRecentRows();
+    const count = $('#admin-recent-count');
+    if (count) count.textContent = rows.length + ' sur ' + recentRows.length + ' annonce(s)';
+    target.replaceChildren();
+    if (!rows.length) {
+      const p = document.createElement('p');
+      p.className = 'subtle';
+      p.textContent = recentRows.length ? 'Aucun résultat pour cette recherche.' : 'Aucune annonce dans la base.';
+      target.append(p);
+      return;
+    }
+    const keys = Object.keys(rows[0]);
+    const labels = {
+      id:'ID', premiere_collecte:'Collectée le', date_publication:'Publiée le',
+      type_bien_normalise:'Type de bien', quartier_zone:'Quartier / zone',
+      prix_fcfa:'Prix (FCFA)', superficie_m2:'Superficie (m²)',
+      statut_document:'Document', resume_court:'Résumé', texte_nettoye:'Texte de l’annonce'
+    };
+    const table = document.createElement('table');
+    table.className = 'admin-table admin-recent-table';
+    const thead = document.createElement('thead');
+    const trh = document.createElement('tr');
+    keys.forEach(key => {
+      const th = document.createElement('th');
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'admin-sort-button';
+      button.textContent = (labels[key] || key.replaceAll('_',' ')) +
+        (recentSortKey === key ? (recentSortDirection === 1 ? ' ▲' : ' ▼') : '');
+      button.setAttribute('aria-label', 'Trier par ' + (labels[key] || key));
+      button.addEventListener('click', () => {
+        if (recentSortKey === key) recentSortDirection *= -1;
+        else { recentSortKey = key; recentSortDirection = 1; }
+        renderRecentTable();
+      });
+      th.append(button);
+      trh.append(th);
+    });
+    thead.append(trh);
+    const tbody = document.createElement('tbody');
+    rows.forEach(row => {
+      const tr = document.createElement('tr');
+      keys.forEach(key => {
+        const td = document.createElement('td');
+        td.textContent = recentCell(key, row[key]);
+        if (key === 'texte_nettoye' || key === 'resume_court') td.className = 'admin-text-cell';
+        if (key === 'id') td.className = 'admin-id-cell';
+        tr.append(td);
+      });
+      tbody.append(tr);
+    });
+    table.append(thead, tbody);
+    const wrap = document.createElement('div');
+    wrap.className = 'admin-table-wrap admin-recent-wrap';
+    wrap.setAttribute('role', 'region');
+    wrap.setAttribute('aria-label', 'Tableau des 15 dernières annonces');
+    wrap.tabIndex = 0;
+    wrap.append(table);
+    target.append(wrap);
+  }
+
   async function loadRecent() {
     const target = $('#admin-recent');
     target.innerHTML = '<p class="admin-loading">Chargement des 15 dernières annonces…</p>';
-    const data = await api('/admin/database/recent');
-    renderTable(data.rows, target);
+    try {
+      const data = await api('/admin/database/recent');
+      recentRows = Array.isArray(data.rows) ? data.rows : [];
+      recentSortKey = 'premiere_collecte';
+      recentSortDirection = -1;
+      renderRecentTable();
+    } catch (error) {
+      target.replaceChildren();
+      const p = document.createElement('p');
+      p.className = 'admin-error';
+      p.textContent = error.message;
+      target.append(p);
+    }
   }
 
   async function customQuestion(event) {
@@ -193,8 +307,8 @@
   }
 
   async function load() {
-    // L'écran d'administration ne charge plus de questions prédéfinies,
-    // de statistiques ni de tableau d'annonces : il est dédié aux questions libres.
+    // Le tableau d'accueil reste limité aux 15 annonces les plus récemment collectées.
+    await loadRecent();
     loaded = true;
   }
 
@@ -202,6 +316,7 @@
     $('#admin-custom-input').value = '';
     $('#admin-result').replaceChildren();
     $('#admin-result').hidden = true;
+    if ($('#admin-recent-search')) $('#admin-recent-search').value = '';
     loaded = false;
     await load();
   }
@@ -218,6 +333,33 @@
   nav.addEventListener('click', showPage);
   $('#admin-refresh').addEventListener('click', refresh);
   $('#admin-custom-form').addEventListener('submit', customQuestion);
+  $('#admin-recent-search').addEventListener('input', renderRecentTable);
+  $('#admin-recent-copy').addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(recentCsv());
+      const button = $('#admin-recent-copy');
+      const previous = button.textContent;
+      button.textContent = 'Copié !';
+      window.setTimeout(() => { button.textContent = previous; }, 1500);
+    } catch {
+      const area = document.createElement('textarea');
+      area.value = recentCsv();
+      area.style.position = 'fixed'; area.style.opacity = '0';
+      document.body.append(area); area.select();
+      const copied = document.execCommand('copy');
+      area.remove();
+      if (!copied) window.alert('La copie a échoué. Utilisez plutôt « Télécharger CSV ».');
+    }
+  });
+  $('#admin-recent-csv').addEventListener('click', () => {
+    const blob = new Blob([recentCsv()], {type:'text/csv;charset=utf-8;'});
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'hakimo-15-dernieres-annonces.csv';
+    document.body.append(link); link.click(); link.remove();
+    URL.revokeObjectURL(url);
+  });
 
   document.addEventListener('hakimo:auth', e => syncAuth(e.detail || null));
 
