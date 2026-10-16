@@ -423,8 +423,9 @@
   $('#admin-recent-csv').addEventListener('click', () => downloadRecentFile(recentCsv(), 'text/csv;charset=utf-8;', 'hakimo-annonces.csv'));
   $('#admin-recent-excel').addEventListener('click', () => downloadRecentFile('\uFEFF' + recentTableHtml(), 'application/vnd.ms-excel;charset=utf-8;', 'hakimo-annonces.xls'));
   $('#admin-recent-print').addEventListener('click', () => {
-    const win = window.open('', '_blank', 'noopener,noreferrer,width=1000,height=700');
+    const win = window.open('', '_blank', 'width=1000,height=700');
     if (!win) { window.alert('Autorisez les fenêtres contextuelles pour imprimer le tableau.'); return; }
+    win.opener = null;
     win.document.write('<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>15 dernières annonces HAKIMO</title><style>body{font:12px Arial,sans-serif;padding:20px}h1{font-size:18px}table{border-collapse:collapse;width:100%}th,td{border:1px solid #bbb;padding:6px;text-align:left;vertical-align:top}th{background:#eee}tr{break-inside:avoid}</style></head><body><h1>15 dernières annonces HAKIMO</h1>' + recentTableHtml() + '</body></html>');
     win.document.close(); win.focus(); win.print();
   });
