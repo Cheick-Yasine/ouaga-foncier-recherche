@@ -110,7 +110,7 @@
         body: JSON.stringify({trashed:true})
       });
       await loadRecent();
-      if ($('#admin-trash-panel') && !$('#admin-trash-panel').hidden) await loadTrash();
+      await loadTrash();
     } catch (error) { window.alert(error.message); }
   }
 
@@ -418,6 +418,7 @@
   async function load() {
     // Le tableau présente toutes les annonces ; la pagination ne limite que l'affichage par page.
     await loadRecent();
+    await loadTrash();
     loaded = true;
   }
 
