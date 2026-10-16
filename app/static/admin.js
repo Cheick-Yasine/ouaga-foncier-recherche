@@ -156,20 +156,38 @@
   let recentRows = [];
   let recentSortKey = 'premiere_collecte';
   let recentSortDirection = -1;
+  let recentPageSize = 15;
+  let recentPage = 0;
+  let recentVisibleKeys = [];
+  const recentLabels = {
+    premiere_collecte:'Collectée le', date_publication:'Publiée le',
+    type_bien_normalise:'Type de bien', quartier_zone:'Quartier / zone',
+    prix_fcfa:'Prix (FCFA)', superficie_m2:'Superficie (m²)',
+    statut_document:'Document', resume_court:'Résumé'
+  };
+  const recentExcludedKeys = new Set(['id', 'texte_nettoye']);
+
+  function recentKeys() {
+    return recentRows.length ? Object.keys(recentRows[0]).filter(key => !recentExcludedKeys.has(key)) : [];
+  }
 
   function recentCell(key, value) {
     if (key === 'prix_fcfa') return value == null ? '—' : money.format(Number(value)) + ' FCFA';
     if (key === 'superficie_m2') return value == null ? '—' : decimal.format(Number(value)) + ' m²';
-    if (key === 'premiere_collecte' || key === 'date_publication') return value == null ? '—' : String(value);
-    if (key === 'texte_nettoye' || key === 'resume_court') return value == null ? '—' : String(value);
+    if (key === 'premiere_collecte' || key === 'date_publication') {
+      if (!value) return '—';
+      const parsed = new Date(value);
+      return Number.isNaN(parsed.getTime()) ? String(value) : parsed.toLocaleString('fr-FR');
+    }
     if (value == null || value === '') return '—';
     return String(value);
   }
 
   function filteredRecentRows() {
     const query = ($('#admin-recent-search')?.value || '').trim().toLocaleLowerCase('fr');
-    return recentRows.filter(row => !query || Object.entries(row).some(([key, value]) =>
-      (key + ' ' + (value == null ? '' : String(value))).toLocaleLowerCase('fr').includes(query)
+    return recentRows.filter(row => !query || recentKeys().some(key =>
+      ((recentLabels[key] || key) + ' ' + (row[key] == null ? '' : String(row[key])))
+        .toLocaleLowerCase('fr').includes(query)
     )).sort((a, b) => {
       const av = a[recentSortKey], bv = b[recentSortKey];
       if (av == null && bv == null) return 0;
@@ -182,66 +200,119 @@
     });
   }
 
+  function recentExportRows() {
+    return filteredRecentRows().map(row => Object.fromEntries(
+      recentVisibleKeys.filter(key => recentKeys().includes(key)).map(key => [recentLabels[key] || key, recentCell(key, row[key])])
+    ));
+  }
+
   function csvValue(value) {
-    const text = value == null ? '' : String(value);
-    return '"' + text.replaceAll('"', '""') + '"';
+    return '"' + String(value == null ? '' : value).replaceAll('"', '""') + '"';
+  }
+
+  function downloadRecentFile(content, type, filename) {
+    const blob = new Blob([content], {type});
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url; link.download = filename;
+    document.body.append(link); link.click(); link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
   function recentCsv() {
-    const rows = filteredRecentRows();
-    const keys = recentRows.length ? Object.keys(recentRows[0]) : [];
+    const rows = recentExportRows();
+    const keys = rows.length ? Object.keys(rows[0]) : recentVisibleKeys.map(key => recentLabels[key] || key);
     return '\uFEFF' + [keys.map(csvValue).join(';'), ...rows.map(row => keys.map(key => csvValue(row[key])).join(';'))].join('\r\n');
+  }
+
+  function recentTableHtml() {
+    const rows = recentExportRows();
+    const keys = rows.length ? Object.keys(rows[0]) : recentVisibleKeys.map(key => recentLabels[key] || key);
+    const esc = value => String(value == null ? '' : value).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
+    return '<table border="1"><thead><tr><th>N°</th>' + keys.map(key => '<th>' + esc(key) + '</th>').join('') +
+      '</tr></thead><tbody>' + rows.map((row, i) => '<tr><td>' + (i + 1) + '</td>' +
+      keys.map(key => '<td>' + esc(row[key]) + '</td>').join('') + '</tr>').join('') + '</tbody></table>';
+  }
+
+  function renderRecentColumnsMenu() {
+    const menu = $('#admin-recent-columns-menu');
+    if (!menu) return;
+    menu.replaceChildren();
+    recentKeys().forEach(key => {
+      const label = document.createElement('label');
+      label.className = 'admin-column-option';
+      const input = document.createElement('input');
+      input.type = 'checkbox'; input.checked = recentVisibleKeys.includes(key);
+      input.addEventListener('change', () => {
+        recentVisibleKeys = input.checked
+          ? [...recentVisibleKeys, key]
+          : recentVisibleKeys.filter(item => item !== key);
+        if (!recentVisibleKeys.length) {
+          input.checked = true;
+          recentVisibleKeys = [key];
+        }
+        renderRecentTable();
+      });
+      const span = document.createElement('span');
+      span.textContent = recentLabels[key] || key.replaceAll('_', ' ');
+      label.append(input, span); menu.append(label);
+    });
   }
 
   function renderRecentTable() {
     const target = $('#admin-recent');
     const rows = filteredRecentRows();
+    const total = rows.length;
+    const pages = Math.max(1, Math.ceil(total / recentPageSize));
+    recentPage = Math.min(recentPage, pages - 1);
+    const pageRows = rows.slice(recentPage * recentPageSize, (recentPage + 1) * recentPageSize);
     const count = $('#admin-recent-count');
-    if (count) count.textContent = rows.length + ' sur ' + recentRows.length + ' annonce(s)';
+    if (count) count.textContent = total ? (recentPage * recentPageSize + 1) + '–' + Math.min((recentPage + 1) * recentPageSize, total) + ' sur ' + total : '0 résultat';
+    const pageLabel = $('#admin-recent-page-label');
+    if (pageLabel) pageLabel.textContent = 'Page ' + (recentPage + 1) + ' / ' + pages;
+    const prev = $('#admin-recent-prev'), next = $('#admin-recent-next');
+    if (prev) prev.disabled = recentPage <= 0;
+    if (next) next.disabled = recentPage >= pages - 1;
     target.replaceChildren();
-    if (!rows.length) {
+    if (!total) {
       const p = document.createElement('p');
       p.className = 'subtle';
       p.textContent = recentRows.length ? 'Aucun résultat pour cette recherche.' : 'Aucune annonce dans la base.';
       target.append(p);
       return;
     }
-    const keys = Object.keys(rows[0]);
-    const labels = {
-      id:'ID', premiere_collecte:'Collectée le', date_publication:'Publiée le',
-      type_bien_normalise:'Type de bien', quartier_zone:'Quartier / zone',
-      prix_fcfa:'Prix (FCFA)', superficie_m2:'Superficie (m²)',
-      statut_document:'Document', resume_court:'Résumé', texte_nettoye:'Texte de l’annonce'
-    };
     const table = document.createElement('table');
     table.className = 'admin-table admin-recent-table';
     const thead = document.createElement('thead');
     const trh = document.createElement('tr');
-    keys.forEach(key => {
+    const numberTh = document.createElement('th');
+    numberTh.className = 'admin-row-number'; numberTh.textContent = 'N°';
+    trh.append(numberTh);
+    recentVisibleKeys.forEach(key => {
       const th = document.createElement('th');
       const button = document.createElement('button');
-      button.type = 'button';
-      button.className = 'admin-sort-button';
-      button.textContent = (labels[key] || key.replaceAll('_',' ')) +
+      button.type = 'button'; button.className = 'admin-sort-button';
+      button.textContent = (recentLabels[key] || key.replaceAll('_',' ')) +
         (recentSortKey === key ? (recentSortDirection === 1 ? ' ▲' : ' ▼') : '');
-      button.setAttribute('aria-label', 'Trier par ' + (labels[key] || key));
+      button.setAttribute('aria-label', 'Trier par ' + (recentLabels[key] || key));
       button.addEventListener('click', () => {
         if (recentSortKey === key) recentSortDirection *= -1;
         else { recentSortKey = key; recentSortDirection = 1; }
-        renderRecentTable();
+        recentPage = 0; renderRecentTable();
       });
-      th.append(button);
-      trh.append(th);
+      th.append(button); trh.append(th);
     });
     thead.append(trh);
     const tbody = document.createElement('tbody');
-    rows.forEach(row => {
+    pageRows.forEach((row, i) => {
       const tr = document.createElement('tr');
-      keys.forEach(key => {
+      const number = document.createElement('td');
+      number.className = 'admin-row-number'; number.textContent = String(recentPage * recentPageSize + i + 1);
+      tr.append(number);
+      recentVisibleKeys.forEach(key => {
         const td = document.createElement('td');
         td.textContent = recentCell(key, row[key]);
-        if (key === 'texte_nettoye' || key === 'resume_court') td.className = 'admin-text-cell';
-        if (key === 'id') td.className = 'admin-id-cell';
+        if (key === 'resume_court') td.className = 'admin-text-cell';
         tr.append(td);
       });
       tbody.append(tr);
@@ -251,9 +322,8 @@
     wrap.className = 'admin-table-wrap admin-recent-wrap';
     wrap.setAttribute('role', 'region');
     wrap.setAttribute('aria-label', 'Tableau des 15 dernières annonces');
-    wrap.tabIndex = 0;
-    wrap.append(table);
-    target.append(wrap);
+    wrap.tabIndex = 0; wrap.append(table); target.append(wrap);
+    renderRecentColumnsMenu();
   }
 
   async function loadRecent() {
@@ -261,19 +331,17 @@
     target.innerHTML = '<p class="admin-loading">Chargement des 15 dernières annonces…</p>';
     try {
       const data = await api('/admin/database/recent');
-      recentRows = Array.isArray(data.rows) ? data.rows : [];
-      recentSortKey = 'premiere_collecte';
-      recentSortDirection = -1;
+      recentRows = Array.isArray(data.rows) ? data.rows.slice(0, 15) : [];
+      recentVisibleKeys = recentKeys();
+      recentSortKey = recentKeys().includes('premiere_collecte') ? 'premiere_collecte' : (recentKeys()[0] || '');
+      recentSortDirection = -1; recentPage = 0;
       renderRecentTable();
     } catch (error) {
       target.replaceChildren();
       const p = document.createElement('p');
-      p.className = 'admin-error';
-      p.textContent = error.message;
-      target.append(p);
+      p.className = 'admin-error'; p.textContent = error.message; target.append(p);
     }
   }
-
   async function customQuestion(event) {
     event.preventDefault();
     const input = $('#admin-custom-input');
@@ -333,32 +401,32 @@
   nav.addEventListener('click', showPage);
   $('#admin-refresh').addEventListener('click', refresh);
   $('#admin-custom-form').addEventListener('submit', customQuestion);
-  $('#admin-recent-search').addEventListener('input', renderRecentTable);
+  $('#admin-recent-search').addEventListener('input', () => { recentPage = 0; renderRecentTable(); });
+  $('#admin-recent-page-size').addEventListener('change', event => { recentPageSize = Number(event.target.value) || 15; recentPage = 0; renderRecentTable(); });
+  $('#admin-recent-prev').addEventListener('click', () => { recentPage = Math.max(0, recentPage - 1); renderRecentTable(); });
+  $('#admin-recent-next').addEventListener('click', () { recentPage += 1; renderRecentTable(); });
+  $('#admin-recent-columns').addEventListener('click', () => {
+    const menu = $('#admin-recent-columns-menu');
+    menu.hidden = !menu.hidden;
+  });
+  document.addEventListener('click', event => {
+    const menu = $('#admin-recent-columns-menu');
+    if (menu && !event.target.closest('.admin-column-visibility')) menu.hidden = true;
+  });
   $('#admin-recent-copy').addEventListener('click', async () => {
     try {
       await navigator.clipboard.writeText(recentCsv());
-      const button = $('#admin-recent-copy');
-      const previous = button.textContent;
-      button.textContent = 'Copié !';
-      window.setTimeout(() => { button.textContent = previous; }, 1500);
-    } catch {
-      const area = document.createElement('textarea');
-      area.value = recentCsv();
-      area.style.position = 'fixed'; area.style.opacity = '0';
-      document.body.append(area); area.select();
-      const copied = document.execCommand('copy');
-      area.remove();
-      if (!copied) window.alert('La copie a échoué. Utilisez plutôt « Télécharger CSV ».');
-    }
+      $('#admin-recent-copy').textContent = 'Copié ✓';
+      window.setTimeout(() => { $('#admin-recent-copy').textContent = 'Copier'; }, 1500);
+    } catch { window.alert('La copie est bloquée par le navigateur. Utilisez le téléchargement CSV.'); }
   });
-  $('#admin-recent-csv').addEventListener('click', () => {
-    const blob = new Blob([recentCsv()], {type:'text/csv;charset=utf-8;'});
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'hakimo-15-dernieres-annonces.csv';
-    document.body.append(link); link.click(); link.remove();
-    URL.revokeObjectURL(url);
+  $('#admin-recent-csv').addEventListener('click', () => downloadRecentFile(recentCsv(), 'text/csv;charset=utf-8;', 'hakimo-annonces.csv'));
+  $('#admin-recent-excel').addEventListener('click', () => downloadRecentFile('\uFEFF' + recentTableHtml(), 'application/vnd.ms-excel;charset=utf-8;', 'hakimo-annonces.xls'));
+  $('#admin-recent-print').addEventListener('click', () => {
+    const win = window.open('', '_blank', 'noopener,noreferrer,width=1000,height=700');
+    if (!win) { window.alert('Autorisez les fenêtres contextuelles pour imprimer le tableau.'); return; }
+    win.document.write('<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>15 dernières annonces HAKIMO</title><style>body{font:12px Arial,sans-serif;padding:20px}h1{font-size:18px}table{border-collapse:collapse;width:100%}th,td{border:1px solid #bbb;padding:6px;text-align:left;vertical-align:top}th{background:#eee}tr{break-inside:avoid}</style></head><body><h1>15 dernières annonces HAKIMO</h1>' + recentTableHtml() + '</body></html>');
+    win.document.close(); win.focus(); win.print();
   });
 
   document.addEventListener('hakimo:auth', e => syncAuth(e.detail || null));
