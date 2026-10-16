@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/styles.css?v=20261001-analysis-2">
-  <link rel="stylesheet" href="/static/admin.css?v=20261016-r-table-2">
+  <link rel="stylesheet" href="/static/admin.css?v=20261016-full-db-trash-1">
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@6.11.2/dist/maplibre-gl.css">
   <script src="/static/waiting.js?v=20260906-waiting-1" defer></script>
   <script src="https://cdn.plot.ly/plotly-4.0.0.min.js" charset="utf-8" defer></script>
@@ -18,7 +18,7 @@
   <script src="/static/discovery.js?v=20261003-mobile-average-1" defer></script>
   <script src="/static/daily-annonces-chart.js?v=20261014-3day-periods-3" defer></script>
   <script src="/static/app.js?v=20261005-admin-3" defer></script>
-  <script src="/static/admin.js?v=20261016-r-table-2" defer></script>
+  <script src="/static/admin.js?v=20261016-full-db-trash-1" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#assistant-input">Aller à la conversation</a>
@@ -129,15 +129,15 @@
               <h1 id="admin-database-title">Interroger la base</h1>
               <p class="subtle">Posez librement vos questions sur les données de la plateforme. HAKIMO consultera la base en lecture seule.</p>
             </div>
-            <button id="admin-refresh" class="secondary-button" type="button">Actualiser</button>
+            <div class="admin-heading-actions"><button id="admin-trash-toggle" class="secondary-button" type="button" aria-expanded="false">🗑 Corbeille <span id="admin-trash-count">0</span></button><button id="admin-refresh" class="secondary-button" type="button">Actualiser</button></div>
           </div>
           <section class="admin-card admin-recent-card" aria-labelledby="admin-recent-title">
             <div class="admin-card-heading admin-recent-heading">
-              <div><h2 id="admin-recent-title">Les 15 dernières annonces</h2><p class="subtle">Les annonces les plus récemment collectées dans la base. Cliquez sur un titre de colonne pour trier.</p></div>
+              <div><h2 id="admin-recent-title">Toutes les annonces</h2><p class="subtle">Toutes les annonces de la base, avec recherche, tri, export et pagination.</p></div>
               <span id="admin-recent-count" class="admin-recent-count" role="status">Chargement…</span>
             </div>
             <div class="admin-recent-toolbar" role="toolbar" aria-label="Outils du tableau des annonces">
-              <div class="admin-recent-length"><label for="admin-recent-page-size">Afficher</label><select id="admin-recent-page-size" aria-label="Nombre de lignes par page"><option value="5">5</option><option value="10">10</option><option value="15" selected>15</option></select><span>lignes</span></div>
+              <div class="admin-recent-length"><label for="admin-recent-page-size">Afficher</label><select id="admin-recent-page-size" aria-label="Nombre de lignes par page"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option><option value="100">100</option></select><span>lignes</span></div>
               <div class="admin-column-visibility">
                 <button id="admin-recent-columns" class="admin-table-tool" type="button" aria-expanded="false">Colonnes ▾</button>
                 <div id="admin-recent-columns-menu" class="admin-column-menu" hidden></div>
@@ -149,13 +149,17 @@
                 <button id="admin-recent-print" class="admin-table-tool" type="button">Imprimer / PDF</button>
               </div>
               <label class="admin-recent-search-label" for="admin-recent-search">Rechercher :</label>
-              <input id="admin-recent-search" class="admin-search" type="search" placeholder="Filtrer les annonces…" autocomplete="off">
+              <input id="admin-recent-search" class="admin-search" type="search" placeholder="Rechercher dans toutes les annonces…" autocomplete="off">
             </div>
             <div class="admin-recent-pagination" aria-label="Pagination du tableau">
               <span id="admin-recent-page-label">Page 1 / 1</span>
               <div><button id="admin-recent-prev" class="admin-table-tool" type="button" disabled>Précédent</button><button id="admin-recent-next" class="admin-table-tool" type="button" disabled>Suivant</button></div>
             </div>
-            <div id="admin-recent"><p class="admin-loading">Chargement des 15 dernières annonces…</p></div>
+            <div id="admin-recent"><p class="admin-loading">Chargement de toutes les annonces…</p></div>
+          </section>
+          <section id="admin-trash-panel" class="admin-card admin-trash-panel" hidden aria-labelledby="admin-trash-title">
+            <div class="admin-card-heading"><div><h2 id="admin-trash-title">Corbeille</h2><p class="subtle">Les annonces restent ici 30 jours avant leur suppression définitive automatique. Vous pouvez les restaurer avant l’expiration.</p></div></div>
+            <div id="admin-trash-list"><p class="admin-loading">Ouvrez la corbeille pour charger les annonces supprimées…</p></div>
           </section>
           <section class="admin-card admin-custom-card" aria-labelledby="admin-custom-title">
             <div class="admin-card-heading"><div><h2 id="admin-custom-title">Poser ma propre question</h2><p class="subtle">HAKIMO transforme votre question en consultation SQL strictement en lecture seule.</p></div></div>
