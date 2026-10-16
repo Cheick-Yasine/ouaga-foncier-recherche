@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/styles.css?v=20261001-analysis-2">
-  <link rel="stylesheet" href="/static/admin.css?v=20261016-r-table-1">
+  <link rel="stylesheet" href="/static/admin.css?v=20261016-r-table-2">
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@6.11.2/dist/maplibre-gl.css">
   <script src="/static/waiting.js?v=20260906-waiting-1" defer></script>
   <script src="https://cdn.plot.ly/plotly-4.0.0.min.js" charset="utf-8" defer></script>
@@ -18,7 +18,7 @@
   <script src="/static/discovery.js?v=20261003-mobile-average-1" defer></script>
   <script src="/static/daily-annonces-chart.js?v=20261014-3day-periods-3" defer></script>
   <script src="/static/app.js?v=20261005-admin-3" defer></script>
-  <script src="/static/admin.js?v=20261016-r-table-1" defer></script>
+  <script src="/static/admin.js?v=20261016-r-table-2" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#assistant-input">Aller à la conversation</a>
@@ -137,12 +137,23 @@
               <span id="admin-recent-count" class="admin-recent-count" role="status">Chargement…</span>
             </div>
             <div class="admin-recent-toolbar" role="toolbar" aria-label="Outils du tableau des annonces">
-              <label class="admin-recent-search-label" for="admin-recent-search">Rechercher dans le tableau</label>
-              <input id="admin-recent-search" class="admin-search" type="search" placeholder="Filtrer les 15 annonces…" autocomplete="off">
-              <div class="admin-tools">
-                <button id="admin-recent-copy" class="secondary-button" type="button">Copier CSV</button>
-                <button id="admin-recent-csv" class="secondary-button" type="button">Télécharger CSV</button>
+              <div class="admin-recent-length"><label for="admin-recent-page-size">Afficher</label><select id="admin-recent-page-size" aria-label="Nombre de lignes par page"><option value="5">5</option><option value="10">10</option><option value="15" selected>15</option></select><span>lignes</span></div>
+              <div class="admin-column-visibility">
+                <button id="admin-recent-columns" class="admin-table-tool" type="button" aria-expanded="false">Colonnes ▾</button>
+                <div id="admin-recent-columns-menu" class="admin-column-menu" hidden></div>
               </div>
+              <div class="admin-recent-export-tools">
+                <button id="admin-recent-copy" class="admin-table-tool" type="button">Copier</button>
+                <button id="admin-recent-csv" class="admin-table-tool" type="button">CSV</button>
+                <button id="admin-recent-excel" class="admin-table-tool" type="button">Excel</button>
+                <button id="admin-recent-print" class="admin-table-tool" type="button">Imprimer / PDF</button>
+              </div>
+              <label class="admin-recent-search-label" for="admin-recent-search">Rechercher :</label>
+              <input id="admin-recent-search" class="admin-search" type="search" placeholder="Filtrer les annonces…" autocomplete="off">
+            </div>
+            <div class="admin-recent-pagination" aria-label="Pagination du tableau">
+              <span id="admin-recent-page-label">Page 1 / 1</span>
+              <div><button id="admin-recent-prev" class="admin-table-tool" type="button" disabled>Précédent</button><button id="admin-recent-next" class="admin-table-tool" type="button" disabled>Suivant</button></div>
             </div>
             <div id="admin-recent"><p class="admin-loading">Chargement des 15 dernières annonces…</p></div>
           </section>
