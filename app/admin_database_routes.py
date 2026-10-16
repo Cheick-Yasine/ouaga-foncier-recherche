@@ -61,14 +61,25 @@ QUESTIONS = [
 ]
 
 ANNONCE_SQL = """SELECT a.id, a.premiere_collecte, a.date_publication, a.type_bien_normalise, a.quartier_zone,
-    a.prix_fcfa, a.superficie_m2, a.statut_document, a.resume_court, a.texte_nettoye,
-    COALESCE(f.is_featured, FALSE) AS is_featured
+    a.prix_fcfa, a.superficie_m2, a.statut_document, a.resume_court
     FROM public.annonces a
     LEFT JOIN public.admin_announcement_flags f ON f.announcement_id = a.id::text
     WHERE COALESCE(f.is_trashed, FALSE) = FALSE"""
 
 SQL = {
-    "recentes": ANNONCE_SQL + " ORDER BY premiere_collecte DESC NULLS LAST, id DESC LIMIT 15",
+    "recentes": """SELECT a.id::text AS id, a.premiere_collecte, a.date_publication, a.type_bien_normalise,
+        a.quartier_zone, a.prix_fcfa, a.superficie_m2, a.statut_document, a.resume_court
+        FROM public.annonces a
+        LEFT JOIN public.admin_announcement_flags f ON f.announcement_id = a.id::text
+        WHERE COALESCE(f.is_trashed, FALSE) = FALSE
+        UNION ALL
+        SELECT a.id::text AS id, NULL::timestamptz AS premiere_collecte, a.date_publication,
+        a.type_bien_normalise, a.quartier_zone, a.prix_fcfa, a.superficie_m2,
+        a.statut_document, a.resume_court
+        FROM public.admin_added_annonces a
+        LEFT JOIN public.admin_announcement_flags f ON f.announcement_id = a.id::text
+        WHERE COALESCE(f.is_trashed, FALSE) = FALSE
+        ORDER BY premiere_collecte DESC NULLS LAST, id DESC""",
     "moins_1m": ANNONCE_SQL + " AND prix_fcfa IS NOT NULL AND prix_fcfa < 1000000 ORDER BY prix_fcfa ASC LIMIT 100",
     "plus_100m": ANNONCE_SQL + " AND prix_fcfa IS NOT NULL AND prix_fcfa > 100000000 ORDER BY prix_fcfa DESC LIMIT 100",
     "moins_5m": ANNONCE_SQL + " AND prix_fcfa IS NOT NULL AND prix_fcfa < 5000000 ORDER BY prix_fcfa ASC LIMIT 100",
@@ -142,6 +153,24 @@ def _db_url() -> str:
     return settings.database_url.get_secret_value()
 
 
+def purge_expired_trash() -> int:
+    """Supprime définitivement les annonces restées dans la corbeille plus de 30 jours."""
+    with psycopg.connect(_db_url(), row_factory=dict_row) as connection:
+        with connection.transaction():
+            expired = connection.execute(
+                """SELECT announcement_id
+                   FROM public.admin_announcement_flags
+                   WHERE is_trashed = TRUE
+                     AND updated_at < CURRENT_TIMESTAMP - INTERVAL '30 days'"""
+            ).fetchall()
+            for row in expired:
+                announcement_id = row["announcement_id"]
+                connection.execute("DELETE FROM public.annonces WHERE id::text = %s", (announcement_id,))
+                connection.execute("DELETE FROM public.admin_added_annonces WHERE id::text = %s", (announcement_id,))
+                connection.execute("DELETE FROM public.admin_announcement_flags WHERE announcement_id = %s", (announcement_id,))
+    return len(expired)
+
+
 def _execute(sql: str) -> list[dict[str, Any]]:
     try:
         with psycopg.connect(_db_url(), row_factory=dict_row) as connection:
@@ -173,7 +202,7 @@ def overview(session_token: str | None = Cookie(default=None, alias=SESSION_COOK
 @router.get("/recent")
 def recent(session_token: str | None = Cookie(default=None, alias=SESSION_COOKIE)) -> dict[str, Any]:
     _require_admin(session_token)
-    return {"title": "Les 15 dernières annonces", "rows": _execute(SQL["recentes"])}
+    return {"title": "Toutes les annonces", "rows": _execute(SQL["recentes"])}
 
 
 @router.get("/questions")
@@ -225,12 +254,23 @@ class ManualAnnouncementRequest(BaseModel):
 @router.get("/trash")
 def trash(session_token: str | None = Cookie(default=None, alias=SESSION_COOKIE)) -> dict[str, Any]:
     _require_admin(session_token)
+    purge_expired_trash()
     return {"rows": _execute("""SELECT a.id::text AS id, a.premiere_collecte, a.date_publication,
         a.type_bien_normalise, a.quartier_zone, a.prix_fcfa, a.superficie_m2,
-        a.statut_document, a.resume_court, a.texte_nettoye
+        a.statut_document, a.resume_court, f.updated_at AS deleted_at,
+        f.updated_at + INTERVAL '30 days' AS expires_at
         FROM public.annonces a
         JOIN public.admin_announcement_flags f ON f.announcement_id = a.id::text
-        WHERE f.is_trashed = TRUE ORDER BY f.updated_at DESC LIMIT 200""")}
+        WHERE f.is_trashed = TRUE
+        UNION ALL
+        SELECT a.id::text AS id, NULL::timestamptz AS premiere_collecte, a.date_publication,
+        a.type_bien_normalise, a.quartier_zone, a.prix_fcfa, a.superficie_m2,
+        a.statut_document, a.resume_court, f.updated_at AS deleted_at,
+        f.updated_at + INTERVAL '30 days' AS expires_at
+        FROM public.admin_added_annonces a
+        JOIN public.admin_announcement_flags f ON f.announcement_id = a.id::text
+        WHERE f.is_trashed = TRUE
+        ORDER BY deleted_at DESC""")}
 
 @router.get("/featured")
 def featured(session_token: str | None = Cookie(default=None, alias=SESSION_COOKIE)) -> dict[str, Any]:
@@ -268,6 +308,23 @@ def restore_announcement(announcement_id: str, session_token: str | None = Cooki
     with psycopg.connect(_db_url()) as connection:
         connection.execute("UPDATE public.admin_announcement_flags SET is_trashed=FALSE, updated_at=CURRENT_TIMESTAMP WHERE announcement_id=%s", (announcement_id,))
     return {"ok": True, "id": announcement_id}
+
+@router.delete("/trash/{announcement_id}/permanent")
+def permanently_delete_announcement(announcement_id: str, session_token: str | None = Cookie(default=None, alias=SESSION_COOKIE)) -> dict[str, Any]:
+    _require_admin(session_token)
+    with psycopg.connect(_db_url()) as connection:
+        with connection.transaction():
+            check = connection.execute(
+                "SELECT 1 FROM public.admin_announcement_flags WHERE announcement_id=%s AND is_trashed=TRUE",
+                (announcement_id,),
+            ).fetchone()
+            if not check:
+                raise HTTPException(status_code=404, detail="Annonce absente de la corbeille.")
+            connection.execute("DELETE FROM public.annonces WHERE id::text=%s", (announcement_id,))
+            connection.execute("DELETE FROM public.admin_added_annonces WHERE id::text=%s", (announcement_id,))
+            connection.execute("DELETE FROM public.admin_announcement_flags WHERE announcement_id=%s", (announcement_id,))
+    return {"ok": True, "id": announcement_id}
+
 
 @router.post("/add")
 def add_manual_announcement(payload: ManualAnnouncementRequest,
