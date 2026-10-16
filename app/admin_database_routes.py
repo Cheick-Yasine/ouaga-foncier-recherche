@@ -201,8 +201,25 @@ def overview(session_token: str | None = Cookie(default=None, alias=SESSION_COOK
 
 @router.get("/recent")
 def recent(session_token: str | None = Cookie(default=None, alias=SESSION_COOKIE)) -> dict[str, Any]:
+    """Renvoie toutes les colonnes de chaque annonce, sans liste de champs codée en dur."""
     _require_admin(session_token)
-    return {"title": "Toutes les annonces", "rows": _execute(SQL["recentes"])}
+    rows = _execute("""SELECT row_data
+        FROM (
+            SELECT to_jsonb(a) AS row_data, a.premiere_collecte AS sort_date, a.id::text AS sort_id
+            FROM public.annonces a
+            LEFT JOIN public.admin_announcement_flags f ON f.announcement_id = a.id::text
+            WHERE COALESCE(f.is_trashed, FALSE) = FALSE
+            UNION ALL
+            SELECT to_jsonb(a) AS row_data, NULL::timestamptz AS sort_date, a.id::text AS sort_id
+            FROM public.admin_added_annonces a
+            LEFT JOIN public.admin_announcement_flags f ON f.announcement_id = a.id::text
+            WHERE COALESCE(f.is_trashed, FALSE) = FALSE
+        ) AS all_rows
+        ORDER BY sort_date DESC NULLS LAST, sort_id DESC""")
+    return {
+        "title": "Toutes les annonces",
+        "rows": [row["row_data"] for row in rows if isinstance(row.get("row_data"), dict)],
+    }
 
 
 @router.get("/questions")
