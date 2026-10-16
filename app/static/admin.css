@@ -2,3 +2,21 @@
 .admin-tools{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 18px}
 .admin-add-form{display:grid;gap:12px}.admin-add-form textarea{width:100%;box-sizing:border-box;resize:vertical;border:1px solid var(--border,#dfe4ec);border-radius:12px;padding:12px;background:transparent;color:inherit}.admin-add-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.admin-add-grid input,.admin-add-grid select{min-width:0;border:1px solid var(--border,#dfe4ec);border-radius:10px;padding:11px;background:transparent;color:inherit}.admin-management{background:var(--surface,#fff);border:1px solid var(--border,#dfe4ec);border-radius:18px;padding:20px;margin-bottom:18px}
 @media(max-width:700px){.admin-add-grid{grid-template-columns:1fr}}
+
+/* Tableau des 15 dernières annonces : commandes compactes façon visualiseur R. */
+.admin-recent-heading{align-items:flex-start}
+.admin-recent-count{flex:0 0 auto;padding:7px 10px;border-radius:999px;background:var(--surface-soft,#f6f8fb);color:var(--muted,#697386);font-size:.78rem;font-weight:700}
+.admin-recent-toolbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 14px;padding:12px;background:var(--surface-soft,#f6f8fb);border:1px solid var(--border,#dfe4ec);border-radius:12px}
+.admin-recent-search-label{font-size:.82rem;font-weight:700}
+.admin-recent-toolbar .admin-search{flex:1 1 240px;width:auto;min-width:180px;max-width:420px;background:var(--surface,#fff)}
+.admin-recent-toolbar .admin-tools{margin:0}
+.admin-recent-table{min-width:1250px;font-size:.79rem}
+.admin-recent-table th{white-space:nowrap;padding:0;background:var(--surface-soft,#f6f8fb)}
+.admin-sort-button{display:block;width:100%;border:0;background:transparent;color:inherit;text-align:left;font:inherit;font-weight:800;padding:11px;cursor:pointer;white-space:nowrap}
+.admin-sort-button:hover,.admin-sort-button:focus-visible{background:rgba(52,93,227,.09);outline:2px solid var(--accent,#345de3);outline-offset:-2px}
+.admin-recent-table td{max-width:260px}
+.admin-recent-table .admin-text-cell{min-width:240px;max-width:360px;white-space:pre-wrap;overflow-wrap:anywhere}
+.admin-recent-table .admin-id-cell{max-width:150px;overflow-wrap:anywhere;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.72rem}
+.admin-recent-wrap{max-height:560px;overflow:auto}
+.admin-recent-wrap:focus-visible{outline:2px solid var(--accent,#345de3);outline-offset:2px}
+@media(max-width:700px){.admin-recent-toolbar{align-items:stretch;flex-direction:column}.admin-recent-toolbar .admin-search{max-width:none;width:100%;box-sizing:border-box}.admin-recent-toolbar .admin-tools{display:grid;grid-template-columns:1fr 1fr}.admin-recent-heading{align-items:flex-start;flex-direction:column}.admin-recent-wrap{max-height:460px}}
