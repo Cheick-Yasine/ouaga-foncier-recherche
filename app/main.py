@@ -1,6 +1,8 @@
 """Point d'entrée FastAPI."""
 
 from pathlib import Path
+import asyncio
+import logging
 
 import psycopg
 from fastapi import FastAPI, HTTPException
@@ -11,7 +13,7 @@ from pydantic import BaseModel
 from app.announcement_routes import router as announcement_router
 from app.assistant_routes import router as assistant_router
 from app.auth_routes import router as auth_router
-from app.admin_database_routes import router as admin_database_router
+from app.admin_database_routes import router as admin_database_router, purge_expired_trash
 from app.config import get_settings
 from app.database import DatabaseNotConfiguredError, check_database_connection
 from app.search_routes import router as search_router
@@ -40,6 +42,30 @@ app.include_router(auth_router)
 app.include_router(admin_database_router)
 app.include_router(announcement_router)
 app.include_router(market_router)
+
+logger = logging.getLogger(__name__)
+_trash_cleanup_task: asyncio.Task | None = None
+
+
+async def _trash_cleanup_loop() -> None:
+    while True:
+        try:
+            await asyncio.to_thread(purge_expired_trash)
+        except Exception:
+            logger.exception("Échec du nettoyage automatique de la corbeille HAKIMO.")
+        await asyncio.sleep(24 * 60 * 60)
+
+
+@app.on_event("startup")
+async def start_trash_cleanup() -> None:
+    global _trash_cleanup_task
+    _trash_cleanup_task = asyncio.create_task(_trash_cleanup_loop())
+
+
+@app.on_event("shutdown")
+async def stop_trash_cleanup() -> None:
+    if _trash_cleanup_task is not None:
+        _trash_cleanup_task.cancel()
 
 
 @app.middleware("http")
