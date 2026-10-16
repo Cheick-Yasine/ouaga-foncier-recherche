@@ -202,10 +202,9 @@
     prix_fcfa:'Prix (FCFA)', superficie_m2:'Superficie (m²)',
     statut_document:'Document', resume_court:'Résumé'
   };
-  const recentExcludedKeys = new Set(['id', 'texte_nettoye', 'is_featured']);
-
   function recentKeys() {
-    return recentRows.length ? Object.keys(recentRows[0]).filter(key => !recentExcludedKeys.has(key)) : [];
+    // Certaines annonces manuelles peuvent avoir des champs différents : réunir toutes les clés.
+    return [...new Set(recentRows.flatMap(row => Object.keys(row)))];
   }
 
   function recentCell(key, value) {
