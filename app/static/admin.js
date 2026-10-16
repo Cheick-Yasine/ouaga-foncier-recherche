@@ -42,39 +42,76 @@
     return fmt(value);
   }
 
-  function renderManagementTable(rows, mode) {
-    const target = $('#admin-management-list');
+  function renderTrashTable(rows) {
+    const target = $('#admin-trash-list');
     target.replaceChildren();
-    if (!rows?.length) { const p=document.createElement('p'); p.className='subtle'; p.textContent='Aucune annonce.'; target.append(p); return; }
-    const table=document.createElement('table'); table.className='admin-table';
-    const tbody=document.createElement('tbody');
-    rows.forEach(row=>{
-      const tr=document.createElement('tr');
-      const info=document.createElement('td');
-      info.innerHTML='<strong></strong><br><span></span><br><small></small>';
-      info.querySelector('strong').textContent=(row.quartier_zone||'Zone inconnue')+' · '+(row.type_bien_normalise||'bien');
-      info.querySelector('span').textContent=(row.prix_fcfa==null?'Prix non précisé':money.format(row.prix_fcfa)+' FCFA')+' · '+(row.superficie_m2==null?'Superficie non précisée':decimal.format(row.superficie_m2)+' m²');
-      info.querySelector('small').textContent=(row.texte_nettoye||'').slice(0,240);
-      tr.append(info);
-      const actions=document.createElement('td');
-      if(mode==='trash'){
-        const b=document.createElement('button'); b.className='secondary-button'; b.textContent='Restaurer'; b.onclick=async()=>{await api('/admin/database/trash/'+encodeURIComponent(row.id),{method:'DELETE'}); loadManagement('trash');};
-        actions.append(b);
-      } else {
-        const b=document.createElement('button'); b.className='secondary-button'; b.textContent='Retirer de l’avant'; b.onclick=async()=>{await api('/admin/database/flag/'+encodeURIComponent(row.id),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({featured:false,priority:0})}); loadManagement('featured');};
-        actions.append(b);
-      }
-      tr.append(actions); tbody.append(tr);
+    if (!rows?.length) {
+      const p = document.createElement('p'); p.className = 'subtle';
+      p.textContent = 'La corbeille est vide.'; target.append(p); return;
+    }
+    const table = document.createElement('table'); table.className = 'admin-table admin-trash-table';
+    const thead = document.createElement('thead');
+    thead.innerHTML = '<tr><th>Annonce</th><th>Mise à la corbeille</th><th>Suppression définitive prévue</th><th>Actions</th></tr>';
+    const tbody = document.createElement('tbody');
+    rows.forEach(row => {
+      const tr = document.createElement('tr');
+      const info = document.createElement('td');
+      const strong = document.createElement('strong');
+      strong.textContent = (row.quartier_zone || 'Zone inconnue') + ' · ' + (row.type_bien_normalise || 'bien');
+      const details = document.createElement('div');
+      details.className = 'admin-trash-details';
+      details.textContent = (row.prix_fcfa == null ? 'Prix non précisé' : money.format(row.prix_fcfa) + ' FCFA') + ' · ' +
+        (row.superficie_m2 == null ? 'Superficie non précisée' : decimal.format(row.superficie_m2) + ' m²') +
+        (row.resume_court ? ' · ' + row.resume_court : '');
+      info.append(strong, details);
+      const deleted = document.createElement('td'); deleted.textContent = date(row.deleted_at);
+      const expires = document.createElement('td'); expires.textContent = date(row.expires_at);
+      const actions = document.createElement('td'); actions.className = 'admin-trash-actions';
+      const restore = document.createElement('button'); restore.type = 'button'; restore.className = 'admin-table-tool';
+      restore.textContent = 'Restaurer';
+      restore.addEventListener('click', async () => {
+        restore.disabled = true;
+        try { await api('/admin/database/trash/' + encodeURIComponent(row.id), {method:'DELETE'}); await loadTrash(); await loadRecent(); }
+        catch (error) { window.alert(error.message); restore.disabled = false; }
+      });
+      const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'admin-table-tool admin-danger-tool';
+      remove.textContent = 'Supprimer définitivement';
+      remove.addEventListener('click', async () => {
+        if (!window.confirm('Supprimer définitivement cette annonce ? Cette action est irréversible.')) return;
+        remove.disabled = true;
+        try { await api('/admin/database/trash/' + encodeURIComponent(row.id) + '/permanent', {method:'DELETE'}); await loadTrash(); }
+        catch (error) { window.alert(error.message); remove.disabled = false; }
+      });
+      actions.append(restore, remove); tr.append(info, deleted, expires, actions); tbody.append(tr);
     });
-    table.append(tbody); target.append(table);
+    table.append(thead, tbody); target.append(table);
   }
 
-  async function loadManagement(mode) {
-    const box=$('#admin-management'); box.hidden=false; $('#admin-add-card').hidden=true;
-    $('#admin-management-title').textContent=mode==='trash'?'Corbeille':'Annonces mises en avant';
-    $('#admin-management-subtitle').textContent=mode==='trash'?'Ces annonces sont masquées des recherches utilisateur.':'Ces annonces apparaissent en priorité dans les résultats.';
-    const data=await api('/admin/database/'+mode);
-    renderManagementTable(data.rows,mode);
+  async function loadTrash() {
+    const target = $('#admin-trash-list');
+    if (!target) return;
+    target.innerHTML = '<p class="admin-loading">Chargement de la corbeille…</p>';
+    try {
+      const data = await api('/admin/database/trash');
+      renderTrashTable(data.rows || []);
+      const count = $('#admin-trash-count');
+      if (count) count.textContent = String((data.rows || []).length);
+    } catch (error) {
+      target.replaceChildren();
+      const p = document.createElement('p'); p.className = 'admin-error'; p.textContent = error.message; target.append(p);
+    }
+  }
+
+  async function moveToTrash(announcementId) {
+    if (!window.confirm('Placer cette annonce dans la corbeille ? Elle pourra être restaurée pendant 30 jours.')) return;
+    try {
+      await api('/admin/database/flag/' + encodeURIComponent(announcementId), {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({trashed:true})
+      });
+      await loadRecent();
+      if ($('#admin-trash-panel') && !$('#admin-trash-panel').hidden) await loadTrash();
+    } catch (error) { window.alert(error.message); }
   }
 
   function renderTable(rows, target) {
@@ -156,7 +193,7 @@
   let recentRows = [];
   let recentSortKey = 'premiere_collecte';
   let recentSortDirection = -1;
-  let recentPageSize = 15;
+  let recentPageSize = 25;
   let recentPage = 0;
   let recentVisibleKeys = [];
   const recentLabels = {
@@ -165,7 +202,7 @@
     prix_fcfa:'Prix (FCFA)', superficie_m2:'Superficie (m²)',
     statut_document:'Document', resume_court:'Résumé'
   };
-  const recentExcludedKeys = new Set(['id', 'texte_nettoye']);
+  const recentExcludedKeys = new Set(['id', 'texte_nettoye', 'is_featured']);
 
   function recentKeys() {
     return recentRows.length ? Object.keys(recentRows[0]).filter(key => !recentExcludedKeys.has(key)) : [];
@@ -302,6 +339,7 @@
       });
       th.append(button); trh.append(th);
     });
+    const actionsTh = document.createElement('th'); actionsTh.textContent = 'Actions'; trh.append(actionsTh);
     thead.append(trh);
     const tbody = document.createElement('tbody');
     pageRows.forEach((row, i) => {
@@ -315,23 +353,26 @@
         if (key === 'resume_court') td.className = 'admin-text-cell';
         tr.append(td);
       });
+      const actionCell = document.createElement('td'); actionCell.className = 'admin-row-actions';
+      const trashButton = document.createElement('button'); trashButton.type = 'button'; trashButton.className = 'admin-table-tool admin-danger-tool'; trashButton.textContent = '🗑 Corbeille';
+      trashButton.addEventListener('click', () => moveToTrash(row.id)); actionCell.append(trashButton); tr.append(actionCell);
       tbody.append(tr);
     });
     table.append(thead, tbody);
     const wrap = document.createElement('div');
     wrap.className = 'admin-table-wrap admin-recent-wrap';
     wrap.setAttribute('role', 'region');
-    wrap.setAttribute('aria-label', 'Tableau des 15 dernières annonces');
+    wrap.setAttribute('aria-label', 'Tableau de toutes les annonces');
     wrap.tabIndex = 0; wrap.append(table); target.append(wrap);
     renderRecentColumnsMenu();
   }
 
   async function loadRecent() {
     const target = $('#admin-recent');
-    target.innerHTML = '<p class="admin-loading">Chargement des 15 dernières annonces…</p>';
+    target.innerHTML = '<p class="admin-loading">Chargement de toutes les annonces…</p>';
     try {
       const data = await api('/admin/database/recent');
-      recentRows = Array.isArray(data.rows) ? data.rows.slice(0, 15) : [];
+      recentRows = Array.isArray(data.rows) ? data.rows : [];
       recentVisibleKeys = recentKeys();
       recentSortKey = recentKeys().includes('premiere_collecte') ? 'premiere_collecte' : (recentKeys()[0] || '');
       recentSortDirection = -1; recentPage = 0;
@@ -375,7 +416,7 @@
   }
 
   async function load() {
-    // Le tableau d'accueil reste limité aux 15 annonces les plus récemment collectées.
+    // Le tableau présente toutes les annonces ; la pagination ne limite que l'affichage par page.
     await loadRecent();
     loaded = true;
   }
@@ -387,6 +428,7 @@
     if ($('#admin-recent-search')) $('#admin-recent-search').value = '';
     loaded = false;
     await load();
+    if ($('#admin-trash-panel') && !$('#admin-trash-panel').hidden) await loadTrash();
   }
 
   function syncAuth(user) {
@@ -402,6 +444,11 @@
   $('#admin-refresh').addEventListener('click', refresh);
   $('#admin-custom-form').addEventListener('submit', customQuestion);
   $('#admin-recent-search').addEventListener('input', () => { recentPage = 0; renderRecentTable(); });
+  $('#admin-trash-toggle').addEventListener('click', async () => {
+    const panel = $('#admin-trash-panel'); panel.hidden = !panel.hidden;
+    $('#admin-trash-toggle').setAttribute('aria-expanded', String(!panel.hidden));
+    if (!panel.hidden) await loadTrash();
+  });
   $('#admin-recent-page-size').addEventListener('change', event => { recentPageSize = Number(event.target.value) || 15; recentPage = 0; renderRecentTable(); });
   $('#admin-recent-prev').addEventListener('click', () => { recentPage = Math.max(0, recentPage - 1); renderRecentTable(); });
   $('#admin-recent-next').addEventListener('click', () => { recentPage += 1; renderRecentTable(); });
@@ -426,7 +473,7 @@
     const win = window.open('', '_blank', 'width=1000,height=700');
     if (!win) { window.alert('Autorisez les fenêtres contextuelles pour imprimer le tableau.'); return; }
     win.opener = null;
-    win.document.write('<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>15 dernières annonces HAKIMO</title><style>body{font:12px Arial,sans-serif;padding:20px}h1{font-size:18px}table{border-collapse:collapse;width:100%}th,td{border:1px solid #bbb;padding:6px;text-align:left;vertical-align:top}th{background:#eee}tr{break-inside:avoid}</style></head><body><h1>15 dernières annonces HAKIMO</h1>' + recentTableHtml() + '</body></html>');
+    win.document.write('<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Toutes les annonces HAKIMO</title><style>body{font:12px Arial,sans-serif;padding:20px}h1{font-size:18px}table{border-collapse:collapse;width:100%}th,td{border:1px solid #bbb;padding:6px;text-align:left;vertical-align:top}th{background:#eee}tr{break-inside:avoid}</style></head><body><h1>Toutes les annonces HAKIMO</h1>' + recentTableHtml() + '</body></html>');
     win.document.close(); win.focus(); win.print();
   });
 
