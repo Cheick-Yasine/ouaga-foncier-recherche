@@ -404,7 +404,7 @@
   $('#admin-recent-search').addEventListener('input', () => { recentPage = 0; renderRecentTable(); });
   $('#admin-recent-page-size').addEventListener('change', event => { recentPageSize = Number(event.target.value) || 15; recentPage = 0; renderRecentTable(); });
   $('#admin-recent-prev').addEventListener('click', () => { recentPage = Math.max(0, recentPage - 1); renderRecentTable(); });
-  $('#admin-recent-next').addEventListener('click', () { recentPage += 1; renderRecentTable(); });
+  $('#admin-recent-next').addEventListener('click', () => { recentPage += 1; renderRecentTable(); });
   $('#admin-recent-columns').addEventListener('click', () => {
     const menu = $('#admin-recent-columns-menu');
     menu.hidden = !menu.hidden;
