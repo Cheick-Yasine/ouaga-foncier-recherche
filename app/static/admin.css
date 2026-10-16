@@ -57,3 +57,19 @@
 .admin-recent-table .admin-text-cell{min-width:200px;max-width:320px;white-space:pre-wrap;line-height:1.45}
 @media(max-width:900px){.admin-recent-toolbar{align-items:flex-start}.admin-recent-toolbar .admin-search{max-width:none;flex:1 1 100%}.admin-recent-search-label{margin-top:6px}.admin-recent-export-tools{order:3}}
 @media(max-width:600px){.admin-recent-card{padding:14px}.admin-recent-pagination{align-items:flex-start;flex-direction:column}.admin-recent-toolbar{gap:8px}.admin-recent-export-tools{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));width:100%}.admin-recent-export-tools .admin-table-tool{width:100%;box-sizing:border-box}.admin-recent-toolbar .admin-search{box-sizing:border-box;width:100%}}
+
+
+/* Gestion de la base complète et corbeille réversible */
+.admin-heading-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.admin-heading-actions #admin-trash-toggle span{display:inline-flex;min-width:1.5em;justify-content:center;margin-left:4px;padding:2px 5px;border-radius:999px;background:var(--surface-soft,#f4f6f9);font-size:.78rem}
+.admin-row-actions,.admin-trash-actions{white-space:nowrap}
+.admin-danger-tool{border-color:#e6b8b8;color:#a12626}
+.admin-danger-tool:hover:not(:disabled){background:#fff1f1;border-color:#cf7777}
+.admin-trash-panel{margin-top:18px}
+.admin-trash-table{width:100%;border-collapse:collapse;font-size:.84rem}
+.admin-trash-table th,.admin-trash-table td{padding:11px 12px;border-bottom:1px solid var(--border,#e2e6ec);text-align:left;vertical-align:top}
+.admin-trash-table th{background:var(--surface-soft,#f6f8fb);white-space:nowrap}
+.admin-trash-table tr:last-child td{border-bottom:0}
+.admin-trash-details{margin-top:5px;color:var(--muted,#697386);font-size:.82rem;max-width:560px;overflow-wrap:anywhere}
+.admin-trash-actions{display:flex;gap:6px;flex-wrap:wrap}
+@media(max-width:700px){.admin-heading-actions{width:100%}.admin-trash-table{min-width:850px}.admin-trash-panel{overflow:auto}}
