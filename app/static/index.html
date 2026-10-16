@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/styles.css?v=20261001-analysis-2">
-  <link rel="stylesheet" href="/static/admin.css?v=20261014-free-question-1">
+  <link rel="stylesheet" href="/static/admin.css?v=20261016-r-table-1">
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@6.11.2/dist/maplibre-gl.css">
   <script src="/static/waiting.js?v=20260906-waiting-1" defer></script>
   <script src="https://cdn.plot.ly/plotly-4.0.0.min.js" charset="utf-8" defer></script>
@@ -18,7 +18,7 @@
   <script src="/static/discovery.js?v=20261003-mobile-average-1" defer></script>
   <script src="/static/daily-annonces-chart.js?v=20261014-3day-periods-3" defer></script>
   <script src="/static/app.js?v=20261005-admin-3" defer></script>
-  <script src="/static/admin.js?v=20261014-free-question-1" defer></script>
+  <script src="/static/admin.js?v=20261016-r-table-1" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#assistant-input">Aller à la conversation</a>
@@ -131,6 +131,21 @@
             </div>
             <button id="admin-refresh" class="secondary-button" type="button">Actualiser</button>
           </div>
+          <section class="admin-card admin-recent-card" aria-labelledby="admin-recent-title">
+            <div class="admin-card-heading admin-recent-heading">
+              <div><h2 id="admin-recent-title">Les 15 dernières annonces</h2><p class="subtle">Les annonces les plus récemment collectées dans la base. Cliquez sur un titre de colonne pour trier.</p></div>
+              <span id="admin-recent-count" class="admin-recent-count" role="status">Chargement…</span>
+            </div>
+            <div class="admin-recent-toolbar" role="toolbar" aria-label="Outils du tableau des annonces">
+              <label class="admin-recent-search-label" for="admin-recent-search">Rechercher dans le tableau</label>
+              <input id="admin-recent-search" class="admin-search" type="search" placeholder="Filtrer les 15 annonces…" autocomplete="off">
+              <div class="admin-tools">
+                <button id="admin-recent-copy" class="secondary-button" type="button">Copier CSV</button>
+                <button id="admin-recent-csv" class="secondary-button" type="button">Télécharger CSV</button>
+              </div>
+            </div>
+            <div id="admin-recent"><p class="admin-loading">Chargement des 15 dernières annonces…</p></div>
+          </section>
           <section class="admin-card admin-custom-card" aria-labelledby="admin-custom-title">
             <div class="admin-card-heading"><div><h2 id="admin-custom-title">Poser ma propre question</h2><p class="subtle">HAKIMO transforme votre question en consultation SQL strictement en lecture seule.</p></div></div>
             <form id="admin-custom-form" class="admin-custom-form">
