@@ -842,7 +842,7 @@
         mode:'lines',
         name:item.nom,
         x:points.map(point=>point.date),
-        y:points.map(point=>point.annonces),
+        y:points.map(point=>point.moyenne_mobile_3),
         customdata:points.map(point=>[
           item.nom,
           point.debut || point.date,
@@ -864,7 +864,7 @@
           : 'rgba(0,0,0,0)',
         hovertemplate:
           '<b>%{fullData.name}</b><br>%{customdata[3]}' +
-          '<br>%{y} annonce(s)<extra></extra>'
+          '<br>%{y:.2f} annonce(s) · moyenne mobile d’ordre 3<extra></extra>'
       };
     });
 
@@ -930,8 +930,7 @@
         } else {
           isolatedNeighborhood=name;
           detail.textContent=
-            name+' · '+label+' · '+fmt.format(point.y)+' annonce'+
-            (point.y>1?'s':'')+
+            name+' · '+label+' · '+fmt.format(point.y)+' annonce(s) en moyenne mobile d’ordre 3.'+
             '. La zone transparente reprend la couleur de cette courbe. '+
             'Cliquez de nouveau sur la courbe pour revenir au Top 5.';
         }
@@ -944,7 +943,7 @@
         'Période : '+longDate(trends.debut)+' → '+longDate(trends.fin)+
         ' · '+periodLabel(selectedPeriod)+
         ' · '+aggregationLabel(selectedAggregation)+
-        '. Cliquez sur une courbe pour l’isoler.';
+        ' · moyenne mobile d’ordre 3. Cliquez sur une courbe pour l’isoler.';
     }
   }
 

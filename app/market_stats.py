@@ -2,13 +2,18 @@
 from __future__ import annotations
 
 from collections import Counter
+from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 import re
 from statistics import fmean, median
 from typing import Iterable
 
 from app.listing_scope import market_scope_eligible, sale_eligible
-from app.neighborhoods import CITY_LEVEL_AREAS, neighborhood_key
+from app.neighborhoods import (
+    CITY_LEVEL_AREAS,
+    neighborhood_key,
+    suggest_canonical_neighborhood,
+)
 from app.search_engine import SearchCandidate, price_per_square_metre
 
 
@@ -254,17 +259,24 @@ def neighborhood_trends(
             candidate.neighborhood,
         ):
             continue
-        if (
-            not candidate.neighborhood
-            or candidate.neighborhood in CITY_LEVEL_AREAS
-        ):
+        if not candidate.neighborhood:
+            continue
+
+        # Normaliser le quartier avant le classement et le regroupement :
+        # casse, accents et variantes déjà présentes dans le référentiel
+        # convergent vers un seul libellé canonique.
+        canonical_neighborhood = (
+            suggest_canonical_neighborhood(candidate.neighborhood)
+            or candidate.neighborhood.strip()
+        )
+        if not canonical_neighborhood or canonical_neighborhood in CITY_LEVEL_AREAS:
             continue
 
         identity = candidate.url or candidate.identifier
         if identity in seen:
             continue
         seen.add(identity)
-        pool.append(candidate)
+        pool.append(replace(candidate, neighborhood=canonical_neighborhood))
 
     ignored_isolated = 0
     legacy_window = period is None
@@ -374,9 +386,29 @@ def neighborhood_trends(
                 else end + timedelta(days=1)
             )
 
-        by_type[kind] = {
-            "total_annonces": len(selected),
-            "quartiers": [
+        neighborhood_series = []
+        for name in names:
+            points = [
+                {
+                    "date": begin,
+                    "debut": begin,
+                    "fin": end,
+                    "annonces": counts[(begin, end, name)],
+                }
+                for begin, end in buckets
+            ]
+            # Ordre 3 : moyenne des trois derniers jours ou des trois
+            # dernières semaines selon la granularité sélectionnée.
+            for index, point in enumerate(points):
+                point["moyenne_mobile_3"] = (
+                    round(
+                        sum(points[offset]["annonces"] for offset in range(index - 2, index + 1)) / 3,
+                        2,
+                    )
+                    if index >= 2
+                    else None
+                )
+            neighborhood_series.append(
                 {
                     "nom": name,
                     "total": totals[name],
@@ -386,18 +418,13 @@ def neighborhood_trends(
                     )
                     if selected
                     else 0.0,
-                    "points": [
-                        {
-                            "date": begin,
-                            "debut": begin,
-                            "fin": end,
-                            "annonces": counts[(begin, end, name)],
-                        }
-                        for begin, end in buckets
-                    ],
+                    "points": points,
                 }
-                for name in names
-            ],
+            )
+
+        by_type[kind] = {
+            "total_annonces": len(selected),
+            "quartiers": neighborhood_series,
         }
 
     return {

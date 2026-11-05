@@ -136,6 +136,35 @@ def test_neighborhood_top_five_is_recomputed_for_selected_period() -> None:
     assert max_names[0] == "Karpala"
 
 
+
+def test_neighborhoods_are_normalized_before_grouping_and_use_order_three_average() -> None:
+    now = datetime(2026, 9, 19, 12, tzinfo=timezone.utc)
+    rows = [
+        SearchCandidate(
+            identifier=f"saaba-{days_ago}",
+            text="Parcelle en vente à Saaba",
+            neighborhood=label,
+            property_type="parcelle",
+            publication_label=(now - timedelta(days=days_ago)).isoformat(),
+        )
+        for days_ago, label in ((2, "saaba"), (1, "SAABA"), (0, "Saaba"))
+    ]
+
+    trends = neighborhood_trends(
+        rows,
+        now=now,
+        period="7d",
+        aggregation="day",
+    )
+    quartiers = trends["types"]["tous"]["quartiers"]
+
+    assert len(quartiers) == 1
+    assert quartiers[0]["nom"] == "Saaba"
+    assert quartiers[0]["total"] == 3
+    points = quartiers[0]["points"]
+    assert [point["moyenne_mobile_3"] for point in points[-3:]] == [None, None, 1.0]
+
+
 def test_neighborhood_week_aggregation_groups_selected_period() -> None:
     now = datetime(2026, 9, 19, 12, tzinfo=timezone.utc)
     rows = [
