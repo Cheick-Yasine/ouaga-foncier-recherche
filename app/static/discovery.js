@@ -930,8 +930,7 @@
         } else {
           isolatedNeighborhood=name;
           detail.textContent=
-            name+' · '+label+' · '+fmt.format(point.y)+' annonce'+
-            (point.y>1?'s':'')+
+            name+' · '+label+' · '+fmt.format(point.y)+' annonce(s) en moyenne mobile d’ordre 3.'+
             '. La zone transparente reprend la couleur de cette courbe. '+
             'Cliquez de nouveau sur la courbe pour revenir au Top 5.';
         }
@@ -944,7 +943,7 @@
         'Période : '+longDate(trends.debut)+' → '+longDate(trends.fin)+
         ' · '+periodLabel(selectedPeriod)+
         ' · '+aggregationLabel(selectedAggregation)+
-        '. Cliquez sur une courbe pour l’isoler.';
+        ' · moyenne mobile d’ordre 3. Cliquez sur une courbe pour l’isoler.';
     }
   }
 
