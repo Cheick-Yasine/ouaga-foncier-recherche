@@ -842,7 +842,7 @@
         mode:'lines',
         name:item.nom,
         x:points.map(point=>point.date),
-        y:points.map(point=>point.annonces),
+        y:points.map(point=>point.moyenne_mobile_3),
         customdata:points.map(point=>[
           item.nom,
           point.debut || point.date,
@@ -864,7 +864,7 @@
           : 'rgba(0,0,0,0)',
         hovertemplate:
           '<b>%{fullData.name}</b><br>%{customdata[3]}' +
-          '<br>%{y} annonce(s)<extra></extra>'
+          '<br>%{y:.2f} annonce(s) · moyenne mobile d’ordre 3<extra></extra>'
       };
     });
 
