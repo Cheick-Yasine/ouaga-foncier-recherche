@@ -597,8 +597,7 @@
       return;
     }
     if(!plotlyReady(container)) return;
-    const labels=[];
-    const values=[];
+    const labels=[];    const values=[];
     const medians=[];
     weeks.forEach(week=>{
       const label=shortDate(week.debut)+' – '+shortDate(week.fin);
@@ -1197,7 +1196,6 @@
     isolatedNeighborhood=null;
     syncTrendControls();
     loadNeighborhoodTrends(true);  });
-
   rankingPeriodButtons.addEventListener('click',event=>{
     const button=event.target.closest('[data-ranking-period]');
     if(!button) return;
@@ -1745,15 +1743,41 @@
   }
 
   function clearDiscoveryRadius() {
-    if(discoveryMap && discoveryMapRadius){
-      discoveryMap.removeLayer(discoveryMapRadius);
+    const map=discoveryMap?._map;
+    if(map){
+      for(const id of ['hakimo-ouaga-radius-fill','hakimo-ouaga-radius-line']){
+        if(map.getLayer(id)) map.removeLayer(id);
+      }
+      if(map.getSource('hakimo-ouaga-radius')) map.removeSource('hakimo-ouaga-radius');
     }
     discoveryMapRadius=null;
   }
 
+  function radiusRing(center,radiusMeters,steps=96) {
+    const earthRadius=6371008.8;
+    const lat1=center[0]*Math.PI/180;
+    const lon1=center[1]*Math.PI/180;
+    const angularDistance=radiusMeters/earthRadius;
+    const ring=[];
+    for(let index=0;index<steps;index++){
+      const bearing=2*Math.PI*index/steps;
+      const lat2=Math.asin(
+        Math.sin(lat1)*Math.cos(angularDistance)
+        +Math.cos(lat1)*Math.sin(angularDistance)*Math.cos(bearing)
+      );
+      const lon2=lon1+Math.atan2(
+        Math.sin(bearing)*Math.sin(angularDistance)*Math.cos(lat1),
+        Math.cos(angularDistance)-Math.sin(lat1)*Math.sin(lat2)
+      );
+      ring.push([lon2*180/Math.PI,lat2*180/Math.PI]);
+    }
+    ring.push(ring[0]);
+    return ring;
+  }
+
   function drawDiscoveryRadius(location) {
-    if(!discoveryMap || !window.L || !location) return;
-    clearDiscoveryRadius();
+    const map=discoveryMap?._map;
+    if(!map || !window.MapLibreGL || !location) return;
 
     const distance=distanceKm(
       {latitude:OUAGA_CENTER[0],longitude:OUAGA_CENTER[1]},
@@ -1761,33 +1785,57 @@
     );
     if(!Number.isFinite(distance) || distance<=0) return;
 
-    discoveryMapRadius=window.L.circle(OUAGA_CENTER,{
-      radius:distance*1000,
-      color:'#2563eb',
-      weight:2.5,
-      opacity:0.95,
-      fillColor:'#3b82f6',
-      fillOpacity:0.10,
-      interactive:false
-    }).addTo(discoveryMap);
+    const ring=radiusRing(OUAGA_CENTER,distance*1000);
+    const geojson={
+      type:'Feature',
+      properties:{radius_km:distance},
+      geometry:{type:'Polygon',coordinates:[ring]}
+    };
 
-    if(!discoveryMapCenterMarker){
-      discoveryMapCenterMarker=window.L.circleMarker(OUAGA_CENTER,{
-        radius:5,
-        color:'#ffffff',
-        weight:2,
-        fillColor:'#1d4ed8',
-        fillOpacity:1
-      }).bindTooltip('Centre de Ouagadougou',{
-        permanent:true,
-        direction:'top',
-        offset:[0,-8],
-        className:'deal-map-city-label'
+    const render=()=>{
+      if(!map.isStyleLoaded()){
+        map.once('load',render);
+        return;
+      }
+      clearDiscoveryRadius();
+      map.addSource('hakimo-ouaga-radius',{
+        type:'geojson',
+        data:{type:'FeatureCollection',features:[geojson]}
       });
-    }
-    if(!discoveryMap.hasLayer(discoveryMapCenterMarker)){
-      discoveryMapCenterMarker.addTo(discoveryMap);
-    }
+      map.addLayer({
+        id:'hakimo-ouaga-radius-fill',
+        type:'fill',
+        source:'hakimo-ouaga-radius',
+        paint:{
+          'fill-color':'#3b82f6',
+          'fill-opacity':0.10
+        }
+      });
+      map.addLayer({
+        id:'hakimo-ouaga-radius-line',
+        type:'line',
+        source:'hakimo-ouaga-radius',
+        paint:{
+          'line-color':'#2563eb',
+          'line-width':2.5,
+          'line-opacity':0.95
+        }
+      });
+      if(!discoveryMapCenterMarker){
+        const label=document.createElement('div');
+        label.className='deal-map-city-center';
+        label.textContent='Ouagadougou';
+        label.style.cssText='background:#1d4ed8;color:#fff;border:2px solid #fff;border-radius:14px;padding:3px 8px;font:600 11px/1.2 sans-serif;white-space:nowrap;box-shadow:0 1px 5px #0004;';
+        discoveryMapCenterMarker=new window.MapLibreGL.Marker({
+          element:label,
+          anchor:'bottom'
+        }).setLngLat([OUAGA_CENTER[1],OUAGA_CENTER[0]]).addTo(map);
+      }
+      discoveryMapRadius=ring;
+    };
+
+    if(map.isStyleLoaded()) render();
+    else map.once('load',render);
   }
 
   function renderNearbyNeighborhoods(selectedName) {
@@ -1797,8 +1845,7 @@
     if(!title || !count || !list) return;
 
     const selected=locationForZone(selectedName);
-    if(!selected){
-      title.textContent='Choisissez un quartier';
+    if(!selected){      title.textContent='Choisissez un quartier';
       count.textContent='';
       list.replaceChildren(element('p','deal-nearby-empty','Les quartiers proches apparaîtront ici après votre sélection.'));
       return;
