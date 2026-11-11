@@ -597,8 +597,7 @@
       return;
     }
     if(!plotlyReady(container)) return;
-    const labels=[];    const values=[];
-    const medians=[];
+    const labels=[];    const values=[];    const medians=[];
     weeks.forEach(week=>{
       const label=shortDate(week.debut)+' – '+shortDate(week.fin);
       const weekValues=(week.types?.[kind]?.prix_m2_values || [])
@@ -1197,8 +1196,7 @@
     syncTrendControls();
     loadNeighborhoodTrends(true);  });
   rankingPeriodButtons.addEventListener('click',event=>{
-    const button=event.target.closest('[data-ranking-period]');
-    if(!button) return;
+    const button=event.target.closest('[data-ranking-period]');    if(!button) return;
     selectedRankingPeriod=button.dataset.rankingPeriod;
     syncRankingControls();
     loadNeighborhoodRanking(true);
@@ -1703,13 +1701,6 @@
 
     renderDiscoveryMap();
     drawDiscoveryRadius(location);
-    if(discoveryMapRadius){
-      discoveryMap.fitBounds(discoveryMapRadius.getBounds(),{
-        padding:[36,36],
-        maxZoom:13,
-        animate:true
-      });
-    }
     discoveryMapHasFitted=true;
 
     const distance=distanceKm(
@@ -1797,8 +1788,7 @@
         map.once('load',render);
         return;
       }
-      clearDiscoveryRadius();
-      map.addSource('hakimo-ouaga-radius',{
+      clearDiscoveryRadius();      map.addSource('hakimo-ouaga-radius',{
         type:'geojson',
         data:{type:'FeatureCollection',features:[geojson]}
       });
@@ -1832,6 +1822,10 @@
         }).setLngLat([OUAGA_CENTER[1],OUAGA_CENTER[0]]).addTo(map);
       }
       discoveryMapRadius=ring;
+      discoveryMap.fitBounds(
+        ring.map(([longitude,latitude])=>[latitude,longitude]),
+        {padding:[36,36],maxZoom:13,animate:true}
+      );
     };
 
     if(map.isStyleLoaded()) render();
