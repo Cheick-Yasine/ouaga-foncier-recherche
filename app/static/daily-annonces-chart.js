@@ -128,7 +128,7 @@
         color: t.blue,
         size: 6
       },
-      hovertemplate: '%{customdata}<br><b>%{y:.1f}</b> annonce(s) en moyenne<extra></extra>',
+      hovertemplate: '%{customdata}<br><b>%{y:.0f}</b> annonce(s) en moyenne<extra></extra>',
       customdata: rows.map(row => fullDate(row.date))
     };
 
