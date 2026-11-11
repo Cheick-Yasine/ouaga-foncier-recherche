@@ -1896,10 +1896,13 @@
       const medianLine=element(
         'span',
         'deal-neighborhood-tooltip-median',
-        Number.isFinite(Number(location.prix_median_m2_fcfa))
+        location.prix_median_m2_fcfa != null && Number.isFinite(Number(location.prix_median_m2_fcfa))
           ? 'Prix médian : '+new Intl.NumberFormat('fr-FR',{maximumFractionDigits:0}).format(Number(location.prix_median_m2_fcfa))+' FCFA/m²'
           : 'Prix médian : données insuffisantes'
       );
+      tooltip.style.cssText='display:flex;flex-direction:column;gap:3px;min-width:150px;';
+      tooltip.querySelector('strong').style.cssText='font-size:13px;font-weight:700;color:#17233c;';
+      medianLine.style.cssText='font-size:12px;color:#334155;';
       tooltip.append(medianLine);
       marker.bindTooltip(tooltip,{
         direction:'top',
