@@ -1891,7 +1891,25 @@
       if(!Number.isFinite(lat)||!Number.isFinite(lon)) return;
       bounds.push([lat,lon]);
       const marker=window.L.marker([lat,lon],{icon:markerIcon(fold(location.name)===selectedKey),title:location.name,riseOnHover:true,keyboard:true});
-      marker.bindTooltip(location.name,{direction:'top',offset:[0,-10],opacity:.95});
+      const tooltip=element('div','deal-neighborhood-tooltip-content');
+      tooltip.append(element('strong','deal-neighborhood-tooltip-name',location.name));
+      const medianLine=element(
+        'span',
+        'deal-neighborhood-tooltip-median',
+        location.prix_median_m2_fcfa != null && Number.isFinite(Number(location.prix_median_m2_fcfa))
+          ? 'Prix médian : '+new Intl.NumberFormat('fr-FR',{maximumFractionDigits:0}).format(Number(location.prix_median_m2_fcfa))+' FCFA/m²'
+          : 'Prix médian : données insuffisantes'
+      );
+      tooltip.style.cssText='display:flex;flex-direction:column;gap:3px;min-width:150px;';
+      tooltip.querySelector('strong').style.cssText='font-size:13px;font-weight:700;color:#17233c;';
+      medianLine.style.cssText='font-size:12px;color:#334155;';
+      tooltip.append(medianLine);
+      marker.bindTooltip(tooltip,{
+        direction:'top',
+        offset:[0,-10],
+        opacity:.98,
+        className:'deal-neighborhood-tooltip'
+      });
       marker.bindPopup('<div class="deal-map-popup"><strong></strong><span>Quartier référencé</span></div>');
       marker.on('popupopen',()=>{const strong=marker.getPopup().getElement()?.querySelector('strong');if(strong) strong.textContent=location.name;});
       marker.on('click',()=>addZone(location.name));
