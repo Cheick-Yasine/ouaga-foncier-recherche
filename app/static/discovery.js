@@ -680,7 +680,7 @@
         gridcolor:theme.grid,
         zeroline:false,
         tickfont:{color:theme.muted,size:10},
-        tickformat:'~s'
+        tickformat:',.0f'
       },
       hoverlabel:{font:{family:'Manrope, sans-serif'}},
       uirevision:'price-violin-log-'+kind
@@ -861,7 +861,7 @@
           : 'rgba(0,0,0,0)',
         hovertemplate:
           '<b>%{fullData.name}</b><br>%{customdata[3]}' +
-          '<br>%{y:.2f} annonce(s) · moyenne mobile d’ordre 3<extra></extra>'
+          '<br>%{y:.0f} annonce(s) · moyenne mobile d’ordre 3<extra></extra>'
       };
     });
 
@@ -991,7 +991,7 @@
       textposition:'auto',
       hovertemplate:
         '<b>%{y}</b><br>%{x} annonces' +
-        '<br>%{customdata[0]:.1f}% de la période choisie<extra></extra>'
+        '<br>%{customdata[0]:.0f}% de la période choisie<extra></extra>'
     };
 
     const layout={
@@ -1036,7 +1036,7 @@
         const share=Number(point.customdata?.[0] || 0);
         detail.textContent=
           point.y+' · '+fmt.format(point.x)+' annonces · '+
-          share.toLocaleString('fr-FR',{maximumFractionDigits:1})+
+          share.toLocaleString('fr-FR',{maximumFractionDigits:0})+
           '% des annonces de la période choisie.';
       });
     });
