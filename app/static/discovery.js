@@ -597,7 +597,6 @@
       return;
     }
     if(!plotlyReady(container)) return;
-
     const labels=[];
     const values=[];
     const medians=[];
@@ -1197,8 +1196,7 @@
     }
     isolatedNeighborhood=null;
     syncTrendControls();
-    loadNeighborhoodTrends(true);
-  });
+    loadNeighborhoodTrends(true);  });
 
   rankingPeriodButtons.addEventListener('click',event=>{
     const button=event.target.closest('[data-ranking-period]');
@@ -1670,6 +1668,8 @@
   let discoveryMap=null;
   let discoveryLocations=null;
   let discoveryMapMarkers=null;
+  let discoveryMapRadius=null;
+  let discoveryMapCenterMarker=null;
   let discoveryMapLoading=null;
   let discoveryMapHasFitted=false;
   const OUAGA_CENTER=[12.3714,-1.5197];
@@ -1703,14 +1703,25 @@
       return;
     }
 
-    discoveryMap.setView([location.latitude,location.longitude],options.zoom ?? 15,{animate:true});
-    discoveryMapHasFitted=true;
     renderDiscoveryMap();
+    drawDiscoveryRadius(location);
+    if(discoveryMapRadius){
+      discoveryMap.fitBounds(discoveryMapRadius.getBounds(),{
+        padding:[36,36],
+        maxZoom:13,
+        animate:true
+      });
+    }
+    discoveryMapHasFitted=true;
 
+    const distance=distanceKm(
+      {latitude:OUAGA_CENTER[0],longitude:OUAGA_CENTER[1]},
+      location
+    );
     const title=$('#deal-map-title');
     if(title) title.textContent=location.name;
     renderNearbyNeighborhoods(location.name);
-    mapStatus('Quartier sélectionné · choisissez un quartier autour pour recentrer la carte.');
+    mapStatus('Rayon depuis le centre de Ouagadougou : '+formatDistance(distance)+'. Le cercle passe par '+location.name+'.');
   }
 
   function distanceKm(a,b) {
@@ -1731,6 +1742,52 @@
     if(!Number.isFinite(value)) return '';
     if(value < 1) return Math.round(value*1000)+' m';
     return value.toFixed(value < 10 ? 1 : 0).replace('.',',')+' km';
+  }
+
+  function clearDiscoveryRadius() {
+    if(discoveryMap && discoveryMapRadius){
+      discoveryMap.removeLayer(discoveryMapRadius);
+    }
+    discoveryMapRadius=null;
+  }
+
+  function drawDiscoveryRadius(location) {
+    if(!discoveryMap || !window.L || !location) return;
+    clearDiscoveryRadius();
+
+    const distance=distanceKm(
+      {latitude:OUAGA_CENTER[0],longitude:OUAGA_CENTER[1]},
+      location
+    );
+    if(!Number.isFinite(distance) || distance<=0) return;
+
+    discoveryMapRadius=window.L.circle(OUAGA_CENTER,{
+      radius:distance*1000,
+      color:'#2563eb',
+      weight:2.5,
+      opacity:0.95,
+      fillColor:'#3b82f6',
+      fillOpacity:0.10,
+      interactive:false
+    }).addTo(discoveryMap);
+
+    if(!discoveryMapCenterMarker){
+      discoveryMapCenterMarker=window.L.circleMarker(OUAGA_CENTER,{
+        radius:5,
+        color:'#ffffff',
+        weight:2,
+        fillColor:'#1d4ed8',
+        fillOpacity:1
+      }).bindTooltip('Centre de Ouagadougou',{
+        permanent:true,
+        direction:'top',
+        offset:[0,-8],
+        className:'deal-map-city-label'
+      });
+    }
+    if(!discoveryMap.hasLayer(discoveryMapCenterMarker)){
+      discoveryMapCenterMarker.addTo(discoveryMap);
+    }
   }
 
   function renderNearbyNeighborhoods(selectedName) {
@@ -1797,8 +1854,7 @@
       marker.bindPopup('<div class="deal-map-popup"><strong></strong><span>Quartier référencé</span></div>');
       marker.on('popupopen',()=>{const strong=marker.getPopup().getElement()?.querySelector('strong');if(strong) strong.textContent=location.name;});
       marker.on('click',()=>addZone(location.name));
-      discoveryMapMarkers.addLayer(marker);
-    });
+      discoveryMapMarkers.addLayer(marker);    });
     if(bounds.length&&!discoveryMapHasFitted&&!selectedZones.length){discoveryMap.fitBounds(bounds,{padding:[28,28],maxZoom:12});discoveryMapHasFitted=true;}
     renderNearbyNeighborhoods(selectedZones.at(-1));
   }
@@ -1888,6 +1944,7 @@
           setTimeout(()=>discoveryMap?.invalidateSize(true),120);
         });
         $('#deal-map-reset')?.addEventListener('click',()=>{
+          clearDiscoveryRadius();
           discoveryMap.setView(OUAGA_CENTER,OUAGA_ZOOM,{animate:true});
           discoveryMapHasFitted=true;
           renderDiscoveryMap();
@@ -1916,6 +1973,7 @@
     const selected=selectedZones.at(-1);
     if(selected) void selectMapZone(selected,{zoom:15});
     else {
+      clearDiscoveryRadius();
       discoveryMap.setView(OUAGA_CENTER,OUAGA_ZOOM,{animate:true});
       discoveryMapHasFitted=true;
       renderDiscoveryMap();
