@@ -1904,12 +1904,18 @@
       if(!Number.isFinite(lat)||!Number.isFinite(lon)) return;
       bounds.push([lat,lon]);
       const marker=window.L.marker([lat,lon],{icon:markerIcon(fold(location.name)===selectedKey),title:location.name,riseOnHover:true,keyboard:true});
-      // Au clic, afficher uniquement le nom du quartier.
-      marker.bindPopup(location.name,{
-        closeButton:true,
-        autoPan:true
+      // Afficher le nom du quartier comme avant, sans calcul de prix.
+      marker.bindTooltip(location.name,{
+        direction:'top',
+        offset:[0,-10],
+        opacity:.95
       });
-      marker.on('click',()=>addZone(location.name,{keepPopup:true}));
+      marker.bindPopup('<div class="deal-map-popup"><strong></strong><span>Quartier référencé</span></div>');
+      marker.on('popupopen',()=>{
+        const strong=marker.getPopup().getElement()?.querySelector('strong');
+        if(strong) strong.textContent=location.name;
+      });
+      marker.on('click',()=>addZone(location.name));
       discoveryMapMarkers.addLayer(marker);    });
     if(bounds.length&&!discoveryMapHasFitted&&!selectedZones.length){discoveryMap.fitBounds(bounds,{padding:[28,28],maxZoom:12});discoveryMapHasFitted=true;}
     renderNearbyNeighborhoods(selectedZones.at(-1));
@@ -2038,15 +2044,16 @@
     }
   }
 
-  function addZone(name, options={}) {
-    if(!name || selectedZones.includes(name)) return;
+  function addZone(name) {
+    if(!name || selectedZones.includes(name)) {
+      if(name) void selectMapZone(name);
+      return;
+    }
     selectedZones.push(name);
     zoneSearch.value='';
     renderZoneChips();
     renderZoneMenu();
-    // Depuis un point de la carte, ne pas reconstruire les marqueurs :
-    // cela fermerait immédiatement la fenêtre qui affiche le quartier.
-    if(!options.keepPopup) refreshDiscoveryMapSelection();
+    refreshDiscoveryMapSelection();
   }
 
   function matchingNeighborhoods() {
