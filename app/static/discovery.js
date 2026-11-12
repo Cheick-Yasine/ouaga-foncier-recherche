@@ -1904,36 +1904,12 @@
       if(!Number.isFinite(lat)||!Number.isFinite(lon)) return;
       bounds.push([lat,lon]);
       const marker=window.L.marker([lat,lon],{icon:markerIcon(fold(location.name)===selectedKey),title:location.name,riseOnHover:true,keyboard:true});
-      const tooltip=element('div','deal-neighborhood-tooltip-content');
-      tooltip.append(element('strong','deal-neighborhood-tooltip-name',location.name));
-      const medianLine=element(
-        'span',
-        'deal-neighborhood-tooltip-median',
-        location.prix_median_m2_fcfa != null && Number.isFinite(Number(location.prix_median_m2_fcfa))
-          ? 'Prix médian : '+new Intl.NumberFormat('fr-FR',{maximumFractionDigits:0}).format(Number(location.prix_median_m2_fcfa))+' FCFA/m²'
-          : 'Prix médian : données insuffisantes'
-      );
-      tooltip.style.cssText='display:flex;flex-direction:column;gap:3px;min-width:150px;';
-      tooltip.querySelector('strong').style.cssText='font-size:13px;font-weight:700;color:#17233c;';
-      medianLine.style.cssText='font-size:12px;color:#334155;';
-      tooltip.append(medianLine);
-      // Leaflet attend un contenu DOM. On ouvre une infobulle vide puis
-      // on y insère explicitement le bloc construit avec textContent.
-      marker.bindTooltip('',{
-        direction:'top',
-        offset:[0,-10],
-        opacity:.98,
-        className:'deal-neighborhood-tooltip'
+      // Au clic, afficher uniquement le nom du quartier.
+      marker.bindPopup(location.name,{
+        closeButton:true,
+        autoPan:true
       });
-      marker.on('tooltipopen',()=>{
-        const tooltipNode=marker.getTooltip()?.getElement();
-        if(tooltipNode){
-          tooltipNode.replaceChildren(tooltip.cloneNode(true));
-        }
-      });
-      marker.bindPopup('<div class="deal-map-popup"><strong></strong><span>Quartier référencé</span></div>');
-      marker.on('popupopen',()=>{const strong=marker.getPopup().getElement()?.querySelector('strong');if(strong) strong.textContent=location.name;});
-      marker.on('click',()=>addZone(location.name));
+      marker.on('click',()=>addZone(location.name,{keepPopup:true}));
       discoveryMapMarkers.addLayer(marker);    });
     if(bounds.length&&!discoveryMapHasFitted&&!selectedZones.length){discoveryMap.fitBounds(bounds,{padding:[28,28],maxZoom:12});discoveryMapHasFitted=true;}
     renderNearbyNeighborhoods(selectedZones.at(-1));
@@ -2062,16 +2038,15 @@
     }
   }
 
-  function addZone(name) {
-    if(!name || selectedZones.includes(name)) {
-      if(name) void selectMapZone(name);
-      return;
-    }
+  function addZone(name, options={}) {
+    if(!name || selectedZones.includes(name)) return;
     selectedZones.push(name);
     zoneSearch.value='';
     renderZoneChips();
     renderZoneMenu();
-    refreshDiscoveryMapSelection();
+    // Depuis un point de la carte, ne pas reconstruire les marqueurs :
+    // cela fermerait immédiatement la fenêtre qui affiche le quartier.
+    if(!options.keepPopup) refreshDiscoveryMapSelection();
   }
 
   function matchingNeighborhoods() {
