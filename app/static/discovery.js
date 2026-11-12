@@ -1665,6 +1665,9 @@
   let discoveryLocations=null;
   let discoveryMapMarkers=null;
   let discoveryMapRadius=null;
+  let discoveryRadiusEnabled=true;
+  let discoveryMeasurePoints=[];
+  let discoveryMeasurePopup=null;
   let discoveryMapCenterMarker=null;
   let discoveryMapLoading=null;
   let discoveryMapHasFitted=false;
@@ -1700,7 +1703,8 @@
     }
 
     renderDiscoveryMap();
-    drawDiscoveryRadius(location);
+    if(discoveryRadiusEnabled) drawDiscoveryRadius(location);
+    else clearDiscoveryRadius();
     discoveryMapHasFitted=true;
 
     const distance=distanceKm(
@@ -1710,7 +1714,7 @@
     const title=$('#deal-map-title');
     if(title) title.textContent=location.name;
     renderNearbyNeighborhoods(location.name);
-    mapStatus('Rayon depuis le centre de Ouagadougou : '+formatDistance(distance)+'. Le cercle passe par '+location.name+'.');
+    if(discoveryRadiusEnabled) mapStatus('Rayon depuis le centre de Ouagadougou : '+formatDistance(distance)+'. Le cercle passe par '+location.name+'.');
   }
 
   function distanceKm(a,b) {
@@ -1731,6 +1735,105 @@
     if(!Number.isFinite(value)) return '';
     if(value < 1) return Math.round(value*1000)+' m';
     return value.toFixed(value < 10 ? 1 : 0).replace('.',',')+' km';
+  }
+
+  function clearDiscoveryMeasurement() {
+    const map=discoveryMap?._map;
+    if(map){
+      if(map.getLayer('hakimo-neighborhood-measure-line')) map.removeLayer('hakimo-neighborhood-measure-line');
+      if(map.getSource('hakimo-neighborhood-measure')) map.removeSource('hakimo-neighborhood-measure');
+    }
+    discoveryMeasurePopup?.remove();
+    discoveryMeasurePopup=null;
+    discoveryMeasurePoints=[];
+  }
+
+  function drawDiscoveryMeasurement(a,b) {
+    const map=discoveryMap?._map;
+    if(!map || !window.MapLibreGL) return;
+    const render=()=>{
+      if(!map.isStyleLoaded()){map.once('load',render);return;}
+      clearDiscoveryMeasurement();
+      const coordinates=[
+        [Number(a.longitude),Number(a.latitude)],
+        [Number(b.longitude),Number(b.latitude)]
+      ];
+      map.addSource('hakimo-neighborhood-measure',{
+        type:'geojson',
+        data:{type:'Feature',properties:{},geometry:{type:'LineString',coordinates}}
+      });
+      map.addLayer({
+        id:'hakimo-neighborhood-measure-line',
+        type:'line',
+        source:'hakimo-neighborhood-measure',
+        paint:{'line-color':'#e11d48','line-width':3,'line-dasharray':[2,1]}
+      });
+      const distance=distanceKm(a,b);
+      const midpoint=[
+        (coordinates[0][0]+coordinates[1][0])/2,
+        (coordinates[0][1]+coordinates[1][1])/2
+      ];
+      const label=document.createElement('div');
+      label.textContent=formatDistance(distance);
+      label.style.cssText='background:#be123c;color:#fff;border:2px solid #fff;border-radius:14px;padding:5px 9px;font:700 12px/1.2 sans-serif;white-space:nowrap;box-shadow:0 1px 5px #0004;';
+      discoveryMeasurePopup=new window.MapLibreGL.Marker({element:label,anchor:'center'})
+        .setLngLat(midpoint).addTo(map);
+      const bounds=coordinates.map(([longitude,latitude])=>[latitude,longitude]);
+      discoveryMap.fitBounds(bounds,{padding:[55,55],maxZoom:14,animate:true});
+      mapStatus(a.name+' ↔ '+b.name+' : '+formatDistance(distance)+' à vol d’oiseau.');
+      const title=$('#deal-map-title');
+      if(title) title.textContent='Distance entre deux quartiers';
+    };
+    if(map.isStyleLoaded()) render(); else map.once('load',render);
+  }
+
+  function handleDiscoveryMapPointClick(location) {
+    if(discoveryRadiusEnabled){
+      clearDiscoveryMeasurement();
+      void selectMapZone(location.name);
+      return;
+    }
+    clearDiscoveryRadius();
+    if(!discoveryMeasurePoints.length){
+      clearDiscoveryMeasurement();
+      discoveryMeasurePoints=[location];
+      mapStatus('Premier point : '+location.name+'. Cliquez sur un deuxième quartier pour mesurer la distance.');
+      const title=$('#deal-map-title');
+      if(title) title.textContent='Choisissez le deuxième quartier';
+      return;
+    }
+    if(discoveryMeasurePoints.length===1){
+      const first=discoveryMeasurePoints[0];
+      if(fold(first.name)===fold(location.name)){
+        mapStatus('Choisissez un quartier différent pour le deuxième point.');
+        return;
+      }
+      discoveryMeasurePoints.push(location);
+      drawDiscoveryMeasurement(first,location);
+      return;
+    }
+    clearDiscoveryMeasurement();
+    discoveryMeasurePoints=[location];
+    mapStatus('Premier point : '+location.name+'. Cliquez sur un deuxième quartier pour mesurer la distance.');
+  }
+
+  function syncDiscoveryMapMode() {
+    const toggle=$('#deal-map-radius-toggle');
+    discoveryRadiusEnabled=toggle ? toggle.checked : true;
+    clearDiscoveryMeasurement();
+    if(discoveryRadiusEnabled){
+      const selected=selectedZones.at(-1);
+      if(selected) void selectMapZone(selected);
+      else {
+        clearDiscoveryRadius();
+        mapStatus('Cercle activé : sélectionnez un quartier pour mesurer sa distance depuis Ouagadougou.');
+      }
+    } else {
+      clearDiscoveryRadius();
+      const title=$('#deal-map-title');
+      if(title) title.textContent='Mesurer entre deux quartiers';
+      mapStatus('Cercle désactivé : cliquez sur un premier quartier, puis sur un deuxième.');
+    }
   }
 
   function clearDiscoveryRadius() {
@@ -1915,7 +2018,10 @@
         const strong=marker.getPopup().getElement()?.querySelector('strong');
         if(strong) strong.textContent=location.name;
       });
-      marker.on('click',()=>addZone(location.name));
+      marker.on('click',()=>{
+        addZone(location.name,{keepMap:true});
+        handleDiscoveryMapPointClick(location);
+      });
       discoveryMapMarkers.addLayer(marker);    });
     if(bounds.length&&!discoveryMapHasFitted&&!selectedZones.length){discoveryMap.fitBounds(bounds,{padding:[28,28],maxZoom:12});discoveryMapHasFitted=true;}
     renderNearbyNeighborhoods(selectedZones.at(-1));
@@ -2005,8 +2111,10 @@
           button.setAttribute('aria-label',expanded?'Réduire la carte':'Agrandir la carte');
           setTimeout(()=>discoveryMap?.invalidateSize(true),120);
         });
+        $('#deal-map-radius-toggle')?.addEventListener('change',syncDiscoveryMapMode);
         $('#deal-map-reset')?.addEventListener('click',()=>{
           clearDiscoveryRadius();
+          clearDiscoveryMeasurement();
           fitGrandOuagaView();
           renderDiscoveryMap();
           const title=$('#deal-map-title');
@@ -2020,9 +2128,10 @@
       mapStatus('Chargement des repères de quartiers…');
       await loadDiscoveryLocations();
 
+      syncDiscoveryMapMode();
       const selected=selectedZones.at(-1);
-      if(selected) void selectMapZone(selected);
-      else mapStatus('Sélectionnez un quartier pour zoomer dessus.');
+      if(selected && discoveryRadiusEnabled) void selectMapZone(selected);
+      else if(discoveryRadiusEnabled) mapStatus('Cercle activé : sélectionnez un quartier pour mesurer sa distance depuis Ouagadougou.');
     } catch(error) {
       console.error('Erreur carte Dénicher :',error);
       mapStatus('Impossible d’afficher la carte pour le moment.');
@@ -2044,16 +2153,13 @@
     }
   }
 
-  function addZone(name) {
-    if(!name || selectedZones.includes(name)) {
-      if(name) void selectMapZone(name);
-      return;
-    }
+  function addZone(name, options={}) {
+    if(!name || selectedZones.includes(name)) return;
     selectedZones.push(name);
     zoneSearch.value='';
     renderZoneChips();
     renderZoneMenu();
-    refreshDiscoveryMapSelection();
+    if(!options.keepMap) refreshDiscoveryMapSelection();
   }
 
   function matchingNeighborhoods() {
