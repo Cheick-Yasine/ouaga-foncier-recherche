@@ -1917,11 +1917,19 @@
       tooltip.querySelector('strong').style.cssText='font-size:13px;font-weight:700;color:#17233c;';
       medianLine.style.cssText='font-size:12px;color:#334155;';
       tooltip.append(medianLine);
-      marker.bindTooltip(tooltip.innerHTML,{
+      // Leaflet attend un contenu DOM. On ouvre une infobulle vide puis
+      // on y insère explicitement le bloc construit avec textContent.
+      marker.bindTooltip('',{
         direction:'top',
         offset:[0,-10],
         opacity:.98,
         className:'deal-neighborhood-tooltip'
+      });
+      marker.on('tooltipopen',()=>{
+        const tooltipNode=marker.getTooltip()?.getElement();
+        if(tooltipNode){
+          tooltipNode.replaceChildren(tooltip.cloneNode(true));
+        }
       });
       marker.bindPopup('<div class="deal-map-popup"><strong></strong><span>Quartier référencé</span></div>');
       marker.on('popupopen',()=>{const strong=marker.getPopup().getElement()?.querySelector('strong');if(strong) strong.textContent=location.name;});
