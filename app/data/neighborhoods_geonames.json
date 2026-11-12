@@ -19,9 +19,9 @@
     {"name":"Cité An II","source_name":"Cité An II","aliases":[],"latitude":12.34488,"longitude":-1.52421,"source_id":11900621,"feature_code":"PPLX"},
     {"name":"Cité An IV B","source_name":"Cité An IV B","aliases":[],"latitude":12.39009,"longitude":-1.56922,"source_id":11900411,"feature_code":"PPLX"},
     {"name":"Cité Azimo","source_name":"Cité Azimo","aliases":[],"latitude":12.40413,"longitude":-1.55898,"source_id":11900412,"feature_code":"PPLX"},
-    {"name":"Cité de l’Avenir","source_name":"Cité de l’Avenir","aliases":[],"latitude":12.39398,"longitude":-1.45727,"source_id":11900413,"feature_code":"PPLX"},
-    {"name":"Cité de la Caisse","source_name":"Cité de la Caisse","aliases":[],"latitude":12.31054,"longitude":-1.51716,"source_id":11900623,"feature_code":"PPLX"},
     {"name":"Cité Socogib","source_name":"SOCOGIB","aliases":["SOCOGIB"],"latitude":12.38382,"longitude":-1.4844,"source_id":11900525,"feature_code":"PPLX"},
+    {"name":"Cité de la Caisse","source_name":"Cité de la Caisse","aliases":[],"latitude":12.31054,"longitude":-1.51716,"source_id":11900623,"feature_code":"PPLX"},
+    {"name":"Cité de l’Avenir","source_name":"Cité de l’Avenir","aliases":[],"latitude":12.39398,"longitude":-1.45727,"source_id":11900413,"feature_code":"PPLX"},
     {"name":"Dapoya","source_name":"Dapoya","aliases":[],"latitude":12.38145,"longitude":-1.52389,"source_id":11900518,"feature_code":"PPLX"},
     {"name":"Dassasgho","source_name":"Dassasgo","aliases":["Dassasgo"],"latitude":12.38719,"longitude":-1.46896,"source_id":2361523,"feature_code":"PPLX"},
     {"name":"Gampela","source_name":"Gampéla","aliases":["Gampéla"],"latitude":12.4307,"longitude":-1.37318,"source_id":2360640,"feature_code":"PPL"},
@@ -68,7 +68,6 @@
     {"name":"Tabtenga","source_name":"Taptenga","aliases":["Taptenga"],"latitude":12.37245,"longitude":-1.4518,"source_id":2355176,"feature_code":"PPL"},
     {"name":"Tampouy","source_name":"Tampouy","aliases":[],"latitude":12.39995,"longitude":-1.57086,"source_id":2355060,"feature_code":"PPLX"},
     {"name":"Tanghin","source_name":"Tanghin","aliases":[],"latitude":12.39896,"longitude":-1.53289,"source_id":2354986,"feature_code":"PPLX"},
-    {"name":"Tanghin-Dassouri","source_name":"Tanghin-Dassouri","aliases":["Tangin Dassouri","Tangin-Dassouri","Tanguin Dassouri","Dassouri"],"latitude":12.27503,"longitude":-1.71766,"source_id":2354971,"feature_code":"PPLA3"},
     {"name":"Tengandogo","source_name":"Tingandogo","aliases":["Tingandogo"],"latitude":12.2579,"longitude":-1.53396,"source_id":2354686,"feature_code":"PPL"},
     {"name":"Toukin","source_name":"Toukin","aliases":[],"latitude":12.39678,"longitude":-1.50234,"source_id":2354147,"feature_code":"PPLX"},
     {"name":"Wayalghin","source_name":"Wayalguin","aliases":["Wayalguin"],"latitude":12.3996,"longitude":-1.47502,"source_id":2356995,"feature_code":"PPLX"},
@@ -77,6 +76,7 @@
     {"name":"Zagtouli","source_name":"Zagtouli","aliases":[],"latitude":12.32924,"longitude":-1.62566,"source_id":2353430,"feature_code":"PPL"},
     {"name":"Zogona","source_name":"Zogona","aliases":[],"latitude":12.37829,"longitude":-1.49058,"source_id":9570053,"feature_code":"PPL"},
     {"name":"Zone pilote de Cissin","source_name":"Zone pilote de Cissin","aliases":[],"latitude":12.33359,"longitude":-1.52965,"source_id":2570275,"feature_code":"PPLX"},
-    {"name":"Zongo","source_name":"Zongo","aliases":[],"latitude":12.34595,"longitude":-1.59856,"source_id":2353215,"feature_code":"PPL"}
+    {"name":"Zongo","source_name":"Zongo","aliases":[],"latitude":12.34595,"longitude":-1.59856,"source_id":2353215,"feature_code":"PPL"},
+    {"name":"Tanghin-Dassouri","source_name":"Tanghin-Dassouri","aliases":["Tangin Dassouri","Tangin-Dassouri","Tanguin Dassouri","Dassouri"],"latitude":12.27503,"longitude":-1.71766,"source_id":2354971,"feature_code":"PPLA3"}
   ]
 }
