@@ -1917,7 +1917,7 @@
       tooltip.querySelector('strong').style.cssText='font-size:13px;font-weight:700;color:#17233c;';
       medianLine.style.cssText='font-size:12px;color:#334155;';
       tooltip.append(medianLine);
-      marker.bindTooltip(tooltip,{
+      marker.bindTooltip(tooltip.innerHTML,{
         direction:'top',
         offset:[0,-10],
         opacity:.98,
