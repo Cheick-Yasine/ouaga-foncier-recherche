@@ -1693,7 +1693,7 @@
     const location=ensureLocationForZone(name);
     if(!location) {
       const title=$('#deal-map-title');
-      if(title) title.textContent=name || 'Carte de Ouagadougou';
+      if(title) title.textContent=name || 'Carte du Grand Ouaga';
       mapStatus('Ce quartier est dans votre liste, mais sa position cartographique n’est pas encore référencée.');
       renderNearbyNeighborhoods(null);
       return;
@@ -1881,6 +1881,19 @@
     return window.L.divIcon({className:'deal-map-marker-wrap',html:'<span class="deal-map-marker-dot'+(selected?' selected':'')+'"></span>',iconSize:[24,24],iconAnchor:[12,12],popupAnchor:[0,-12]});
   }
 
+  function fitGrandOuagaView() {
+    if(!discoveryMap) return;
+    const bounds=(discoveryLocations || [])
+      .map(location=>[Number(location.latitude),Number(location.longitude)])
+      .filter(([latitude,longitude])=>Number.isFinite(latitude)&&Number.isFinite(longitude));
+    if(bounds.length){
+      discoveryMap.fitBounds(bounds,{padding:[28,28],maxZoom:11,animate:true});
+    } else {
+      discoveryMap.setView(OUAGA_CENTER,OUAGA_ZOOM,{animate:true});
+    }
+    discoveryMapHasFitted=true;
+  }
+
   function renderDiscoveryMap() {
     if(!discoveryMap || !window.L || !Array.isArray(discoveryLocations)) return;
     if(!discoveryMapMarkers) discoveryMapMarkers=window.L.layerGroup().addTo(discoveryMap);
@@ -2004,11 +2017,10 @@
         });
         $('#deal-map-reset')?.addEventListener('click',()=>{
           clearDiscoveryRadius();
-          discoveryMap.setView(OUAGA_CENTER,OUAGA_ZOOM,{animate:true});
-          discoveryMapHasFitted=true;
+          fitGrandOuagaView();
           renderDiscoveryMap();
           const title=$('#deal-map-title');
-          if(title) title.textContent='Carte de Ouagadougou';
+          if(title) title.textContent='Carte du Grand Ouaga';
           renderNearbyNeighborhoods(null);
           mapStatus('Sélectionnez un quartier pour afficher les quartiers autour.');
         });
@@ -2033,12 +2045,11 @@
     if(selected) void selectMapZone(selected,{zoom:15});
     else {
       clearDiscoveryRadius();
-      discoveryMap.setView(OUAGA_CENTER,OUAGA_ZOOM,{animate:true});
-      discoveryMapHasFitted=true;
+      fitGrandOuagaView();
       renderDiscoveryMap();
       renderNearbyNeighborhoods(null);
       const title=$('#deal-map-title');
-      if(title) title.textContent='Carte de Ouagadougou';
+      if(title) title.textContent='Carte du Grand Ouaga';
       mapStatus('Sélectionnez un quartier pour zoomer dessus.');
     }
   }

@@ -32,11 +32,17 @@ CANONICAL_NEIGHBORHOODS = (
     "Bogodogo", "Boulmiougou", "Tanghin-Dassouri",
     "Pabré", "Koubri", "Komsilga", "Ouagadougou", "Karpala", "Lougsi",
     "Oscar Yaar", "Rotonde", "Université de Ouagadougou", "Zone Ministères et Ambassades", "Boince Yaar", "Petit Paris", "Marché du 10", "Cité An III", "Sankariaré", "Naab Pougo", "Yaoghin", "Sogpelcé", "Sabin barrage", "Zone industrielle Kossodo", "Toudoubwéogo", "Sogdin", "ENAREF Cogeb", "1200 Logements", "Ouaga Inter", "SIAO", "Toeyibin", "Pagalayiri", "Bongnaam", "Song-Naaba", "Kankamsin", "Nabitenga", "Gantin", "Silmiyiri", "Marcoussis", "Ouapassi", "Zoodnoma", "Watinonma", "Kossoghin", "Bangpooré", "Wobriguéré", "Babouang Rouanga", "Toeghin", "Sakoula", "Godin", "Goundrin", "Quatorze-Yaar", "Djikof", "Tabtenga", "Zone une", "Katr-yaar", "Rayongo", "Ouidtenga", "Dayongo", "Lanoayiri", "Trame d’Accueil", "Kossyam",
-    "Garghin", "Barogo", "Silmissin",
+    "Garghin", "Barogo", "Silmissin", "Komki-Ipala", "Garpella", "Komkaga",
+    "Badnogo 2", "Nio", "Gogo", "Koala", "Boudtenga-Peulh", "Tansobtinga",
+    "Tanlargo", "Séloghin", "Tampéla", "Bouryiri", "Plesgo", "Nioko-Warben",
 )
 
-PERIPHERAL_COMMUNES = frozenset({"Loumbila", "Saaba", "Pabré", "Koubri", "Komsilga", "Tanghin-Dassouri"})
-PERIPHERAL_LOCALITIES = frozenset({"Garghin", "Barogo", "Silmissin"})
+PERIPHERAL_COMMUNES = frozenset({"Loumbila", "Saaba", "Pabré", "Koubri", "Komsilga", "Tanghin-Dassouri", "Komki-Ipala"})
+PERIPHERAL_LOCALITIES = frozenset({
+    "Garghin", "Barogo", "Silmissin", "Gampela", "Garpella", "Komkaga",
+    "Badnogo 2", "Nio", "Gogo", "Koala", "Boudtenga-Peulh", "Tansobtinga",
+    "Tanlargo", "Séloghin", "Tampéla", "Bouryiri", "Plesgo", "Nioko-Warben",
+})
 ADMINISTRATIVE_AREAS = frozenset({"Baskuy", "Nongr-Massom", "Bogodogo", "Boulmiougou"})
 BROAD_AREAS = frozenset({"Centre Ville", "Zone Industrielle", "Zone Commerciale"})
 CITY_LEVEL_AREAS = frozenset({"Ouagadougou"})
@@ -48,7 +54,7 @@ OUT_OF_SCOPE_LOCALITIES = (
     "Bobo-Dioulasso", "Koudougou", "Sapouy", "Tenkodogo", "Ouahigouya",
     "Fada N'Gourma", "Koupéla", "Manga", "Réo", "Kindi", "Kokologho",
     "Saponé", "Ziniaré", "Dédougou", "Banfora", "Kaya", "Dori",
-    "Yako", "Kuinima", "Bindougousso",
+    "Yako", "Kuinima", "Bindougousso", "Dapelgo", "Dapélogo",
 )
 
 _NON_ALPHANUMERIC = re.compile(r"[^a-z0-9]+")

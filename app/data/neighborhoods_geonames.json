@@ -76,6 +76,7 @@
     {"name": "Zagtouli", "source_name": "Zagtouli", "aliases": [], "latitude": 12.32924, "longitude": -1.62566, "source_id": 2353430, "feature_code": "PPL"},
     {"name": "Zogona", "source_name": "Zogona", "aliases": [], "latitude": 12.37829, "longitude": -1.49058, "source_id": 9570053, "feature_code": "PPL"},
     {"name": "Zone pilote de Cissin", "source_name": "Zone pilote de Cissin", "aliases": [], "latitude": 12.33359, "longitude": -1.52965, "source_id": 2570275, "feature_code": "PPLX"},
-    {"name": "Zongo", "source_name": "Zongo", "aliases": [], "latitude": 12.34595, "longitude": -1.59856, "source_id": 2353215, "feature_code": "PPL"}
+    {"name": "Zongo", "source_name": "Zongo", "aliases": [], "latitude": 12.34595, "longitude": -1.59856, "source_id": 2353215, "feature_code": "PPL"},
+    {"name": "Tanghin-Dassouri", "source_name": "Tanghin-Dassouri", "aliases": ["Tangin Dassouri", "Tangin-Dassouri", "Tanguin Dassouri", "Dassouri"], "latitude": 12.27503, "longitude": -1.71766, "source_id": 2354971, "feature_code": "PPLA3"}
   ]
 }
