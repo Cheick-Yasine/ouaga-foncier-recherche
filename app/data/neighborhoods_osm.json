@@ -7,9 +7,57 @@
   "retrieved_at": "2026-09-06",
   "coordinate_system": "WGS84",
   "locations": [
-    {"name": "Bassinko", "source_name": "Bassinko", "aliases": [], "latitude": 12.4110386, "longitude": -1.6572757, "source_id": 9214406931, "feature_type": "node", "point_kind": "place_node"},
-    {"name": "Karpala", "source_name": "Karpala", "aliases": [], "latitude": 12.3313404, "longitude": -1.4846215, "source_id": 27863585, "feature_type": "way", "point_kind": "bounding_box_center"},
-    {"name": "Paglayiri", "source_name": "Paglayiri", "aliases": [], "latitude": 12.3333989, "longitude": -1.5310937, "source_id": 3296496974, "feature_type": "node", "point_kind": "place_node"},
-    {"name": "Yagma", "source_name": "Yagma", "aliases": [], "latitude": 12.4163601, "longitude": -1.6280544, "source_id": 9587569259, "feature_type": "node", "point_kind": "place_node"}
+    {
+      "name": "Bassinko",
+      "source_name": "Bassinko",
+      "aliases": [],
+      "latitude": 12.4110386,
+      "longitude": -1.6572757,
+      "source_id": 9214406931,
+      "feature_type": "node",
+      "point_kind": "place_node"
+    },
+    {
+      "name": "Karpala",
+      "source_name": "Karpala",
+      "aliases": [],
+      "latitude": 12.3313404,
+      "longitude": -1.4846215,
+      "source_id": 27863585,
+      "feature_type": "way",
+      "point_kind": "bounding_box_center"
+    },
+    {
+      "name": "Komki-Ipala",
+      "source_name": "Komki-Ipala",
+      "aliases": [
+        "Konki-Ipala"
+      ],
+      "latitude": 12.1907,
+      "longitude": -1.80379,
+      "source_id": 3506701597,
+      "feature_type": "node",
+      "point_kind": "place_village"
+    },
+    {
+      "name": "Paglayiri",
+      "source_name": "Paglayiri",
+      "aliases": [],
+      "latitude": 12.3333989,
+      "longitude": -1.5310937,
+      "source_id": 3296496974,
+      "feature_type": "node",
+      "point_kind": "place_node"
+    },
+    {
+      "name": "Yagma",
+      "source_name": "Yagma",
+      "aliases": [],
+      "latitude": 12.4163601,
+      "longitude": -1.6280544,
+      "source_id": 9587569259,
+      "feature_type": "node",
+      "point_kind": "place_node"
+    }
   ]
 }
