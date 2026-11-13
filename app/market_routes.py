@@ -3,11 +3,13 @@ from copy import deepcopy
 import json
 from pathlib import Path
 import psycopg
+from psycopg.rows import dict_row
 from threading import Lock
 from time import monotonic
 from typing import Callable, Literal, TypeVar
 from fastapi import APIRouter, HTTPException
 
+from app.config import get_settings
 from app.database import DatabaseNotConfiguredError
 from app.market_stats import neighborhood_trends, summarize_market
 from app.listing_scope import market_scope_eligible, sale_eligible
@@ -173,3 +175,62 @@ def market_neighborhood_catalog() -> list[dict]:
         return catalog
 
     return _cached_market_result(("neighborhood-catalog",), build)
+
+
+@router.get('/neighborhood-prices')
+def market_neighborhood_prices() -> dict:
+    """Dernier snapshot quotidien des prix médians annoncés au m² par quartier."""
+    settings = get_settings()
+    if settings.database_url is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Les prix par quartier ne sont pas disponibles pour le moment.",
+        )
+
+    try:
+        with psycopg.connect(
+            settings.database_url.get_secret_value(),
+            row_factory=dict_row,
+            connect_timeout=8,
+        ) as connection:
+            latest = connection.execute(
+                "SELECT MAX(snapshot_date) AS snapshot_date "
+                "FROM public.market_neighborhood_price_daily"
+            ).fetchone()
+            snapshot_date = latest["snapshot_date"] if latest else None
+            if snapshot_date is None:
+                return {"snapshot_date": None, "computed_at": None, "quartiers": []}
+
+            rows = connection.execute(
+                """
+                SELECT neighborhood_name, median_price_m2_fcfa,
+                       listing_count, priced_listing_count, computed_at
+                FROM public.market_neighborhood_price_daily
+                WHERE snapshot_date = %s
+                ORDER BY neighborhood_name
+                """,
+                (snapshot_date,),
+            ).fetchall()
+
+        return {
+            "snapshot_date": snapshot_date,
+            "computed_at": rows[0]["computed_at"] if rows else None,
+            "quartiers": [
+                {
+                    "name": row["neighborhood_name"],
+                    "median_price_m2_fcfa": (
+                        float(row["median_price_m2_fcfa"])
+                        if row["median_price_m2_fcfa"] is not None
+                        else None
+                    ),
+                    "listing_count": row["listing_count"],
+                    "priced_listing_count": row["priced_listing_count"],
+                }
+                for row in rows
+            ],
+        }
+    except (DatabaseNotConfiguredError, psycopg.Error):
+        raise HTTPException(
+            status_code=503,
+            detail="Les prix par quartier ne sont pas disponibles pour le moment.",
+        ) from None
