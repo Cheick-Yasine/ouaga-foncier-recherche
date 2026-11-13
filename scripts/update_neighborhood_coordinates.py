@@ -18,8 +18,6 @@ from app.neighborhoods import (
     ADMINISTRATIVE_AREAS,
     BROAD_AREAS,
     CITY_LEVEL_AREAS,
-    KNOWN_NEIGHBORHOOD_ALIASES,
-    PERIPHERAL_COMMUNES,
     PERIPHERAL_LOCALITIES,
     CANONICAL_NEIGHBORHOODS,
     neighborhood_key,
@@ -29,7 +27,6 @@ from app.neighborhoods import (
 DATA_DIR = Path(__file__).resolve().parents[1] / "app" / "data"
 OSM_FILE = DATA_DIR / "neighborhoods_osm.json"
 GEONAMES_FILE = DATA_DIR / "neighborhoods_geonames.json"
-CENTER = (12.3714, -1.5197)
 # Rectangle de contrôle Grand Ouaga élargi. Il sert à rejeter les homonymes
 # éloignés, pas à affirmer qu'un point appartient à la commune de Ouagadougou.
 BOUNDS = {"south": 12.05, "north": 12.65, "west": -1.90, "east": -1.25}
@@ -44,9 +41,6 @@ ALLOWED_PLACE_TYPES = {
     "neighbourhood", "suburb", "quarter", "village", "hamlet",
     "locality", "isolated_dwelling",
 }
-EXCLUDED_ZONE_TYPES = (
-    ADMINISTRATIVE_AREAS | BROAD_AREAS | CITY_LEVEL_AREAS
-)
 
 
 def load_json(path: Path) -> dict:
