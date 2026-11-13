@@ -18,6 +18,7 @@ from app.config import get_settings
 from app.database import DatabaseNotConfiguredError, check_database_connection
 from app.search_routes import router as search_router
 from app.market_routes import router as market_router
+from app.neighborhood_prices import neighborhood_price_snapshot_loop
 
 
 class HealthResponse(BaseModel):
@@ -45,6 +46,7 @@ app.include_router(market_router)
 
 logger = logging.getLogger(__name__)
 _trash_cleanup_task: asyncio.Task | None = None
+_neighborhood_price_task: asyncio.Task | None = None
 
 
 async def _trash_cleanup_loop() -> None:
@@ -58,14 +60,17 @@ async def _trash_cleanup_loop() -> None:
 
 @app.on_event("startup")
 async def start_trash_cleanup() -> None:
-    global _trash_cleanup_task
+    global _trash_cleanup_task, _neighborhood_price_task
     _trash_cleanup_task = asyncio.create_task(_trash_cleanup_loop())
+    _neighborhood_price_task = asyncio.create_task(neighborhood_price_snapshot_loop())
 
 
 @app.on_event("shutdown")
 async def stop_trash_cleanup() -> None:
     if _trash_cleanup_task is not None:
         _trash_cleanup_task.cancel()
+    if _neighborhood_price_task is not None:
+        _neighborhood_price_task.cancel()
 
 
 @app.middleware("http")
