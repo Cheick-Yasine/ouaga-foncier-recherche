@@ -2095,13 +2095,13 @@
     if(!discoveryMap || !window.L || !Array.isArray(discoveryLocations)) return;
     if(!discoveryMapMarkers) discoveryMapMarkers=window.L.layerGroup().addTo(discoveryMap);
     else discoveryMapMarkers.clearLayers();
-    const selectedKey=fold(selectedZones.at(-1) || ''), bounds=[];
+    const selectedKeys=new Set(selectedZones.map(fold)), bounds=[];
     discoveryLocations.forEach(location=>{
       const lat=Number(location.latitude), lon=Number(location.longitude);
       if(!Number.isFinite(lat)||!Number.isFinite(lon)) return;
       bounds.push([lat,lon]);
-      const marker=window.L.marker([lat,lon],{icon:markerIcon(fold(location.name)===selectedKey),title:location.name,riseOnHover:true,keyboard:true});
-      // Afficher le nom du quartier comme avant, sans calcul de prix.
+      const marker=window.L.marker([lat,lon],{icon:markerIcon(selectedKeys.has(fold(location.name))),title:location.name,riseOnHover:true,keyboard:true});
+      // Le survol affiche le prix médian quotidien du quartier, tous types validés confondus.
       const priceInfo=discoveryPrices.get(fold(location.name));
       const tooltipText=priceInfo?.prix_m2_median_fcfa!==null && priceInfo?.prix_m2_median_fcfa!==undefined
         ? location.name+' · '+fmt.format(priceInfo.prix_m2_median_fcfa)+' FCFA/m²'
