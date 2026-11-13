@@ -1,6 +1,5 @@
 """Statistiques publiques agrégées : aucun contact ni texte d'annonce."""
 from copy import deepcopy
-from statistics import median
 import psycopg
 from threading import Lock
 from time import monotonic
@@ -10,12 +9,10 @@ from fastapi import APIRouter, HTTPException
 from app.database import DatabaseNotConfiguredError
 from app.market_stats import neighborhood_trends, summarize_market
 from app.listing_scope import market_scope_eligible, sale_eligible
-from app.search_engine import price_per_square_metre
 from app.search_repository import load_market_candidates, load_neighborhood_candidates
 from app.neighborhoods import (
     KNOWN_NEIGHBORHOOD_ALIASES,
     neighborhood_key,
-    suggest_canonical_neighborhood,
 )
 from app.neighborhood_geo import location_for
 
@@ -110,41 +107,10 @@ def market_neighborhood_location(name: str) -> dict | None:
     }
 
 
-def _neighborhood_median_prices() -> dict[str, float]:
-    """Prix médian au m² par quartier, sur les annonces de vente éligibles."""
-    medians: dict[str, list[float]] = {}
-    seen: set[str] = set()
-    for candidate in load_market_candidates(publication_days=None):
-        if (
-            not candidate.neighborhood
-            or not sale_eligible(candidate.text)
-            or not market_scope_eligible(candidate.text, candidate.neighborhood)
-        ):
-            continue
-        identity = candidate.url or candidate.identifier
-        if identity in seen:
-            continue
-        seen.add(identity)
-        neighborhood = (
-            suggest_canonical_neighborhood(candidate.neighborhood)
-            or candidate.neighborhood.strip()
-        )
-        unit_price = price_per_square_metre(candidate)
-        if not neighborhood or unit_price is None:
-            continue
-        medians.setdefault(neighborhood_key(neighborhood), []).append(unit_price)
-    return {
-        key: round(median(values), 2)
-        for key, values in medians.items()
-        if values
-    }
-
-
 @router.get('/neighborhood-locations')
 def market_neighborhood_locations() -> list[dict]:
-    """Repères des quartiers et prix médians au m² pour la carte."""
+    """Repères cartographiques sourcés, sans prix ni dépendance à Neon."""
     def build() -> list[dict]:
-        median_prices = _neighborhood_median_prices()
         names = sorted(set(KNOWN_NEIGHBORHOOD_ALIASES.values()), key=neighborhood_key)
         locations = []
         seen = set()
@@ -160,17 +126,10 @@ def market_neighborhood_locations() -> list[dict]:
                 'name': point['name'],
                 'latitude': point['latitude'],
                 'longitude': point['longitude'],
-                'prix_median_m2_fcfa': median_prices.get(key),
                 'source': point['source'],
                 'attribution': point['attribution'],
                 'license_url': point['license_url'],
             })
         return locations
 
-    try:
-        return _cached_market_result(("neighborhood-locations",), build)
-    except (DatabaseNotConfiguredError, psycopg.Error):
-        raise HTTPException(
-            status_code=503,
-            detail='Les repères et prix médians des quartiers ne sont pas disponibles.',
-        ) from None
+    return _cached_market_result(("neighborhood-locations",), build)
