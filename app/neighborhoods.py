@@ -11,11 +11,11 @@ from dataclasses import asdict, dataclass
 
 # Noms métier validés. Les doublons orthographiques sont gérés par les alias.
 CANONICAL_NEIGHBORHOODS = (
-    "Bilbalogo", "Saint Léon", "Zangouettin", "Tiedpalogo", "Koulouba",
+    "Bilbalogo", "Saint Léon", "Zangouettin", "Tiedpalogo", "Koulouba", "Zongo Nabitenga",
     "Sabtenga", "Gampela", "Kamsonghin", "Samandin", "Gounghin Sud",
     "Gandin", "Kouritenga", "Mankougoudou", "Paspanga", "Ouidi", "Larlé",
     "Kologh Naba", "Dapoya", "Dapoya 2", "Nemnin", "Niogsin", "Hamdalaye",
-    "Gounghin", "Gounghin Nord", "Baoghin", "Camp Militaire", "Sabtoana", "Baossa",
+    "Gounghin", "Gounghin Nord", "Baoghin", "Camp Militaire", "Sabtoana", "Boassa",
     "Naababpougo", "Kienbaoghin", "Zongo", "Koumdayonré", "Nonsin",
     "Rimkièta", "Kouba", "Sonré", "Tampouy", "Kilwin", "Tanghin", "Sambin",
     "Somgandé", "Zone Industrielle", "Nioko", "Nioko 2", "Bendogo", "Toukin", "Zogona",
@@ -94,6 +94,12 @@ KNOWN_NEIGHBORHOOD_ALIASES = {
     "ouagadougou 2000": "Ouaga 2000",
     "ouaga": "Ouagadougou",
     "cite an iii": "Cité An 3",
+    # Variantes présentes dans le référentiel Grand Ouaga fourni.
+    "baossa": "Boassa",
+    "bang poore": "Bangpooré",
+    "dassosgho": "Dassasgho",
+    "kamboissin": "Kamboinsin",
+    "taabtenga": "Tabtenga",
 }
 
 
