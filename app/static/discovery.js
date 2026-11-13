@@ -1742,6 +1742,7 @@
         discoveryNeighborhoodPriceDate=data.snapshot_date || null;
         if(!discoveryNeighborhoodPriceDate) {
           discoveryNeighborhoodPrices=null;
+          discoveryNeighborhoodPricesLoading=null;
           renderZonePriceComparison();
           return null;
         }
@@ -1756,6 +1757,7 @@
       })
       .catch(error=>{
         console.warn('Prix par quartier indisponibles :',error);
+        discoveryNeighborhoodPricesLoading=null;
         renderZonePriceComparison();
         return null;
       })
