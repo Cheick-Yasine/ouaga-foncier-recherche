@@ -1,15 +1,15 @@
 # Repères cartographiques de HAKIMO
 
 Les analyses utilisent un référentiel local de repères de quartiers et
-localités autour de Ouagadougou. Les coordonnées sont embarquées dans le projet ;
-la carte ne calcule ni n'affiche de prix médian. Il sert à
-calculer la proximité entre zones. Il ne donne ni les coordonnées d’une parcelle,
+localités autour de Ouagadougou. Les coordonnées sont embarquées dans le projet.
+Le référentiel sert à calculer la proximité entre zones ; la carte n'affiche pas
+de prix médian. Il ne donne ni les coordonnées d’une parcelle,
 ni sa disponibilité, ni le temps de trajet. Aucun appel de géocodage n’est fait
 pendant une conversation et aucune position de l’utilisateur n’est collectée.
 
 ## Sources et licences
 
-- `app/data/neighborhoods_geonames.json` : 67 points du fichier Burkina Faso de
+- `app/data/neighborhoods_geonames.json` : 71 points sélectionnés du fichier Burkina Faso de
   [GeoNames](https://download.geonames.org/export/dump/BF.zip), sous
   [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
   Attribution : **GeoNames**. Les coordonnées WGS84 sont conservées ; la sélection
