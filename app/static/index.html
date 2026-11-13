@@ -270,11 +270,21 @@
 </label>
 
 <label class="deal-wide">Quartiers ou zones
-<div id="deal-zone-select" class="deal-map-zone-selection">
+<div id="deal-zone-select" class="deal-map-zone-selection deal-multiselect">
   <div id="deal-zone-chips" class="deal-map-zone-chips" aria-live="polite"></div>
+  <div class="deal-multiselect-input">
+    <input id="deal-zone-search" type="search"
+      autocomplete="off"
+      placeholder="Rechercher et sélectionner un ou plusieurs quartiers…"
+      aria-label="Rechercher un quartier"
+      aria-controls="deal-zone-menu"
+      aria-expanded="false">
+  </div>
+  <div id="deal-zone-menu" class="deal-multiselect-menu"
+    role="listbox" aria-multiselectable="true" hidden></div>
   <div id="deal-zone-values"></div>
 </div>
-<small id="zone-status" class="field-note" role="status">Cliquez directement sur les points de la carte pour sélectionner un ou plusieurs quartiers.</small>
+<small id="zone-status" class="field-note" role="status">Recherchez un quartier ou sélectionnez-le directement sur la carte.</small>
 </label>
 
 <div class="deal-wide range-panel">
