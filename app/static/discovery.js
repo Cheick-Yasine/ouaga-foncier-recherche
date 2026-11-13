@@ -1624,6 +1624,9 @@
   const zoneMenu=$('#deal-zone-menu');
   const selectedZones=[];
   let discoveryCatalog=null;
+  let discoveryNeighborhoodPrices=null;
+  let discoveryNeighborhoodPricesLoading=null;
+  let discoveryNeighborhoodPriceDate=null;
 
   function matchingZones() {
     const query=fold((zoneSearch?.value || '').trim());
@@ -1683,6 +1686,74 @@
     },120);
   });
 
+
+  function renderZonePriceComparison() {
+    const container=$('#deal-zone-price-comparison');
+    const dateNode=$('#deal-zone-price-date');
+    if(!container) return;
+    container.replaceChildren();
+
+    if(dateNode) {
+      dateNode.textContent=discoveryNeighborhoodPriceDate
+        ? 'Calcul du '+longDate(discoveryNeighborhoodPriceDate)
+        : '';
+    }
+
+    if(!selectedZones.length) {
+      container.append(element('p','deal-zone-price-empty','Sélectionnez plusieurs quartiers pour comparer leurs prix.'));
+      return;
+    }
+    if(!discoveryNeighborhoodPrices) {
+      container.append(element('p','deal-zone-price-empty','Chargement des prix quotidiens…'));
+      return;
+    }
+
+    selectedZones.forEach(name=>{
+      const record=discoveryNeighborhoodPrices.get(fold(name));
+      const item=element('div','deal-zone-price-item');
+      const heading=element('strong','deal-zone-price-name',name);
+      const value=record && record.median_price_m2_fcfa!==null
+        ? fmt.format(Math.round(record.median_price_m2_fcfa))+' FCFA/m²'
+        : 'Prix indisponible';
+      const price=element('span','deal-zone-price-value',value);
+      const count=record
+        ? fmt.format(record.priced_listing_count)+' annonce(s) avec prix/m² · '+fmt.format(record.listing_count)+' annonce(s) retenue(s)'
+        : 'Aucune donnée pour ce quartier';
+      item.append(heading,price,element('small','deal-zone-price-count',count));
+      container.append(item);
+    });
+  }
+
+  async function loadDiscoveryNeighborhoodPrices() {
+    if(discoveryNeighborhoodPrices) return discoveryNeighborhoodPrices;
+    if(discoveryNeighborhoodPricesLoading) return discoveryNeighborhoodPricesLoading;
+
+    discoveryNeighborhoodPricesLoading=fetch('/market/neighborhood-prices',{cache:'no-store'})
+      .then(response=>{
+        if(!response.ok) throw Error('Prix quotidiens indisponibles');
+        return response.json();
+      })
+      .then(data=>{
+        discoveryNeighborhoodPriceDate=data.snapshot_date || null;
+        discoveryNeighborhoodPrices=new Map(
+          (Array.isArray(data.quartiers)?data.quartiers:[])
+            .filter(item=>item && typeof item.name==='string')
+            .map(item=>[fold(item.name),item])
+        );
+        renderZonePriceComparison();
+        if(discoveryMap) renderDiscoveryMap();
+        return discoveryNeighborhoodPrices;
+      })
+      .catch(error=>{
+        console.warn('Prix par quartier indisponibles :',error);
+        renderZonePriceComparison();
+        return null;
+      })
+      .finally(()=>{discoveryNeighborhoodPricesLoading=null;});
+
+    return discoveryNeighborhoodPricesLoading;
+  }
+
   function syncZoneValues() {
     zoneValues.replaceChildren();
     for(const name of selectedZones){
@@ -1716,6 +1787,7 @@
       zoneChips.append(chip);
     });
     syncZoneValues();
+    renderZonePriceComparison();
   }
 
   let discoveryMap=null;
@@ -2064,11 +2136,21 @@
       if(!Number.isFinite(lat)||!Number.isFinite(lon)) return;
       bounds.push([lat,lon]);
       const marker=window.L.marker([lat,lon],{icon:markerIcon(fold(location.name)===selectedKey),title:location.name,riseOnHover:true,keyboard:true});
-      // Afficher le nom du quartier comme avant, sans calcul de prix.
-      marker.bindTooltip(location.name,{
+      // Le prix médian quotidien est affiché au survol, sans requête SQL.
+      const tooltipNode=element('span','deal-map-tooltip');
+      const tooltipPrice=discoveryNeighborhoodPrices?.get(fold(location.name));
+      tooltipNode.append(element('strong','',location.name));
+      tooltipNode.append(document.createTextNode(' · '));
+      tooltipNode.append(element(
+        'span','',
+        tooltipPrice && tooltipPrice.median_price_m2_fcfa!==null
+          ? fmt.format(Math.round(tooltipPrice.median_price_m2_fcfa))+' FCFA/m²'
+          : 'Prix indisponible'
+      ));
+      marker.bindTooltip(tooltipNode,{
         direction:'top',
         offset:[0,-10],
-        opacity:.95
+        opacity:.97
       });
       marker.bindPopup('<div class="deal-map-popup"><strong></strong><span>Quartier référencé</span></div>');
       marker.on('popupopen',()=>{
@@ -2104,6 +2186,7 @@
           && Number.isFinite(Number(item.longitude))
         );
         renderDiscoveryMap();
+        void loadDiscoveryNeighborhoodPrices();
         return discoveryLocations;
       })
       .catch(()=>{
