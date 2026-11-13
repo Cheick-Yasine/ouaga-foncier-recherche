@@ -1618,10 +1618,6 @@
     },120);
   });
 
-  let neighborhoods=null;
-  let loading=null;
-  const zoneSearch=$('#deal-zone-search');
-  const zoneMenu=$('#deal-zone-menu');
   const zoneChips=$('#deal-zone-chips');
   const zoneValues=$('#deal-zone-values');
   const selectedZones=[];
@@ -1641,7 +1637,7 @@
   }
 
   function renderZoneChips() {
-    zoneChips.querySelectorAll('.multi-chip').forEach(node=>node.remove());
+    zoneChips.replaceChildren();
     selectedZones.forEach(name=>{
       const chip=element('span','multi-chip');
       chip.append(document.createTextNode(name));
@@ -1652,11 +1648,10 @@
         const index=selectedZones.indexOf(name);
         if(index>=0) selectedZones.splice(index,1);
         renderZoneChips();
-        renderZoneMenu();
-        zoneSearch.focus();
+        refreshDiscoveryMapSelection();
       });
       chip.append(remove);
-      zoneChips.insertBefore(chip,zoneSearch);
+      zoneChips.append(chip);
     });
     syncZoneValues();
   }
@@ -2156,92 +2151,9 @@
   function addZone(name, options={}) {
     if(!name || selectedZones.includes(name)) return;
     selectedZones.push(name);
-    zoneSearch.value='';
     renderZoneChips();
-    renderZoneMenu();
     if(!options.keepMap) refreshDiscoveryMapSelection();
   }
-
-  function matchingNeighborhoods() {
-    if(!neighborhoods) return [];
-    const query=fold(zoneSearch.value.trim());
-    return neighborhoods
-      .filter(name=>!selectedZones.includes(name))
-      .filter(name=>!query || fold(name).includes(query))
-      .slice(0,30);
-  }
-
-  function renderZoneMenu() {
-    zoneMenu.replaceChildren();
-    const matches=matchingNeighborhoods();
-    if(!neighborhoods){
-      zoneMenu.hidden=true;
-      return;
-    }
-    for(const name of matches){
-      const option=element('button','deal-multiselect-option',name);
-      option.type='button';
-      option.setAttribute('role','option');
-      option.setAttribute('aria-selected','false');
-      option.addEventListener('mousedown',event=>event.preventDefault());
-      option.addEventListener('click',()=>addZone(name));
-      zoneMenu.append(option);
-    }
-    zoneMenu.hidden=!(document.activeElement===zoneSearch && matches.length);
-    zoneSearch.setAttribute('aria-expanded',String(!zoneMenu.hidden));
-  }
-
-  async function loadNeighborhoods() {
-    if(neighborhoods){
-      renderZoneMenu();
-      return;
-    }
-    if(loading) return loading;
-
-    $('#zone-status').textContent='Chargement des quartiers…';
-    loading=fetch('/market/neighborhoods')
-      .then(response=>{
-        if(!response.ok) throw Error();
-        return response.json();
-      })
-      .then(data=>{
-        neighborhoods=Array.isArray(data)
-          ? data.filter(value=>typeof value==='string')
-          : [];
-        renderZoneMenu();
-        syncZoneValues();
-      })
-      .catch(()=>{
-        $('#zone-status').textContent='La liste des quartiers est temporairement indisponible.';
-        zoneMenu.hidden=true;
-      })
-      .finally(()=>{loading=null;});
-
-    return loading;
-  }
-
-  zoneSearch.addEventListener('focus',loadNeighborhoods);
-  zoneSearch.addEventListener('input',renderZoneMenu);
-  zoneSearch.addEventListener('keydown',event=>{
-    if(event.key==='Enter'){
-      event.preventDefault();
-      const first=matchingNeighborhoods()[0];
-      if(first) addZone(first);
-    } else if(event.key==='Backspace' && !zoneSearch.value && selectedZones.length){
-      selectedZones.pop();
-      renderZoneChips();
-      renderZoneMenu();
-    } else if(event.key==='Escape'){
-      zoneMenu.hidden=true;
-      zoneSearch.setAttribute('aria-expanded','false');
-    }
-  });
-  zoneSearch.addEventListener('blur',()=>{
-    setTimeout(()=>{
-      zoneMenu.hidden=true;
-      zoneSearch.setAttribute('aria-expanded','false');
-    },120);
-  });
 
   function resetDealControls() {
     selectedDetails.splice(0,selectedDetails.length);
@@ -2250,9 +2162,7 @@
     detailMenu.hidden=true;
 
     selectedZones.splice(0,selectedZones.length);
-    zoneSearch.value='';
     renderZoneChips();
-    zoneMenu.hidden=true;
     refreshDiscoveryMapSelection();
 
     selectedDocuments.splice(0,selectedDocuments.length);
