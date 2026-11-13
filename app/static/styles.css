@@ -2667,3 +2667,81 @@ select,.modal,.modal input,.comparison-shell,.assistant-composer,.secondary-butt
 @media(max-width:760px){
   .analysis-comparison-list{grid-template-columns:1fr}
 }
+
+
+/* Prix médians quotidiens affichés sur la carte des quartiers. */
+.deal-map-tooltip{
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+  color:#17233c;
+  font-size:12px;
+  font-weight:650;
+  white-space:nowrap;
+}
+.deal-map-tooltip strong{
+  font-weight:800;
+}
+.deal-zone-price-panel{
+  margin:12px 0;
+  padding:12px;
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:var(--surface, #fff);
+}
+.deal-zone-price-heading{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:10px;
+  margin-bottom:9px;
+}
+.deal-zone-price-heading h3{
+  margin:2px 0 0;
+  color:var(--ink);
+  font-size:.88rem;
+}
+.deal-zone-price-date{
+  color:var(--muted);
+  font-size:.68rem;
+  text-align:right;
+}
+.deal-zone-price-comparison{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(170px,1fr));
+  gap:8px;
+}
+.deal-zone-price-item{
+  display:grid;
+  gap:4px;
+  min-width:0;
+  padding:9px;
+  border:1px solid var(--line);
+  border-radius:9px;
+  background:var(--surface-raised, #f8fafc);
+}
+.deal-zone-price-name{
+  color:var(--ink);
+  font-size:.75rem;
+  overflow-wrap:anywhere;
+}
+.deal-zone-price-value{
+  color:var(--accent, #345de3);
+  font-size:.88rem;
+  font-weight:850;
+  font-variant-numeric:tabular-nums;
+}
+.deal-zone-price-count,
+.deal-zone-price-empty,
+.deal-zone-price-note{
+  color:var(--muted);
+  font-size:.66rem;
+  line-height:1.45;
+}
+.deal-zone-price-empty,
+.deal-zone-price-note{
+  margin:0;
+}
+.deal-zone-price-note{
+  margin-top:9px;
+}
