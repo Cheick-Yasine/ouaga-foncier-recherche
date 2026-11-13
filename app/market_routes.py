@@ -1,5 +1,7 @@
 """Statistiques publiques agrégées : aucun contact ni texte d'annonce."""
 from copy import deepcopy
+import json
+from pathlib import Path
 import psycopg
 from threading import Lock
 from time import monotonic
@@ -133,3 +135,41 @@ def market_neighborhood_locations() -> list[dict]:
         return locations
 
     return _cached_market_result(("neighborhood-locations",), build)
+
+
+@router.get('/neighborhood-catalog')
+def market_neighborhood_catalog() -> list[dict]:
+    """Catalogue complet des quartiers ; les coordonnées peuvent être absentes."""
+    def build() -> list[dict]:
+        path = Path(__file__).resolve().parent / "data" / "quartiers_catalogue_201.json"
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            raise HTTPException(
+                status_code=503,
+                detail="Le catalogue des quartiers est momentanément indisponible.",
+            ) from None
+
+        if not isinstance(data, list):
+            raise HTTPException(
+                status_code=503,
+                detail="Le catalogue des quartiers est invalide.",
+            )
+
+        catalog = []
+        seen = set()
+        for item in data:
+            if not isinstance(item, dict):
+                continue
+            name = item.get("name")
+            if not isinstance(name, str) or not name.strip():
+                continue
+            name = name.strip()
+            key = neighborhood_key(name)
+            if key in seen:
+                continue
+            seen.add(key)
+            catalog.append({**item, "name": name})
+        return catalog
+
+    return _cached_market_result(("neighborhood-catalog",), build)
