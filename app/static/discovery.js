@@ -1704,7 +1704,12 @@
       return;
     }
     if(!discoveryNeighborhoodPrices) {
-      container.append(element('p','deal-zone-price-empty','Chargement des prix quotidiens…'));
+      container.append(element(
+        'p','deal-zone-price-empty',
+        discoveryNeighborhoodPricesLoading
+          ? 'Chargement des prix quotidiens…'
+          : 'Aucun calcul quotidien enregistré pour le moment.'
+      ));
       return;
     }
 
@@ -1735,6 +1740,11 @@
       })
       .then(data=>{
         discoveryNeighborhoodPriceDate=data.snapshot_date || null;
+        if(!discoveryNeighborhoodPriceDate) {
+          discoveryNeighborhoodPrices=null;
+          renderZonePriceComparison();
+          return null;
+        }
         discoveryNeighborhoodPrices=new Map(
           (Array.isArray(data.quartiers)?data.quartiers:[])
             .filter(item=>item && typeof item.name==='string')
@@ -2147,6 +2157,11 @@
           ? fmt.format(Math.round(tooltipPrice.median_price_m2_fcfa))+' FCFA/m²'
           : 'Prix indisponible'
       ));
+      if(tooltipPrice && tooltipPrice.priced_listing_count>0) {
+        tooltipNode.append(document.createTextNode(
+          ' · '+fmt.format(tooltipPrice.priced_listing_count)+' annonces'
+        ));
+      }
       marker.bindTooltip(tooltipNode,{
         direction:'top',
         offset:[0,-10],
@@ -2167,7 +2182,10 @@
   }
 
   async function loadDiscoveryLocations() {
-    if(discoveryLocations) return discoveryLocations;
+    if(discoveryLocations) {
+      if(!discoveryNeighborhoodPrices) void loadDiscoveryNeighborhoodPrices();
+      return discoveryLocations;
+    }
     if(discoveryMapLoading) return discoveryMapLoading;
 
     discoveryMapLoading=fetch('/market/neighborhood-catalog',{cache:'no-store'})
