@@ -1620,7 +1620,68 @@
 
   const zoneChips=$('#deal-zone-chips');
   const zoneValues=$('#deal-zone-values');
+  const zoneSearch=$('#deal-zone-search');
+  const zoneMenu=$('#deal-zone-menu');
   const selectedZones=[];
+  let discoveryCatalog=null;
+
+  function matchingZones() {
+    const query=fold((zoneSearch?.value || '').trim());
+    return (discoveryCatalog || [])
+      .filter(item=>!selectedZones.some(name=>fold(name)===fold(item.name)))
+      .filter(item=>!query || fold(item.name).includes(query))
+      .sort((a,b)=>a.name.localeCompare(b.name,'fr'))
+      .slice(0,30);
+  }
+
+  function renderZoneMenu() {
+    if(!zoneSearch || !zoneMenu) return;
+    zoneMenu.replaceChildren();
+    const matches=matchingZones();
+
+    for(const item of matches) {
+      const option=element('button','deal-multiselect-option',item.name);
+      option.type='button';
+      option.setAttribute('role','option');
+      option.setAttribute('aria-selected','false');
+      option.addEventListener('mousedown',event=>event.preventDefault());
+      option.addEventListener('click',()=>{
+        addZone(item.name);
+        zoneSearch.value='';
+        zoneSearch.focus();
+        renderZoneMenu();
+      });
+      zoneMenu.append(option);
+    }
+
+    zoneMenu.hidden=!(
+      document.activeElement===zoneSearch && matches.length
+    );
+    zoneSearch.setAttribute('aria-expanded',String(!zoneMenu.hidden));
+  }
+
+  zoneSearch?.addEventListener('focus',()=>{
+    loadDiscoveryLocations().then(renderZoneMenu);
+  });
+  zoneSearch?.addEventListener('input',renderZoneMenu);
+  zoneSearch?.addEventListener('keydown',event=>{
+    if(event.key==='Enter') {
+      event.preventDefault();
+      const first=matchingZones()[0];
+      if(first) addZone(first.name);
+      zoneSearch.value='';
+      renderZoneMenu();
+    } else if(event.key==='Escape') {
+      zoneMenu.hidden=true;
+      zoneSearch.setAttribute('aria-expanded','false');
+    }
+  });
+  zoneSearch?.addEventListener('blur',()=>{
+    setTimeout(()=>{
+      if(zoneMenu) zoneMenu.hidden=true;
+      zoneSearch.setAttribute('aria-expanded','false');
+    },120);
+  });
 
   function syncZoneValues() {
     zoneValues.replaceChildren();
@@ -1648,6 +1709,7 @@
         const index=selectedZones.indexOf(name);
         if(index>=0) selectedZones.splice(index,1);
         renderZoneChips();
+        renderZoneMenu();
         refreshDiscoveryMapSelection();
       });
       chip.append(remove);
@@ -2026,21 +2088,28 @@
     if(discoveryLocations) return discoveryLocations;
     if(discoveryMapLoading) return discoveryMapLoading;
 
-    discoveryMapLoading=fetch('/market/neighborhood-locations',{cache:'no-store'})
+    discoveryMapLoading=fetch('/market/neighborhood-catalog',{cache:'no-store'})
       .then(response=>{
         if(!response.ok) throw Error();
         return response.json();
       })
       .then(data=>{
-        discoveryLocations=Array.isArray(data)
-          ? data.filter(item=>item && Number.isFinite(Number(item.latitude)) && Number.isFinite(Number(item.longitude)))
+        discoveryCatalog=Array.isArray(data)
+          ? data.filter(item=>item && typeof item.name==='string' && item.name.trim())
           : [];
+        discoveryLocations=discoveryCatalog.filter(item=>
+          item.latitude!==null && item.latitude!==undefined
+          && item.longitude!==null && item.longitude!==undefined
+          && Number.isFinite(Number(item.latitude))
+          && Number.isFinite(Number(item.longitude))
+        );
         renderDiscoveryMap();
         return discoveryLocations;
       })
       .catch(()=>{
+        discoveryCatalog=[];
         discoveryLocations=[];
-        mapStatus('La carte est disponible, mais les repères de quartiers ne sont pas chargés.');
+        mapStatus('Le catalogue des quartiers ou les repères cartographiques ne sont pas chargés.');
         return discoveryLocations;
       })
       .finally(()=>{discoveryMapLoading=null;});
@@ -2152,6 +2221,7 @@
     if(!name || selectedZones.includes(name)) return;
     selectedZones.push(name);
     renderZoneChips();
+    renderZoneMenu();
     if(!options.keepMap) refreshDiscoveryMapSelection();
   }
 
