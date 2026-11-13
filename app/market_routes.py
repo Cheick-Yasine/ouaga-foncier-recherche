@@ -17,6 +17,7 @@ from app.neighborhoods import (
     neighborhood_key,
 )
 from app.neighborhood_geo import location_for
+from app.neighborhood_prices import get_latest_neighborhood_prices
 
 router = APIRouter(prefix='/market', tags=['Accueil'])
 
@@ -78,6 +79,24 @@ def market_neighborhood_trends(
             status_code=503,
             detail='Les tendances par quartier ne sont pas disponibles pour le moment.',
         ) from None
+
+
+@router.get('/neighborhood-prices')
+def market_neighborhood_prices() -> dict:
+    """Dernier snapshot quotidien du prix médian au m², tous biens confondus."""
+    try:
+        result = get_latest_neighborhood_prices()
+    except (DatabaseNotConfiguredError, psycopg.Error):
+        raise HTTPException(
+            status_code=503,
+            detail='Les prix médians par quartier ne sont pas disponibles pour le moment.',
+        ) from None
+    if result is None:
+        raise HTTPException(
+            status_code=503,
+            detail='Le premier calcul quotidien des prix par quartier est en attente.',
+        )
+    return result
 
 
 @router.get('/neighborhoods')

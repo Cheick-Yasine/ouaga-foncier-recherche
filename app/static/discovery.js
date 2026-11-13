@@ -1624,6 +1624,9 @@
   const zoneMenu=$('#deal-zone-menu');
   const selectedZones=[];
   let discoveryCatalog=null;
+  let discoveryPrices=new Map();
+  let discoveryPriceDate=null;
+  const zonePriceComparison=$('#deal-zone-price-comparison');
 
   function matchingZones() {
     const query=fold((zoneSearch?.value || '').trim());
@@ -1683,6 +1686,39 @@
     },120);
   });
 
+  function renderZonePriceComparison() {
+    if(!zonePriceComparison) return;
+    zonePriceComparison.replaceChildren();
+    zonePriceComparison.hidden=selectedZones.length===0;
+    if(!selectedZones.length) return;
+
+    const heading=element('div','deal-zone-price-heading');
+    heading.append(element('strong','','Comparaison des prix au m²'));
+    if(discoveryPriceDate) {
+      heading.append(element('small','', 'Calcul quotidien du '+new Date(discoveryPriceDate+'T00:00:00Z').toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric',timeZone:'UTC'})));
+    } else {
+      heading.append(element('small','','En attente du premier calcul quotidien'));
+    }
+    zonePriceComparison.append(heading);
+
+    for(const name of selectedZones) {
+      const item=discoveryPrices.get(fold(name));
+      const row=element('div','deal-zone-price-row');
+      row.append(element('span','deal-zone-price-name',name));
+      const details=element('span','deal-zone-price-value');
+      if(item && item.prix_m2_median_fcfa!==null && item.prix_m2_median_fcfa!==undefined) {
+        details.textContent=fmt.format(item.prix_m2_median_fcfa)+' FCFA/m²';
+      } else {
+        details.textContent='Prix non disponible';
+      }
+      row.append(details);
+      if(item?.annonces_avec_prix_m2) {
+        row.append(element('small','deal-zone-price-count',fmt.format(item.annonces_avec_prix_m2)+' annonces'));
+      }
+      zonePriceComparison.append(row);
+    }
+  }
+
   function syncZoneValues() {
     zoneValues.replaceChildren();
     for(const name of selectedZones){
@@ -1716,6 +1752,7 @@
       zoneChips.append(chip);
     });
     syncZoneValues();
+    renderZonePriceComparison();
   }
 
   let discoveryMap=null;
@@ -2058,14 +2095,18 @@
     if(!discoveryMap || !window.L || !Array.isArray(discoveryLocations)) return;
     if(!discoveryMapMarkers) discoveryMapMarkers=window.L.layerGroup().addTo(discoveryMap);
     else discoveryMapMarkers.clearLayers();
-    const selectedKey=fold(selectedZones.at(-1) || ''), bounds=[];
+    const selectedKeys=new Set(selectedZones.map(fold)), bounds=[];
     discoveryLocations.forEach(location=>{
       const lat=Number(location.latitude), lon=Number(location.longitude);
       if(!Number.isFinite(lat)||!Number.isFinite(lon)) return;
       bounds.push([lat,lon]);
-      const marker=window.L.marker([lat,lon],{icon:markerIcon(fold(location.name)===selectedKey),title:location.name,riseOnHover:true,keyboard:true});
-      // Afficher le nom du quartier comme avant, sans calcul de prix.
-      marker.bindTooltip(location.name,{
+      const marker=window.L.marker([lat,lon],{icon:markerIcon(selectedKeys.has(fold(location.name))),title:location.name,riseOnHover:true,keyboard:true});
+      // Le survol affiche le prix médian quotidien du quartier, tous types validés confondus.
+      const priceInfo=discoveryPrices.get(fold(location.name));
+      const tooltipText=priceInfo?.prix_m2_median_fcfa!==null && priceInfo?.prix_m2_median_fcfa!==undefined
+        ? location.name+' · '+fmt.format(priceInfo.prix_m2_median_fcfa)+' FCFA/m²'
+        : location.name+' · Prix non disponible';
+      marker.bindTooltip(tooltipText,{
         direction:'top',
         offset:[0,-10],
         opacity:.95
@@ -2093,16 +2134,27 @@
         if(!response.ok) throw Error();
         return response.json();
       })
-      .then(data=>{
+      .then(async data=>{
         discoveryCatalog=Array.isArray(data)
           ? data.filter(item=>item && typeof item.name==='string' && item.name.trim())
           : [];
+        try {
+          const priceResponse=await fetch('/market/neighborhood-prices',{cache:'no-store'});
+          if(priceResponse.ok) {
+            const priceData=await priceResponse.json();
+            discoveryPriceDate=priceData.date_calcul || null;
+            discoveryPrices=new Map((priceData.quartiers || []).map(item=>[fold(item.nom),item]));
+          }
+        } catch(error) {
+          console.warn('Prix médians des quartiers indisponibles :',error);
+        }
         discoveryLocations=discoveryCatalog.filter(item=>
           item.latitude!==null && item.latitude!==undefined
           && item.longitude!==null && item.longitude!==undefined
           && Number.isFinite(Number(item.latitude))
           && Number.isFinite(Number(item.longitude))
         );
+        renderZonePriceComparison();
         renderDiscoveryMap();
         return discoveryLocations;
       })

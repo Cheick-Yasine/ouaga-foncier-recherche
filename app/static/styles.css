@@ -2667,3 +2667,38 @@ select,.modal,.modal input,.comparison-shell,.assistant-composer,.secondary-butt
 @media(max-width:760px){
   .analysis-comparison-list{grid-template-columns:1fr}
 }
+
+
+/* Comparaison du prix médian quotidien au m² des quartiers sélectionnés. */
+.deal-zone-price-comparison{
+  margin-top:10px;
+  padding:12px;
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:var(--surface, #fff);
+}
+.deal-zone-price-comparison[hidden]{display:none!important}
+.deal-zone-price-heading{
+  display:flex;
+  flex-wrap:wrap;
+  align-items:baseline;
+  justify-content:space-between;
+  gap:4px 10px;
+  margin-bottom:7px;
+}
+.deal-zone-price-heading strong{font-size:.82rem}
+.deal-zone-price-heading small,.deal-zone-price-count{
+  color:var(--muted);
+  font-size:.7rem;
+}
+.deal-zone-price-row{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  align-items:center;
+  gap:3px 10px;
+  padding:7px 0;
+  border-top:1px solid var(--line);
+}
+.deal-zone-price-name{font-size:.8rem;font-weight:600;overflow-wrap:anywhere}
+.deal-zone-price-value{font-size:.82rem;font-weight:700;text-align:right;font-variant-numeric:tabular-nums}
+.deal-zone-price-count{grid-column:1/-1}
