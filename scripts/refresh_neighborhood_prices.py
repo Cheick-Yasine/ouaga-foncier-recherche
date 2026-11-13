@@ -8,10 +8,14 @@ from __future__ import annotations
 
 import json
 import logging
+import sys
 from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 from statistics import median
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
 
 import psycopg
 from psycopg.rows import dict_row
@@ -26,7 +30,6 @@ from app.neighborhoods import (
 )
 from app.search_engine import SearchCandidate, price_per_square_metre
 
-ROOT = Path(__file__).resolve().parents[1]
 CATALOG_PATH = ROOT / "app" / "data" / "quartiers_catalogue_201.json"
 MIGRATION_PATH = ROOT / "db" / "migrations" / "006_neighborhood_price_daily.sql"
 LOG = logging.getLogger("hakimo.neighborhood_prices")
