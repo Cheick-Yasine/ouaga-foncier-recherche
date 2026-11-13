@@ -167,7 +167,9 @@ def refresh_snapshot() -> tuple[int, int, int]:
         connect_timeout=10,
     ) as connection:
         with connection.transaction():
-            connection.execute(migration)
+            for statement in migration.split(';'):
+                if statement.strip():
+                    connection.execute(statement)
             connection.executemany(
                 """
                 INSERT INTO public.market_neighborhood_price_daily (
