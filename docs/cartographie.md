@@ -1,7 +1,8 @@
 # Repères cartographiques de HAKIMO
 
-Les analyses utilisent un référentiel local de **71 repères** de quartiers et
-localités autour de Ouagadougou, consulté le **6 septembre 2026**. Il sert à
+Les analyses utilisent un référentiel local de repères de quartiers et
+localités autour de Ouagadougou. Les coordonnées sont embarquées dans le projet ;
+la carte ne calcule ni n'affiche de prix médian. Il sert à
 calculer la proximité entre zones. Il ne donne ni les coordonnées d’une parcelle,
 ni sa disponibilité, ni le temps de trajet. Aucun appel de géocodage n’est fait
 pendant une conversation et aucune position de l’utilisateur n’est collectée.
@@ -16,7 +17,7 @@ pendant une conversation et aucune position de l’utilisateur n’est collecté
   l’application. Le nom source, le code de lieu et l’identifiant GeoNames sont
   conservés dans chaque entrée. Une fiche est consultable à
   `https://www.geonames.org/{source_id}/`.
-- `app/data/neighborhoods_osm.json` : quatre repères complémentaires de
+- `app/data/neighborhoods_osm.json` : repères complémentaires de
   [OpenStreetMap](https://www.openstreetmap.org/copyright), sous
   [ODbL 1.0](https://opendatacommons.org/licenses/odbl/1-0/).
   Attribution : **© OpenStreetMap contributors**. Ce fichier dérivé reste sous
@@ -40,6 +41,29 @@ Le référentiel ne couvre pas tous les quartiers, extensions ou villages.
 Un nom inconnu reste inconnu ; aucun alias approximatif n’est inventé. Une zone
 trop large (« Ouagadougou », « Centre Ville ») ne devient pas un quartier. Ce
 référentiel n’élargit pas le périmètre de collecte des annonces.
+
+## Compléter les quartiers manquants
+
+Le script `scripts/update_neighborhood_coordinates.py` recherche les lieux
+absents auprès de Nominatim / OpenStreetMap. Il n'ajoute un point que si le
+résultat est de type lieu (quartier, banlieue, village ou hameau), si le nom
+correspond exactement après normalisation, si le pays est le Burkina Faso et
+si le résultat se trouve dans le périmètre élargi du Grand Ouaga. Les résultats
+ambigus ou non concordants restent à vérifier : aucune coordonnée n'est inventée.
+
+Depuis la racine du projet :
+
+```bash
+python3 scripts/update_neighborhood_coordinates.py
+python3 scripts/update_neighborhood_coordinates.py --apply
+```
+
+La première commande simule les recherches sans modifier les fichiers. La
+seconde ajoute uniquement les résultats validés à
+`app/data/neighborhoods_osm.json`. Le service de géocodage est interrogé à
+raison d'une requête par seconde environ. Les points existants GeoNames et OSM
+ne sont pas remplacés. Les noms non résolus doivent être vérifiés manuellement
+avant tout ajout.
 
 ## Distances et alternatives
 
