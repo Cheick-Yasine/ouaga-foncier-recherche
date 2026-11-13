@@ -1,0 +1,1609 @@
+[
+  {
+    "name": "1200 Logements",
+    "latitude": 12.36888,
+    "longitude": -1.4975,
+    "commune_zone": null,
+    "coordinate_source": "GeoNames #11900522 (1200 Logements)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "14 Yaar",
+    "latitude": null,
+    "longitude": null,
+    "commune_zone": null,
+    "coordinate_source": "Non trouvé",
+    "coordinate_reliability": "Aucune correspondance fiable"
+  },
+  {
+    "name": "Badnogo 2",
+    "latitude": 12.27074,
+    "longitude": -1.36982,
+    "commune_zone": "Saaba",
+    "coordinate_source": "GeoNames #2363106 (Badnogo II)",
+    "coordinate_reliability": "Approximatif : nom GeoNames proche « Badnogo II » – à vérifier"
+  },
+  {
+    "name": "Balkuy",
+    "latitude": 12.29979,
+    "longitude": -1.45207,
+    "commune_zone": "Komsilga ; Ouagadougou",
+    "coordinate_source": "GeoNames #2362989 (Balkuy)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "Bang-Pooré",
+    "latitude": null,
+    "longitude": null,
+    "commune_zone": "Ouagadougou",
+    "coordinate_source": "Non trouvé",
+    "coordinate_reliability": "Aucune correspondance fiable"
+  },
+  {
+    "name": "Baoghin",
+    "latitude": null,
+    "longitude": null,
+    "commune_zone": "Ouagadougou",
+    "coordinate_source": "Non trouvé",
+    "coordinate_reliability": "Aucune correspondance fiable"
+  },
+  {
+    "name": "Barogo",
+    "latitude": 12.41584,
+    "longitude": -1.41342,
+    "commune_zone": "Grand Ouaga – rattachement à vérifier ; Saaba",
+    "coordinate_source": "GeoNames #2362741 (Barogo)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "Bassemyam",
+    "latitude": 12.20921,
+    "longitude": -1.53977,
+    "commune_zone": null,
+    "coordinate_source": "GeoNames #2362684 (Bassemyam)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "Bassinko",
+    "latitude": null,
+    "longitude": null,
+    "commune_zone": "Grand Ouaga – rattachement à vérifier ; Ouagadougou",
+    "coordinate_source": "Non trouvé",
+    "coordinate_reliability": "Aucune correspondance fiable"
+  },
+  {
+    "name": "Belle Ville",
+    "latitude": null,
+    "longitude": null,
+    "commune_zone": null,
+    "coordinate_source": "Non trouvé",
+    "coordinate_reliability": "Aucune correspondance fiable"
+  },
+  {
+    "name": "Bendogo",
+    "latitude": 12.39508,
+    "longitude": -1.45425,
+    "commune_zone": "Ouagadougou",
+    "coordinate_source": "GeoNames #2362568 (Bendogo)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "Bénin (Calavi, Ouèdo, Cotonou…)",
+    "latitude": null,
+    "longitude": null,
+    "commune_zone": null,
+    "coordinate_source": "Non trouvé",
+    "coordinate_reliability": "Aucune correspondance fiable"
+  },
+  {
+    "name": "Benogo",
+    "latitude": 12.52281,
+    "longitude": -1.44683,
+    "commune_zone": null,
+    "coordinate_source": "GeoNames #2362550 (Bénogo)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "Bigtogo",
+    "latitude": 12.53152,
+    "longitude": -1.51066,
+    "commune_zone": null,
+    "coordinate_source": "GeoNames #2356146 (Bitogo)",
+    "coordinate_reliability": "Approximatif : nom GeoNames proche « Bitogo » – à vérifier"
+  },
+  {
+    "name": "Bilbalogo",
+    "latitude": 12.35989,
+    "longitude": -1.40812,
+    "commune_zone": "Ouagadougou",
+    "coordinate_source": "GeoNames #2570191 (Bilbalogo)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga – 2 homonymes dans la zone, le plus proche du centre retenu"
+  },
+  {
+    "name": "Bilgo",
+    "latitude": 12.53371,
+    "longitude": -1.68332,
+    "commune_zone": null,
+    "coordinate_source": "GeoNames #2362486 (Bilgo)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "Bingo",
+    "latitude": 12.22913,
+    "longitude": -1.44506,
+    "commune_zone": null,
+    "coordinate_source": "GeoNames #2569953 (Bingo)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga – 2 homonymes dans la zone, le plus proche du centre retenu"
+  },
+  {
+    "name": "Bissighin",
+    "latitude": 12.39354,
+    "longitude": -1.60484,
+    "commune_zone": "Ouagadougou",
+    "coordinate_source": "GeoNames #2570255 (Bissighin)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga – 2 homonymes dans la zone, le plus proche du centre retenu"
+  },
+  {
+    "name": "Boassa",
+    "latitude": 12.2921,
+    "longitude": -1.61694,
+    "commune_zone": "Ouagadougou ; Tanghin-Dassouri",
+    "coordinate_source": "GeoNames #2362350 (Boassa)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "Bobo-Dioulasso",
+    "latitude": 11.17715,
+    "longitude": -4.2979,
+    "commune_zone": null,
+    "coordinate_source": "GeoNames #2362344 (Bobo-Dioulasso)",
+    "coordinate_reliability": "Nom exact (GeoNames), hors Grand Ouaga (chef-lieu)"
+  },
+  {
+    "name": "Bonam",
+    "latitude": 12.32321,
+    "longitude": -1.57632,
+    "commune_zone": null,
+    "coordinate_source": "GeoNames #2362234 (Bonam)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "Bonheur Ville",
+    "latitude": null,
+    "longitude": null,
+    "commune_zone": null,
+    "coordinate_source": "Non trouvé",
+    "coordinate_reliability": "Aucune correspondance fiable"
+  },
+  {
+    "name": "Borgo",
+    "latitude": 12.15111,
+    "longitude": -1.79193,
+    "commune_zone": null,
+    "coordinate_source": "GeoNames #2362153 (Borogho)",
+    "coordinate_reliability": "Approximatif : nom GeoNames proche « Borogho » – à vérifier"
+  },
+  {
+    "name": "Boudtenga-Peulh",
+    "latitude": 12.48602,
+    "longitude": -1.23793,
+    "commune_zone": "Saaba",
+    "coordinate_source": "GeoNames #11980272 (Boudtenga-Peulh)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "Boulbi",
+    "latitude": 12.23883,
+    "longitude": -1.52662,
+    "commune_zone": null,
+    "coordinate_source": "GeoNames #2570022 (Boulbi)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga – 2 homonymes dans la zone, le plus proche du centre retenu"
+  },
+  {
+    "name": "Boulmiougou",
+    "latitude": null,
+    "longitude": null,
+    "commune_zone": null,
+    "coordinate_source": "Non trouvé",
+    "coordinate_reliability": "Aucune correspondance fiable"
+  },
+  {
+    "name": "Bouryiri",
+    "latitude": 12.46628,
+    "longitude": -1.48389,
+    "commune_zone": "Pabré",
+    "coordinate_source": "GeoNames #2361854 (Bour Yiri)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "Brafaso / Silmissi",
+    "latitude": 12.2094,
+    "longitude": -1.56688,
+    "commune_zone": null,
+    "coordinate_source": "GeoNames #2355575 (Silmissin)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga – 3 homonymes dans la zone, le plus proche du centre retenu"
+  },
+  {
+    "name": "Cissin",
+    "latitude": 12.32472,
+    "longitude": -1.53489,
+    "commune_zone": "Ouagadougou",
+    "coordinate_source": "GeoNames #2355486 (Cissin)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga – 2 homonymes dans la zone, le plus proche du centre retenu"
+  },
+  {
+    "name": "Cité GIS / Général Immo",
+    "latitude": null,
+    "longitude": null,
+    "commune_zone": null,
+    "coordinate_source": "Non trouvé",
+    "coordinate_reliability": "Aucune correspondance fiable"
+  },
+  {
+    "name": "Dagnoën",
+    "latitude": null,
+    "longitude": null,
+    "commune_zone": "Ouagadougou",
+    "coordinate_source": "Non trouvé",
+    "coordinate_reliability": "Aucune correspondance fiable"
+  },
+  {
+    "name": "Dandé",
+    "latitude": null,
+    "longitude": null,
+    "commune_zone": null,
+    "coordinate_source": "Non trouvé",
+    "coordinate_reliability": "Aucune correspondance fiable"
+  },
+  {
+    "name": "Dapelogo",
+    "latitude": 12.67274,
+    "longitude": -1.53907,
+    "commune_zone": null,
+    "coordinate_source": "GeoNames #2361567 (Dapélogo)",
+    "coordinate_reliability": "Nom exact (GeoNames), hors Grand Ouaga (chef-lieu)"
+  },
+  {
+    "name": "Dapoya",
+    "latitude": 12.38145,
+    "longitude": -1.52389,
+    "commune_zone": null,
+    "coordinate_source": "GeoNames #11900518 (Dapoya)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga – 2 homonymes dans la zone, le plus proche du centre retenu"
+  },
+  {
+    "name": "Dapoya 2",
+    "latitude": 12.38145,
+    "longitude": -1.52389,
+    "commune_zone": "Ouagadougou",
+    "coordinate_source": "GeoNames #11900518 (Dapoya)",
+    "coordinate_reliability": "Approximatif : nom GeoNames proche « Dapoya » – à vérifier"
+  },
+  {
+    "name": "Darsalam",
+    "latitude": 12.36146,
+    "longitude": -1.63909,
+    "commune_zone": "Ouagadougou",
+    "coordinate_source": "GeoNames #2353473 (Dar Salam)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "Dassasgho",
+    "latitude": 12.38719,
+    "longitude": -1.46896,
+    "commune_zone": "Ouagadougou",
+    "coordinate_source": "GeoNames #2361523 (Dassasgo)",
+    "coordinate_reliability": "Approximatif : nom GeoNames proche « Dassasgo » – à vérifier"
+  },
+  {
+    "name": "Dassosgho",
+    "latitude": null,
+    "longitude": null,
+    "commune_zone": "Ouagadougou",
+    "coordinate_source": "Non trouvé",
+    "coordinate_reliability": "Aucune correspondance fiable"
+  },
+  {
+    "name": "Dayongo",
+    "latitude": null,
+    "longitude": null,
+    "commune_zone": "Ouagadougou",
+    "coordinate_source": "Non trouvé",
+    "coordinate_reliability": "Aucune correspondance fiable"
+  },
+  {
+    "name": "Dayoubsi",
+    "latitude": 12.23651,
+    "longitude": -1.60851,
+    "commune_zone": null,
+    "coordinate_source": "GeoNames #2361500 (Dayoubsi)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "Donsin",
+    "latitude": 12.46673,
+    "longitude": -1.68314,
+    "commune_zone": null,
+    "coordinate_source": "GeoNames #2361096 (Ronsin)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "Fada N'Gourma",
+    "latitude": 12.06157,
+    "longitude": 0.35843,
+    "commune_zone": null,
+    "coordinate_source": "GeoNames #2360886 (Fada N'gourma)",
+    "coordinate_reliability": "Nom exact (GeoNames), hors Grand Ouaga (chef-lieu)"
+  },
+  {
+    "name": "Gampela",
+    "latitude": 12.4307,
+    "longitude": -1.37318,
+    "commune_zone": "Grand Ouaga – rattachement à vérifier",
+    "coordinate_source": "GeoNames #2360640 (Gampéla)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga – 2 homonymes dans la zone, le plus proche du centre retenu"
+  },
+  {
+    "name": "Gandin",
+    "latitude": null,
+    "longitude": null,
+    "commune_zone": "Ouagadougou",
+    "coordinate_source": "Non trouvé",
+    "coordinate_reliability": "Aucune correspondance fiable"
+  },
+  {
+    "name": "Gantin",
+    "latitude": 12.40778,
+    "longitude": -1.64056,
+    "commune_zone": "Ouagadougou",
+    "coordinate_source": "GeoNames #2360669 (Gantin)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga – 2 homonymes dans la zone, le plus proche du centre retenu"
+  },
+  {
+    "name": "Garghin",
+    "latitude": 12.25675,
+    "longitude": -1.52266,
+    "commune_zone": "Grand Ouaga – rattachement à vérifier ; Komsilga",
+    "coordinate_source": "GeoNames #2360697 (Garghin)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "Garpella",
+    "latitude": null,
+    "longitude": null,
+    "commune_zone": "Saaba",
+    "coordinate_source": "Non trouvé",
+    "coordinate_reliability": "Aucune correspondance fiable"
+  },
+  {
+    "name": "Goby",
+    "latitude": 12.19772,
+    "longitude": -1.59005,
+    "commune_zone": null,
+    "coordinate_source": "GeoNames #2360507 (Goby)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "Godin",
+    "latitude": 12.4225,
+    "longitude": -1.35688,
+    "commune_zone": "Ouagadougou",
+    "coordinate_source": "GeoNames #2570130 (Godin)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "Goghin / Godin",
+    "latitude": 12.33895,
+    "longitude": -1.71918,
+    "commune_zone": null,
+    "coordinate_source": "GeoNames #2360475 (Goghin)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga – 4 homonymes dans la zone, le plus proche du centre retenu"
+  },
+  {
+    "name": "Gogo",
+    "latitude": 12.23726,
+    "longitude": -1.63492,
+    "commune_zone": "Saaba",
+    "coordinate_source": "GeoNames #2360468 (Googho)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "Gonsé",
+    "latitude": 12.45869,
+    "longitude": -1.31964,
+    "commune_zone": null,
+    "coordinate_source": "GeoNames #2360404 (Gonsé)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga – 3 homonymes dans la zone, le plus proche du centre retenu"
+  },
+  {
+    "name": "Gonsin",
+    "latitude": 12.42724,
+    "longitude": -1.71024,
+    "commune_zone": null,
+    "coordinate_source": "GeoNames #2360399 (Gonsin)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "Goughin",
+    "latitude": 12.35895,
+    "longitude": -1.54442,
+    "commune_zone": null,
+    "coordinate_source": "GeoNames #11900680 (Gounghin)",
+    "coordinate_reliability": "Approximatif : nom GeoNames proche « Gounghin » – à vérifier"
+  },
+  {
+    "name": "Gounghin",
+    "latitude": 12.35895,
+    "longitude": -1.54442,
+    "commune_zone": null,
+    "coordinate_source": "GeoNames #11900680 (Gounghin)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga – 4 homonymes dans la zone, le plus proche du centre retenu"
+  },
+  {
+    "name": "Gounghin Nord",
+    "latitude": 12.3612,
+    "longitude": -1.55055,
+    "commune_zone": "Ouagadougou",
+    "coordinate_source": "GeoNames #11900526 (Gounghin Nord)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "Gounghin Sud",
+    "latitude": 12.35298,
+    "longitude": -1.54342,
+    "commune_zone": "Ouagadougou",
+    "coordinate_source": "GeoNames #11900619 (Gounghin Sud)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "Goupana",
+    "latitude": 12.61732,
+    "longitude": -1.58643,
+    "commune_zone": null,
+    "coordinate_source": "GeoNames #2360245 (Goupana)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "Guiguemtenga",
+    "latitude": 12.2454,
+    "longitude": -1.45931,
+    "commune_zone": null,
+    "coordinate_source": "GeoNames #2569955 (Guiguemtingua)",
+    "coordinate_reliability": "Approximatif : nom GeoNames proche « Guiguemtingua » – à vérifier"
+  },
+  {
+    "name": "Hamdalaye",
+    "latitude": 12.37666,
+    "longitude": -1.55029,
+    "commune_zone": "Ouagadougou",
+    "coordinate_source": "GeoNames #11900512 (Hamdalaye)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "Ipelcé",
+    "latitude": null,
+    "longitude": null,
+    "commune_zone": null,
+    "coordinate_source": "Non trouvé",
+    "coordinate_reliability": "Aucune correspondance fiable"
+  },
+  {
+    "name": "Kalgondin",
+    "latitude": 12.35058,
+    "longitude": -1.49918,
+    "commune_zone": "Ouagadougou",
+    "coordinate_source": "GeoNames #11875613 (Kalgondin)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "Kalgondin / Kalgondé",
+    "latitude": 12.35058,
+    "longitude": -1.49918,
+    "commune_zone": null,
+    "coordinate_source": "GeoNames #11875613 (Kalgondin)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "Kalzi",
+    "latitude": 12.12696,
+    "longitude": -1.63298,
+    "commune_zone": null,
+    "coordinate_source": "GeoNames #2359842 (Kalzi)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "Kamboinsé",
+    "latitude": 12.4486,
+    "longitude": -1.56279,
+    "commune_zone": "Ouagadougou",
+    "coordinate_source": "GeoNames #2359833 (Kamboinsé)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga – 2 homonymes dans la zone, le plus proche du centre retenu"
+  },
+  {
+    "name": "Kamboinsin",
+    "latitude": null,
+    "longitude": null,
+    "commune_zone": "Pabré",
+    "coordinate_source": "Non trouvé",
+    "coordinate_reliability": "Aucune correspondance fiable"
+  },
+  {
+    "name": "Kamboissin",
+    "latitude": null,
+    "longitude": null,
+    "commune_zone": "Grand Ouaga – rattachement à vérifier",
+    "coordinate_source": "Non trouvé",
+    "coordinate_reliability": "Aucune correspondance fiable"
+  },
+  {
+    "name": "Kamsonghin",
+    "latitude": 12.35418,
+    "longitude": -1.52177,
+    "commune_zone": "Ouagadougou",
+    "coordinate_source": "GeoNames #11900616 (Kamsonghin)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "Kankasin",
+    "latitude": 12.32197,
+    "longitude": -1.62024,
+    "commune_zone": "Ouagadougou",
+    "coordinate_source": "GeoNames #2570325 (Kankamsin)",
+    "coordinate_reliability": "Approximatif : nom GeoNames proche « Kankamsin » – à vérifier"
+  },
+  {
+    "name": "Karpala",
+    "latitude": null,
+    "longitude": null,
+    "commune_zone": "Ouagadougou",
+    "coordinate_source": "Non trouvé",
+    "coordinate_reliability": "Aucune correspondance fiable"
+  },
+  {
+    "name": "Katr Yaar / Sanyiri",
+    "latitude": 12.34629,
+    "longitude": -1.48007,
+    "commune_zone": null,
+    "coordinate_source": "GeoNames #11900622 (Sanyiri)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "Kienbaoghin",
+    "latitude": null,
+    "longitude": null,
+    "commune_zone": "Ouagadougou",
+    "coordinate_source": "Non trouvé",
+    "coordinate_reliability": "Aucune correspondance fiable"
+  },
+  {
+    "name": "Kienfangué",
+    "latitude": 12.20159,
+    "longitude": -1.55552,
+    "commune_zone": null,
+    "coordinate_source": "GeoNames #2354442 (Kienfangué)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "Kilwin",
+    "latitude": 12.39546,
+    "longitude": -1.58819,
+    "commune_zone": "Ouagadougou",
+    "coordinate_source": "GeoNames #2570256 (Kilwin)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "Koala",
+    "latitude": 12.42171,
+    "longitude": -1.27421,
+    "commune_zone": "Saaba",
+    "coordinate_source": "GeoNames #2359429 (Koala)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga – 2 homonymes dans la zone, le plus proche du centre retenu"
+  },
+  {
+    "name": "Kologh-Naaba",
+    "latitude": 12.3833,
+    "longitude": -1.54276,
+    "commune_zone": null,
+    "coordinate_source": "GeoNames #11900513 (Kologh-Naba)",
+    "coordinate_reliability": "Approximatif : nom GeoNames proche « Kologh-Naba » – à vérifier"
+  },
+  {
+    "name": "Kologh-Naba",
+    "latitude": 12.3833,
+    "longitude": -1.54276,
+    "commune_zone": "Ouagadougou",
+    "coordinate_source": "GeoNames #11900513 (Kologh-Naba)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "Kombissiri",
+    "latitude": 12.06884,
+    "longitude": -1.33644,
+    "commune_zone": null,
+    "coordinate_source": "GeoNames #2359227 (Kombissiri)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "Komkaga",
+    "latitude": 12.42992,
+    "longitude": -1.26882,
+    "commune_zone": "Saaba",
+    "coordinate_source": "GeoNames #2359216 (Komkarga)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "Komki-Ipala",
+    "latitude": 12.18279,
+    "longitude": -1.79131,
+    "commune_zone": "Komki-Ipala",
+    "coordinate_source": "GeoNames #2359214 (Komki-Ipala)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "Komsilga",
+    "latitude": 12.18653,
+    "longitude": -1.63379,
+    "commune_zone": "Komsilga",
+    "coordinate_source": "GeoNames #2359200 (Komsilga)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "Korbogdo",
+    "latitude": null,
+    "longitude": null,
+    "commune_zone": null,
+    "coordinate_source": "Non trouvé",
+    "coordinate_reliability": "Aucune correspondance fiable"
+  },
+  {
+    "name": "Kossodo",
+    "latitude": 12.41498,
+    "longitude": -1.47193,
+    "commune_zone": "Ouagadougou",
+    "coordinate_source": "GeoNames #2359017 (Kossodo)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga – 3 homonymes dans la zone, le plus proche du centre retenu"
+  },
+  {
+    "name": "Kouba",
+    "latitude": 12.24009,
+    "longitude": -1.43018,
+    "commune_zone": null,
+    "coordinate_source": "GeoNames #2358969 (Kouba)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "Koubri",
+    "latitude": 12.19861,
+    "longitude": -1.40611,
+    "commune_zone": "Koubri",
+    "coordinate_source": "GeoNames #2569971 (Koubri Nagbangré)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga – 4 homonymes dans la zone, le plus proche du centre retenu"
+  },
+  {
+    "name": "Koudougou",
+    "latitude": 12.25263,
+    "longitude": -2.36272,
+    "commune_zone": null,
+    "coordinate_source": "GeoNames #2358946 (Koudougou)",
+    "coordinate_reliability": "Nom exact (GeoNames), hors Grand Ouaga (chef-lieu)"
+  },
+  {
+    "name": "Koukin",
+    "latitude": 12.41049,
+    "longitude": -1.25714,
+    "commune_zone": null,
+    "coordinate_source": "GeoNames #11980286 (Koukin)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga – 2 homonymes dans la zone, le plus proche du centre retenu"
+  },
+  {
+    "name": "Koulouba",
+    "latitude": 12.36702,
+    "longitude": -1.51111,
+    "commune_zone": "Ouagadougou",
+    "coordinate_source": "GeoNames #11900617 (Koulouba)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "Koulouba / Centre-ville",
+    "latitude": 12.36702,
+    "longitude": -1.51111,
+    "commune_zone": null,
+    "coordinate_source": "GeoNames #11900617 (Koulouba)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "Koumdayonré",
+    "latitude": 12.36392,
+    "longitude": -1.61436,
+    "commune_zone": "Ouagadougou",
+    "coordinate_source": "GeoNames #2358785 (Koumdagnoré)",
+    "coordinate_reliability": "Approximatif : nom GeoNames proche « Koumdagnoré » – à vérifier"
+  },
+  {
+    "name": "Kounda",
+    "latitude": 12.43139,
+    "longitude": -1.39222,
+    "commune_zone": null,
+    "coordinate_source": "GeoNames #2359425 (Kounda)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga – 3 homonymes dans la zone, le plus proche du centre retenu"
+  },
+  {
+    "name": "Kouritenga",
+    "latitude": 12.3197,
+    "longitude": -1.54269,
+    "commune_zone": "Ouagadougou",
+    "coordinate_source": "GeoNames #2358850 (Kouritenga)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "Lanoayiri",
+    "latitude": 12.31013,
+    "longitude": -1.48202,
+    "commune_zone": "Ouagadougou",
+    "coordinate_source": "GeoNames #2570198 (Lalnoyiri)",
+    "coordinate_reliability": "Approximatif : nom GeoNames proche « Lalnoyiri » – à vérifier"
+  },
+  {
+    "name": "Larlé",
+    "latitude": 12.37422,
+    "longitude": -1.54187,
+    "commune_zone": "Ouagadougou",
+    "coordinate_source": "GeoNames #11900515 (Larlé)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga – 2 homonymes dans la zone, le plus proche du centre retenu"
+  },
+  {
+    "name": "Larlé Wéogo",
+    "latitude": null,
+    "longitude": null,
+    "commune_zone": "Ouagadougou",
+    "coordinate_source": "Non trouvé",
+    "coordinate_reliability": "Aucune correspondance fiable"
+  },
+  {
+    "name": "Laye",
+    "latitude": 12.53118,
+    "longitude": -1.77684,
+    "commune_zone": null,
+    "coordinate_source": "GeoNames #2358434 (Laye)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "Lougsi",
+    "latitude": 12.24669,
+    "longitude": -1.64947,
+    "commune_zone": null,
+    "coordinate_source": "GeoNames #2358206 (Lougsi)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "Loumbila",
+    "latitude": 12.51863,
+    "longitude": -1.3734,
+    "commune_zone": "Loumbila",
+    "coordinate_source": "GeoNames #2358201 (Loumbila)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "Makayabou",
+    "latitude": null,
+    "longitude": null,
+    "commune_zone": null,
+    "coordinate_source": "Non trouvé",
+    "coordinate_reliability": "Aucune correspondance fiable"
+  },
+  {
+    "name": "Manga",
+    "latitude": 11.66361,
+    "longitude": -1.07306,
+    "commune_zone": null,
+    "coordinate_source": "GeoNames #2358100 (Manga)",
+    "coordinate_reliability": "Nom exact (GeoNames), hors Grand Ouaga (chef-lieu)"
+  },
+  {
+    "name": "Mankougoudou",
+    "latitude": null,
+    "longitude": null,
+    "commune_zone": "Ouagadougou",
+    "coordinate_source": "Non trouvé",
+    "coordinate_reliability": "Aucune correspondance fiable"
+  },
+  {
+    "name": "Marcoussis",
+    "latitude": null,
+    "longitude": null,
+    "commune_zone": "Ouagadougou",
+    "coordinate_source": "Non trouvé",
+    "coordinate_reliability": "Aucune correspondance fiable"
+  },
+  {
+    "name": "Mogdin",
+    "latitude": 12.33369,
+    "longitude": -1.3918,
+    "commune_zone": null,
+    "coordinate_source": "GeoNames #2357939 (Mogdin)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "Mogtedo",
+    "latitude": 12.25451,
+    "longitude": -1.38691,
+    "commune_zone": null,
+    "coordinate_source": "GeoNames #11980288 (Mogtédo)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "Naababpougo",
+    "latitude": null,
+    "longitude": null,
+    "commune_zone": "Ouagadougou",
+    "coordinate_source": "Non trouvé",
+    "coordinate_reliability": "Aucune correspondance fiable"
+  },
+  {
+    "name": "Nabitenga (Komsilga)",
+    "latitude": 12.24459,
+    "longitude": -1.60194,
+    "commune_zone": null,
+    "coordinate_source": "GeoNames #2570308 (Nabytinga)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga – 4 homonymes dans la zone, le plus proche du centre retenu"
+  },
+  {
+    "name": "Nagréongo",
+    "latitude": 12.47847,
+    "longitude": -1.20129,
+    "commune_zone": null,
+    "coordinate_source": "GeoNames #2356436 (Nagréongo)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga – 2 homonymes dans la zone, le plus proche du centre retenu"
+  },
+  {
+    "name": "Nagrin",
+    "latitude": 12.33209,
+    "longitude": -1.36554,
+    "commune_zone": "Komsilga ; Ouagadougou",
+    "coordinate_source": "GeoNames #2570210 (Nagrin)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "Nemnin",
+    "latitude": 12.3813,
+    "longitude": -1.53076,
+    "commune_zone": "Ouagadougou",
+    "coordinate_source": "GeoNames #11900517 (Nemnin)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga – 2 homonymes dans la zone, le plus proche du centre retenu"
+  },
+  {
+    "name": "Nio",
+    "latitude": null,
+    "longitude": null,
+    "commune_zone": "Saaba",
+    "coordinate_source": "Non trouvé",
+    "coordinate_reliability": "Aucune correspondance fiable"
+  },
+  {
+    "name": "Niogsin",
+    "latitude": null,
+    "longitude": null,
+    "commune_zone": "Ouagadougou",
+    "coordinate_source": "Non trouvé",
+    "coordinate_reliability": "Aucune correspondance fiable"
+  },
+  {
+    "name": "Nioko",
+    "latitude": 12.39501,
+    "longitude": -1.43861,
+    "commune_zone": "Grand Ouaga – rattachement à vérifier",
+    "coordinate_source": "GeoNames #2357109 (Nioko I)",
+    "coordinate_reliability": "Approximatif : nom GeoNames proche « Nioko I » – à vérifier"
+  },
+  {
+    "name": "Nioko 1",
+    "latitude": null,
+    "longitude": null,
+    "commune_zone": "Ouagadougou",
+    "coordinate_source": "Non trouvé",
+    "coordinate_reliability": "Aucune correspondance fiable"
+  },
+  {
+    "name": "Nioko 2",
+    "latitude": null,
+    "longitude": null,
+    "commune_zone": "Ouagadougou",
+    "coordinate_source": "Non trouvé",
+    "coordinate_reliability": "Aucune correspondance fiable"
+  },
+  {
+    "name": "Nioko-Warben",
+    "latitude": null,
+    "longitude": null,
+    "commune_zone": "Pabré",
+    "coordinate_source": "Non trouvé",
+    "coordinate_reliability": "Aucune correspondance fiable"
+  },
+  {
+    "name": "Nonsin",
+    "latitude": 12.37386,
+    "longitude": -1.56559,
+    "commune_zone": "Ouagadougou",
+    "coordinate_source": "GeoNames #11900414 (Nonsin)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "Ouaga 2000",
+    "latitude": 12.31538,
+    "longitude": -1.50888,
+    "commune_zone": "Ouagadougou",
+    "coordinate_source": "GeoNames #11900624 (Ouaga 2000)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "Ouagadougou (non précisé)",
+    "latitude": 12.36566,
+    "longitude": -1.53388,
+    "commune_zone": null,
+    "coordinate_source": "GeoNames #2357048 (Ouagadougou)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga – 2 homonymes dans la zone, le plus proche du centre retenu"
+  },
+  {
+    "name": "Ouapassi",
+    "latitude": 12.44216,
+    "longitude": -1.50932,
+    "commune_zone": "Ouagadougou",
+    "coordinate_source": "GeoNames #2357016 (Ouapassi)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "Ouarmini",
+    "latitude": 12.18191,
+    "longitude": -1.52339,
+    "commune_zone": null,
+    "coordinate_source": "GeoNames #2353839 (Warmini)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "Ouidi",
+    "latitude": 12.37933,
+    "longitude": -1.54027,
+    "commune_zone": "Ouagadougou",
+    "coordinate_source": "GeoNames #11900514 (Ouidi)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga – 8 homonymes dans la zone, le plus proche du centre retenu"
+  },
+  {
+    "name": "Ouidtenga",
+    "latitude": 12.28866,
+    "longitude": -1.43714,
+    "commune_zone": "Ouagadougou",
+    "coordinate_source": "GeoNames #2356944 (Widtenga)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "Pabré",
+    "latitude": 12.52147,
+    "longitude": -1.58631,
+    "commune_zone": "Pabré",
+    "coordinate_source": "GeoNames #2356759 (Pabré)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "Paglayiri",
+    "latitude": null,
+    "longitude": null,
+    "commune_zone": null,
+    "coordinate_source": "Non trouvé",
+    "coordinate_reliability": "Aucune correspondance fiable"
+  },
+  {
+    "name": "Panzani / Pazani",
+    "latitude": 12.44316,
+    "longitude": -1.57843,
+    "commune_zone": null,
+    "coordinate_source": "GeoNames #11911406 (Pazani)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"  },
+  {
+    "name": "Paspanga",
+    "latitude": 12.37991,
+    "longitude": -1.51733,
+    "commune_zone": "Ouagadougou",
+    "coordinate_source": "GeoNames #11900520 (Paspanga)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga – 2 homonymes dans la zone, le plus proche du centre retenu"
+  },
+  {
+    "name": "Patte d'Oie",
+    "latitude": 12.32495,
+    "longitude": -1.51638,
+    "commune_zone": "Ouagadougou",
+    "coordinate_source": "GeoNames #2570277 (Patte d’Oie)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "Pissy",
+    "latitude": 12.33815,
+    "longitude": -1.56503,
+    "commune_zone": "Ouagadougou",
+    "coordinate_source": "GeoNames #2356477 (Pissy)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "Plesgo",
+    "latitude": 12.44031,
+    "longitude": -1.49496,
+    "commune_zone": "Pabré",
+    "coordinate_source": "GeoNames #2356744 (Polesgo)",
+    "coordinate_reliability": "Approximatif : nom GeoNames proche « Polesgo » – à vérifier"
+  },
+  {
+    "name": "Polesgo",
+    "latitude": 12.44031,
+    "longitude": -1.49496,
+    "commune_zone": null,
+    "coordinate_source": "GeoNames #2356744 (Polesgo)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "Ponsomtenga",
+    "latitude": 12.2321,
+    "longitude": -1.47977,
+    "commune_zone": null,
+    "coordinate_source": "GeoNames #2356371 (Ponsomtinga)",
+    "coordinate_reliability": "Approximatif : nom GeoNames proche « Ponsomtinga » – à vérifier"
+  },
+  {
+    "name": "Rayongo",
+    "latitude": null,
+    "longitude": null,
+    "commune_zone": null,
+    "coordinate_source": "Non trouvé",
+    "coordinate_reliability": "Aucune correspondance fiable"
+  },
+  {
+    "name": "Rimkieta",
+    "latitude": null,
+    "longitude": null,
+    "commune_zone": "Ouagadougou",
+    "coordinate_source": "Non trouvé",
+    "coordinate_reliability": "Aucune correspondance fiable"
+  },
+  {
+    "name": "Roalba",
+    "latitude": 12.22317,
+    "longitude": -1.49068,
+    "commune_zone": null,
+    "coordinate_source": "GeoNames #2569957 (Roalba)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "Ronsin",
+    "latitude": 12.46673,
+    "longitude": -1.68314,
+    "commune_zone": "Ouagadougou",
+    "coordinate_source": "GeoNames #2361096 (Ronsin)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga – 2 homonymes dans la zone, le plus proche du centre retenu"
+  },
+  {
+    "name": "Rotonde",
+    "latitude": null,
+    "longitude": null,
+    "commune_zone": null,
+    "coordinate_source": "Non trouvé",
+    "coordinate_reliability": "Aucune correspondance fiable"
+  },
+  {
+    "name": "Roumtenga",
+    "latitude": 12.09102,
+    "longitude": -1.49314,
+    "commune_zone": null,
+    "coordinate_source": "GeoNames #2356181 (Doumtinga)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "Saaba",
+    "latitude": 12.37136,
+    "longitude": -1.41468,
+    "commune_zone": "Saaba",
+    "coordinate_source": "GeoNames #2356157 (Saaba)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "Saaba (centre)",
+    "latitude": 12.37136,
+    "longitude": -1.41468,
+    "commune_zone": null,
+    "coordinate_source": "GeoNames #2356157 (Saaba)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "Sabtenga",
+    "latitude": 12.36565,
+    "longitude": -1.40788,
+    "commune_zone": null,
+    "coordinate_source": "GeoNames #2356115 (Sabtenga)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga – 2 homonymes dans la zone, le plus proche du centre retenu"
+  },
+  {
+    "name": "Sabtoana",
+    "latitude": 12.24285,
+    "longitude": -1.49039,
+    "commune_zone": null,
+    "coordinate_source": "GeoNames #2356111 (Sabtoana)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "Saint-Léon",
+    "latitude": null,
+    "longitude": null,
+    "commune_zone": "Ouagadougou",
+    "coordinate_source": "Non trouvé",
+    "coordinate_reliability": "Aucune correspondance fiable"
+  },
+  {
+    "name": "Sakoula",
+    "latitude": 12.45489,
+    "longitude": -1.52267,
+    "commune_zone": null,
+    "coordinate_source": "GeoNames #2356056 (Sakoula)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "Salitas",
+    "latitude": null,
+    "longitude": null,
+    "commune_zone": null,
+    "coordinate_source": "Non trouvé",
+    "coordinate_reliability": "Aucune correspondance fiable"
+  },
+  {
+    "name": "Samandin",
+    "latitude": 12.34977,
+    "longitude": -1.53241,
+    "commune_zone": "Ouagadougou",
+    "coordinate_source": "GeoNames #11900620 (Samandin)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga – 2 homonymes dans la zone, le plus proche du centre retenu"
+  },
+  {
+    "name": "Sambin barrage",
+    "latitude": null,
+    "longitude": null,
+    "commune_zone": "Ouagadougou",
+    "coordinate_source": "Non trouvé",
+    "coordinate_reliability": "Aucune correspondance fiable"
+  },
+  {
+    "name": "Sanbtenga",
+    "latitude": 12.36565,
+    "longitude": -1.40788,
+    "commune_zone": null,
+    "coordinate_source": "GeoNames #2356115 (Sabtenga)",
+    "coordinate_reliability": "Approximatif : nom GeoNames proche « Sabtenga » – à vérifier"
+  },
+  {
+    "name": "Sandogo",
+    "latitude": 12.31785,
+    "longitude": -1.59374,
+    "commune_zone": "Ouagadougou",
+    "coordinate_source": "GeoNames #2355958 (Sandogo)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga – 3 homonymes dans la zone, le plus proche du centre retenu"
+  },
+  {
+    "name": "Saponé",
+    "latitude": 12.10134,
+    "longitude": -1.56789,
+    "commune_zone": null,
+    "coordinate_source": "GeoNames #2355871 (Saponé-Marché)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga – 2 homonymes dans la zone, le plus proche du centre retenu"
+  },
+  {
+    "name": "Sapouy",
+    "latitude": 11.55444,
+    "longitude": -1.77361,
+    "commune_zone": null,
+    "coordinate_source": "GeoNames #2355869 (Sapouy)",
+    "coordinate_reliability": "Nom exact (GeoNames), hors Grand Ouaga (chef-lieu)"
+  },
+  {
+    "name": "Séloghin",
+    "latitude": 12.32342,
+    "longitude": -1.37909,
+    "commune_zone": "Saaba",
+    "coordinate_source": "GeoNames #2355761 (Séloghin)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "Silmiougou",
+    "latitude": 12.37149,
+    "longitude": -1.65651,
+    "commune_zone": "Ouagadougou",
+    "coordinate_source": "GeoNames #2355573 (Silmiougou)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga – 4 homonymes dans la zone, le plus proche du centre retenu"
+  },
+  {
+    "name": "Silmissin",
+    "latitude": 12.25912,
+    "longitude": -1.59971,
+    "commune_zone": "Grand Ouaga – rattachement à vérifier ; Tanghin-Dassouri",
+    "coordinate_source": "GeoNames #2570306 (Silmissin)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga – 4 homonymes dans la zone, le plus proche du centre retenu"
+  },
+  {
+    "name": "Silmiyiri",
+    "latitude": 12.41917,
+    "longitude": -1.54333,
+    "commune_zone": "Ouagadougou",
+    "coordinate_source": "GeoNames #2570229 (Silmiyiri)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga – 2 homonymes dans la zone, le plus proche du centre retenu"
+  },
+  {
+    "name": "Sogdin",
+    "latitude": 12.4846,
+    "longitude": -1.49301,
+    "commune_zone": "Pabré",
+    "coordinate_source": "GeoNames #2355439 (Sogdin)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "Sogpelcé",
+    "latitude": 12.55398,
+    "longitude": -1.25998,
+    "commune_zone": "Ouagadougou",
+    "coordinate_source": "GeoNames #11947785 (Songpelcé)",
+    "coordinate_reliability": "Approximatif : nom GeoNames proche « Songpelcé » – à vérifier"
+  },
+  {
+    "name": "Somgandé",
+    "latitude": 12.40927,
+    "longitude": -1.50267,
+    "commune_zone": "Ouagadougou",
+    "coordinate_source": "GeoNames #2355383 (Somgandé)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga – 2 homonymes dans la zone, le plus proche du centre retenu"
+  },
+  {
+    "name": "Sondogo",
+    "latitude": 12.08158,
+    "longitude": -1.5628,
+    "commune_zone": null,
+    "coordinate_source": "GeoNames #2570105 (Sodogo)",
+    "coordinate_reliability": "Approximatif : nom GeoNames proche « Sodogo » – à vérifier"
+  },
+  {
+    "name": "Songdin",
+    "latitude": 12.4846,
+    "longitude": -1.49301,
+    "commune_zone": null,
+    "coordinate_source": "GeoNames #2355439 (Sogdin)",
+    "coordinate_reliability": "Approximatif : nom GeoNames proche « Sogdin » – à vérifier"
+  },
+  {
+    "name": "Songnaaba",
+    "latitude": null,
+    "longitude": null,
+    "commune_zone": null,
+    "coordinate_source": "Non trouvé",
+    "coordinate_reliability": "Aucune correspondance fiable"
+  },
+  {
+    "name": "Sourgoubila",
+    "latitude": 12.41462,
+    "longitude": -1.80644,
+    "commune_zone": null,
+    "coordinate_source": "GeoNames #2355221 (Sourgoubila)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "Taabtenga",
+    "latitude": 12.37245,
+    "longitude": -1.4518,
+    "commune_zone": "Ouagadougou",
+    "coordinate_source": "GeoNames #2355176 (Taptenga)",
+    "coordinate_reliability": "Approximatif : nom GeoNames proche « Taptenga » – à vérifier"
+  },
+  {
+    "name": "Tampéla",
+    "latitude": 12.53306,
+    "longitude": -1.78696,
+    "commune_zone": "Saaba",
+    "coordinate_source": "GeoNames #11913676 (Tampelga)",
+    "coordinate_reliability": "Approximatif : nom GeoNames proche « Tampelga » – à vérifier"
+  },
+  {
+    "name": "Tampouy",
+    "latitude": 12.39995,
+    "longitude": -1.57086,
+    "commune_zone": "Ouagadougou",
+    "coordinate_source": "GeoNames #2355060 (Tampouy)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga – 2 homonymes dans la zone, le plus proche du centre retenu"
+  },
+  {
+    "name": "Tanghin",
+    "latitude": 12.39896,
+    "longitude": -1.53289,
+    "commune_zone": "Ouagadougou",
+    "coordinate_source": "GeoNames #2354986 (Tanghin)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga – 10 homonymes dans la zone, le plus proche du centre retenu"
+  },
+  {
+    "name": "Tanghin Dassouri",
+    "latitude": 12.27256,
+    "longitude": -1.71704,
+    "commune_zone": "Tanghin-Dassouri",
+    "coordinate_source": "GeoNames #2354971 (Tanghin-Dassouri)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "Tangzougou",
+    "latitude": 12.29113,
+    "longitude": -1.63,
+    "commune_zone": null,
+    "coordinate_source": "GeoNames #2570323 (Tangzougou)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga – 2 homonymes dans la zone, le plus proche du centre retenu"
+  },
+  {
+    "name": "Tanlarghin",
+    "latitude": 12.30151,
+    "longitude": -1.38858,
+    "commune_zone": null,
+    "coordinate_source": "GeoNames #2354897 (Tanlarghin)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "Tanlargo",
+    "latitude": 12.51591,
+    "longitude": -1.33832,
+    "commune_zone": "Saaba",
+    "coordinate_source": "GeoNames #11947781 (Tanlargo)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "Tansobtinga",
+    "latitude": 12.30227,
+    "longitude": -1.32348,
+    "commune_zone": "Saaba",
+    "coordinate_source": "GeoNames #2354829 (Tansobentinga)",
+    "coordinate_reliability": "Approximatif : nom GeoNames proche « Tansobentinga » – à vérifier"
+  },
+  {
+    "name": "Tengandogo",
+    "latitude": 12.05099,
+    "longitude": -1.30247,
+    "commune_zone": null,
+    "coordinate_source": "GeoNames #2354441 (Tengandogo)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "Tiédpalogo",
+    "latitude": null,
+    "longitude": null,
+    "commune_zone": "Ouagadougou",
+    "coordinate_source": "Non trouvé",
+    "coordinate_reliability": "Aucune correspondance fiable"
+  },
+  {
+    "name": "Tiguindalgué",
+    "latitude": 12.2663,
+    "longitude": -1.60131,
+    "commune_zone": null,
+    "coordinate_source": "GeoNames #2354499 (Tiguindalgué)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga – 2 homonymes dans la zone, le plus proche du centre retenu"
+  },
+  {
+    "name": "Tingandogo",
+    "latitude": 12.2579,
+    "longitude": -1.53396,
+    "commune_zone": null,
+    "coordinate_source": "GeoNames #2354686 (Tingandogo)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "Tinsouka",
+    "latitude": 12.34524,
+    "longitude": -1.67209,
+    "commune_zone": null,
+    "coordinate_source": "GeoNames #2354419 (Tinsouka)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "Toudoubwéogo",
+    "latitude": null,
+    "longitude": null,
+    "commune_zone": null,
+    "coordinate_source": "Non trouvé",
+    "coordinate_reliability": "Aucune correspondance fiable"
+  },
+  {
+    "name": "Toukin",
+    "latitude": 12.39678,
+    "longitude": -1.50234,
+    "commune_zone": "Ouagadougou",
+    "coordinate_source": "GeoNames #2354147 (Toukin)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "Wapassi",
+    "latitude": 12.24011,
+    "longitude": -1.23006,
+    "commune_zone": null,
+    "coordinate_source": "GeoNames #11980308 (Wapassi)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "Wayalghin",
+    "latitude": 12.3996,
+    "longitude": -1.47502,
+    "commune_zone": "Ouagadougou",
+    "coordinate_source": "GeoNames #2356995 (Wayalguin)",
+    "coordinate_reliability": "Approximatif : nom GeoNames proche « Wayalguin » – à vérifier"
+  },
+  {
+    "name": "Wemtenga",
+    "latitude": 12.37056,
+    "longitude": -1.48919,
+    "commune_zone": "Ouagadougou",
+    "coordinate_source": "GeoNames #11900618 (Wemtenga)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "Wendpanga",
+    "latitude": null,
+    "longitude": null,
+    "commune_zone": null,
+    "coordinate_source": "Non trouvé",
+    "coordinate_reliability": "Aucune correspondance fiable"
+  },
+  {
+    "name": "Wob-Riguéré",
+    "latitude": 12.43853,
+    "longitude": -1.56798,
+    "commune_zone": "Ouagadougou",
+    "coordinate_source": "GeoNames #11911408 (Wob-Riguéré)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "Yagma",
+    "latitude": null,
+    "longitude": null,
+    "commune_zone": "Pabré",
+    "coordinate_source": "Non trouvé",
+    "coordinate_reliability": "Aucune correspondance fiable"
+  },
+  {
+    "name": "Yalgré",
+    "latitude": 12.39645,
+    "longitude": -1.6584,
+    "commune_zone": null,
+    "coordinate_source": "GeoNames #2570248 (Yalégré)",
+    "coordinate_reliability": "Approximatif : nom GeoNames proche « Yalégré » – à vérifier"
+  },
+  {
+    "name": "Yamtenga",
+    "latitude": 12.34849,
+    "longitude": -1.44766,
+    "commune_zone": null,
+    "coordinate_source": "GeoNames #2353640 (Yamtenga)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "Yaoghin",
+    "latitude": 12.3298,
+    "longitude": -1.60734,
+    "commune_zone": "Ouagadougou",
+    "coordinate_source": "GeoNames #2353623 (Yaoghin)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga – 4 homonymes dans la zone, le plus proche du centre retenu"
+  },
+  {
+    "name": "Yemtenga",
+    "latitude": null,
+    "longitude": null,
+    "commune_zone": "Ouagadougou",
+    "coordinate_source": "Non trouvé",
+    "coordinate_reliability": "Aucune correspondance fiable"
+  },
+  {
+    "name": "Yimdi",
+    "latitude": 12.31014,
+    "longitude": -1.66322,
+    "commune_zone": null,
+    "coordinate_source": "GeoNames #12720016 (Yimdi)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "ZAD / SIAO",
+    "latitude": null,
+    "longitude": null,
+    "commune_zone": null,
+    "coordinate_source": "Non trouvé",
+    "coordinate_reliability": "Aucune correspondance fiable"
+  },
+  {
+    "name": "Zagtouli",
+    "latitude": 12.32924,
+    "longitude": -1.62566,
+    "commune_zone": "Ouagadougou",
+    "coordinate_source": "GeoNames #2353430 (Zagtouli)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "Zakin",
+    "latitude": 12.35793,
+    "longitude": -1.3722,
+    "commune_zone": null,
+    "coordinate_source": "GeoNames #2353423 (Zakin)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "Zamnogho",
+    "latitude": 12.20995,
+    "longitude": -1.55386,
+    "commune_zone": null,
+    "coordinate_source": "GeoNames #2353399 (Zamnongho)",
+    "coordinate_reliability": "Approximatif : nom GeoNames proche « Zamnongho » – à vérifier"
+  },
+  {
+    "name": "Zangouettin",
+    "latitude": null,
+    "longitude": null,
+    "commune_zone": "Ouagadougou",
+    "coordinate_source": "Non trouvé",
+    "coordinate_reliability": "Aucune correspondance fiable"
+  },
+  {
+    "name": "Zekounga",
+    "latitude": 12.38967,
+    "longitude": -1.67532,
+    "commune_zone": null,
+    "coordinate_source": "GeoNames #2353327 (Zékounga)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "Zinguedessé",
+    "latitude": 12.24661,
+    "longitude": -1.58402,
+    "commune_zone": null,
+    "coordinate_source": "GeoNames #2353332 (Zinguédéssé)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "Ziniaré",
+    "latitude": 12.58186,
+    "longitude": -1.2971,
+    "commune_zone": "Grand Ouaga – rattachement à vérifier",
+    "coordinate_source": "GeoNames #2353257 (Ziniaré)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga – 2 homonymes dans la zone, le plus proche du centre retenu"
+  },
+  {
+    "name": "Zogona",
+    "latitude": 12.37829,
+    "longitude": -1.49058,
+    "commune_zone": "Ouagadougou",
+    "coordinate_source": "GeoNames #9570053 (Zogona)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  },
+  {
+    "name": "Zone 1",
+    "latitude": null,
+    "longitude": null,
+    "commune_zone": null,
+    "coordinate_source": "Non trouvé",
+    "coordinate_reliability": "Aucune correspondance fiable"
+  },
+  {
+    "name": "Zone du Bois",
+    "latitude": null,
+    "longitude": null,
+    "commune_zone": null,
+    "coordinate_source": "Non trouvé",
+    "coordinate_reliability": "Aucune correspondance fiable"
+  },
+  {
+    "name": "Zongo",
+    "latitude": 12.34595,
+    "longitude": -1.59856,
+    "commune_zone": "Ouagadougou",
+    "coordinate_source": "GeoNames #2353215 (Zongo)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga – 2 homonymes dans la zone, le plus proche du centre retenu"
+  },
+  {
+    "name": "Zongo Nabitenga",
+    "latitude": 12.36549,
+    "longitude": -1.62646,
+    "commune_zone": "Ouagadougou",
+    "coordinate_source": "GeoNames #2570261 (Zongo Nabitenga)",
+    "coordinate_reliability": "Nom exact (GeoNames), zone Grand Ouaga"
+  }
+]
