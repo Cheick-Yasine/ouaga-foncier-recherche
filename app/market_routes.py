@@ -22,9 +22,9 @@ from app.neighborhood_prices import get_latest_neighborhood_prices
 router = APIRouter(prefix='/market', tags=['Accueil'])
 
 # Les statistiques d'accueil changent moins vite que les requêtes utilisateurs.
-# Une durée de 5 heures limite les lectures et calculs Neon, au prix d'un
+# Une durée d'une heure limite les lectures et calculs Neon, au prix d'un
 # possible décalage des statistiques après l'ajout de nouvelles annonces.
-_MARKET_CACHE_TTL_SECONDS = 5 * 60 * 60.0
+_MARKET_CACHE_TTL_SECONDS = 60 * 60.0
 _market_cache: dict[tuple, tuple[float, object]] = {}
 _market_cache_lock = Lock()
 _T = TypeVar("_T")
