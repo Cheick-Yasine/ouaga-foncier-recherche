@@ -110,11 +110,10 @@
       return;
     }
 
-    const average = movingAverage(rows);
-
-    // La journée en cours peut être incomplète pendant l'intégration des annonces.
-    // On stabilise uniquement le dernier point affiché, sans modifier les données
-    // reçues de l'API ni les statistiques stockées dans Neon.
+    // Tant que la journée en cours compte moins de 100 annonces intégrées,
+    // on reprend provisoirement le nombre de la veille pour éviter une chute
+    // artificielle. À partir de 100, on conserve le nombre réel du jour.
+    // Cette correction ne modifie ni les données de l'API ni celles de Neon.
     if (rows.length > 1) {
       const dateParts = new Intl.DateTimeFormat('en-CA', {
         timeZone: 'Africa/Ouagadougou',
@@ -126,10 +125,15 @@
       const todayKey = `${today.year}-${today.month}-${today.day}`;
       const lastIndex = rows.length - 1;
 
-      if (rows[lastIndex].date === todayKey && average[lastIndex - 1] !== null) {
-        average[lastIndex] = average[lastIndex - 1];
+      if (
+        rows[lastIndex].date === todayKey
+        && rows[lastIndex].annonces < 100
+      ) {
+        rows[lastIndex].annonces = rows[lastIndex - 1].annonces;
       }
     }
+
+    const average = movingAverage(rows);
 
     const t = theme();
 
