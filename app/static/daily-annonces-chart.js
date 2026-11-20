@@ -111,6 +111,26 @@
     }
 
     const average = movingAverage(rows);
+
+    // La journée en cours peut être incomplète pendant l'intégration des annonces.
+    // On stabilise uniquement le dernier point affiché, sans modifier les données
+    // reçues de l'API ni les statistiques stockées dans Neon.
+    if (rows.length > 1) {
+      const dateParts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Africa/Ouagadougou',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      }).formatToParts(new Date());
+      const today = Object.fromEntries(dateParts.map(part => [part.type, part.value]));
+      const todayKey = `${today.year}-${today.month}-${today.day}`;
+      const lastIndex = rows.length - 1;
+
+      if (rows[lastIndex].date === todayKey && average[lastIndex - 1] !== null) {
+        average[lastIndex] = average[lastIndex - 1];
+      }
+    }
+
     const t = theme();
 
     const averageTrace = {
