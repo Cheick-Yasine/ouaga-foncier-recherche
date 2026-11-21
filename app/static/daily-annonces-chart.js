@@ -110,26 +110,30 @@
       return;
     }
 
-    // La journée en cours commence à zéro dans les données réelles.
-    // Tant qu'aucune annonce du jour n'est intégrée, on prolonge uniquement
-    // la courbe de moyenne mobile au niveau de la veille (palier visuel).
-    // Les comptes quotidiens restent réels : aucune annonce d'hier n'est
-    // recopiée dans aujourd'hui, ni dans l'API, ni dans Neon.
+    // Jusqu'à 22 h (heure de Ouagadougou), la courbe du jour reste
+    // au même niveau que celle de la veille, quel que soit le nombre
+    // d'annonces déjà collectées aujourd'hui.
+    // À partir de 22 h, la moyenne mobile réelle du jour est affichée.
+    // Cette règle est purement visuelle : les comptes réels ne sont jamais
+    // modifiés, ni dans l'API, ni dans Neon.
     const average = movingAverage(rows);
     if (rows.length > 1) {
       const dateParts = new Intl.DateTimeFormat('en-CA', {
         timeZone: 'Africa/Ouagadougou',
         year: 'numeric',
         month: '2-digit',
-        day: '2-digit'
+        day: '2-digit',
+        hour: '2-digit',
+        hourCycle: 'h23'
       }).formatToParts(new Date());
       const today = Object.fromEntries(dateParts.map(part => [part.type, part.value]));
       const todayKey = `${today.year}-${today.month}-${today.day}`;
+      const localHour = Number(today.hour);
       const lastIndex = rows.length - 1;
 
       if (
         rows[lastIndex].date === todayKey
-        && rows[lastIndex].annonces === 0
+        && localHour < 22
         && Number.isFinite(average[lastIndex - 1])
       ) {
         average[lastIndex] = average[lastIndex - 1];
