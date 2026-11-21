@@ -110,10 +110,12 @@
       return;
     }
 
-    // Tant que la journée en cours compte moins de 100 annonces intégrées,
-    // on reprend provisoirement le nombre de la veille pour éviter une chute
-    // artificielle. À partir de 100, on conserve le nombre réel du jour.
-    // Cette correction ne modifie ni les données de l'API ni celles de Neon.
+    // La journée en cours commence à zéro dans les données réelles.
+    // Tant qu'aucune annonce du jour n'est intégrée, on prolonge uniquement
+    // la courbe de moyenne mobile au niveau de la veille (palier visuel).
+    // Les comptes quotidiens restent réels : aucune annonce d'hier n'est
+    // recopiée dans aujourd'hui, ni dans l'API, ni dans Neon.
+    const average = movingAverage(rows);
     if (rows.length > 1) {
       const dateParts = new Intl.DateTimeFormat('en-CA', {
         timeZone: 'Africa/Ouagadougou',
@@ -127,13 +129,12 @@
 
       if (
         rows[lastIndex].date === todayKey
-        && rows[lastIndex].annonces < 100
+        && rows[lastIndex].annonces === 0
+        && Number.isFinite(average[lastIndex - 1])
       ) {
-        rows[lastIndex].annonces = rows[lastIndex - 1].annonces;
+        average[lastIndex] = average[lastIndex - 1];
       }
     }
-
-    const average = movingAverage(rows);
 
     const t = theme();
 
