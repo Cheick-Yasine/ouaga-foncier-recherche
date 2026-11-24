@@ -1707,7 +1707,9 @@
       row.append(element('span','deal-zone-price-name',name));
       const details=element('span','deal-zone-price-value');
       if(item && item.prix_m2_median_fcfa!==null && item.prix_m2_median_fcfa!==undefined) {
-        details.textContent=fmt.format(item.prix_m2_median_fcfa)+' FCFA/m²';
+        details.textContent=
+          fmt.format(item.prix_m2_median_fcfa)+' FCFA/m² · 300 m² : '+
+          fmt.format(item.prix_m2_median_fcfa*300)+' FCFA';
       } else {
         details.textContent='Prix non disponible';
       }
