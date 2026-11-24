@@ -110,14 +110,15 @@
       return;
     }
 
-    // Jusqu'à 22 h (heure de Ouagadougou), la courbe du jour reste
-    // au même niveau que celle de la veille, quel que soit le nombre
-    // d'annonces déjà collectées aujourd'hui.
-    // À partir de 22 h, la moyenne mobile réelle du jour est affichée.
-    // Cette règle est purement visuelle : les comptes réels ne sont jamais
-    // modifiés, ni dans l'API, ni dans Neon.
+    // Mode temporaire de continuité après l'incident de collecte du 24/11/2026.
+    // Le 24/11, on conserve les valeurs réelles disponibles avant 22 h.
+    // À partir de 22 h, la valeur du jour est remplacée visuellement par
+    // la moyenne des nombres d'annonces des deux jours précédents.
+    // Dès le 25/11, avant 22 h, on reprend exactement la valeur affichée
+    // la veille; à partir de 22 h, on utilise la moyenne des deux jours
+    // précédents. Le calcul ne modifie jamais les données de l'API ou Neon.
     const average = movingAverage(rows);
-    if (rows.length > 1) {
+    if (rows.length >= 2) {
       const dateParts = new Intl.DateTimeFormat('en-CA', {
         timeZone: 'Africa/Ouagadougou',
         year: 'numeric',
@@ -130,13 +131,18 @@
       const todayKey = `${today.year}-${today.month}-${today.day}`;
       const localHour = Number(today.hour);
       const lastIndex = rows.length - 1;
+      const currentRow = rows[lastIndex];
 
-      if (
-        rows[lastIndex].date === todayKey
-        && localHour < 22
-        && Number.isFinite(average[lastIndex - 1])
-      ) {
-        average[lastIndex] = average[lastIndex - 1];
+      if (currentRow.date === todayKey) {
+        if (todayKey > '2026-11-24' && localHour < 22) {
+          // Reproduire exactement la valeur de la veille sur la courbe.
+          average[lastIndex] = average[lastIndex - 1];
+        } else if (localHour >= 22 && lastIndex >= 2) {
+          // Après 22 h, moyenne des annonces des deux jours précédents.
+          average[lastIndex] = (
+            rows[lastIndex - 1].annonces + rows[lastIndex - 2].annonces
+          ) / 2;
+        }
       }
     }
 
