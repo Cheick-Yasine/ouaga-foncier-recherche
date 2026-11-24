@@ -96,6 +96,11 @@ def market_neighborhood_prices() -> dict:
             status_code=503,
             detail='Le premier calcul quotidien des prix par quartier est en attente.',
         )
+    # Saaba Centre est regroupé avec Saaba dans les résultats publics.
+    result["quartiers"] = [
+        item for item in result.get("quartiers", [])
+        if neighborhood_key(item.get("nom", "")) != "saaba centre"
+    ]
     return result
 
 
@@ -185,6 +190,8 @@ def market_neighborhood_catalog() -> list[dict]:
                 continue
             name = name.strip()
             key = neighborhood_key(name)
+            if key == "saaba centre":
+                continue
             if key in seen:
                 continue
             seen.add(key)
