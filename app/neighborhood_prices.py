@@ -97,7 +97,7 @@ def calculate_neighborhood_medians(
                 break
         if canonical is None:
             continue
-        if not sale_eligible(text) or not market_scope_eligible(text, neighborhood):
+        if not sale_eligible(text) or not market_scope_eligible(text, canonical):
             continue
 
         identity = str(row.get("url") or row.get("id") or "").strip()
