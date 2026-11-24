@@ -2111,11 +2111,17 @@
         offset:[0,-10],
         opacity:.95
       });
-      marker.bindPopup('<div class="deal-map-popup"><strong></strong><span>Quartier référencé</span></div>');
-      marker.on('popupopen',()=>{
-        const strong=marker.getPopup().getElement()?.querySelector('strong');
-        if(strong) strong.textContent=location.name;
-      });
+      const popup=element('div','deal-map-popup');
+      popup.append(element('strong','',location.name));
+      if(priceInfo?.prix_m2_median_fcfa!==null && priceInfo?.prix_m2_median_fcfa!==undefined) {
+        popup.append(
+          element('span','', 'Prix médian : '+fmt.format(priceInfo.prix_m2_median_fcfa)+' FCFA/m²'),
+          element('span','', 'Estimation pour 300 m² : '+fmt.format(priceInfo.prix_m2_median_fcfa*300)+' FCFA')
+        );
+      } else {
+        popup.append(element('span','', 'Prix médian indisponible · estimation pour 300 m² indisponible'));
+      }
+      marker.bindPopup(popup);
       marker.on('click',()=>{
         addZone(location.name,{keepMap:true});
         handleDiscoveryMapPointClick(location);
@@ -2136,7 +2142,13 @@
       })
       .then(async data=>{
         discoveryCatalog=Array.isArray(data)
-          ? data.filter(item=>item && typeof item.name==='string' && item.name.trim())
+          ? data.filter(item=>
+              item
+              && typeof item.name==='string'
+              && item.name.trim()
+              // Saaba Centre est regroupé dans le quartier principal Saaba.
+              && fold(item.name)!=='saaba (centre)'
+            )
           : [];
         try {
           const priceResponse=await fetch('/market/neighborhood-prices',{cache:'no-store'});
