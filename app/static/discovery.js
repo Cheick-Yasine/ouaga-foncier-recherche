@@ -2103,11 +2103,16 @@
       if(!Number.isFinite(lat)||!Number.isFinite(lon)) return;
       bounds.push([lat,lon]);
       const marker=window.L.marker([lat,lon],{icon:markerIcon(selectedKeys.has(fold(location.name))),title:location.name,riseOnHover:true,keyboard:true});
-      // Le survol affiche le prix médian quotidien du quartier, tous types validés confondus.
+      // Au survol, afficher le nom, le prix médian au m² et son estimation pour 300 m².
       const priceInfo=discoveryPrices.get(fold(location.name));
-      const tooltipText=priceInfo?.prix_m2_median_fcfa!==null && priceInfo?.prix_m2_median_fcfa!==undefined
-        ? location.name+' · '+fmt.format(priceInfo.prix_m2_median_fcfa)+' FCFA/m²'
-        : location.name+' · Prix non disponible';
+      const hasPrice=Number.isFinite(Number(priceInfo?.prix_m2_median_fcfa))
+        && priceInfo?.prix_m2_median_fcfa!==null
+        && priceInfo?.prix_m2_median_fcfa!==undefined;
+      const tooltipText=hasPrice
+        ? location.name
+          +' · '+fmt.format(priceInfo.prix_m2_median_fcfa)+' FCFA/m²'
+          +' · 300 m² : '+fmt.format(priceInfo.prix_m2_median_fcfa*300)+' FCFA'
+        : location.name+' · Prix au m² et estimation indisponibles';
       marker.bindTooltip(tooltipText,{
         direction:'top',
         offset:[0,-10],
