@@ -21,12 +21,12 @@ from psycopg.rows import dict_row
 from app.config import get_settings
 from app.database import DatabaseNotConfiguredError
 from app.listing_scope import market_scope_eligible, sale_eligible
-from app.neighborhoods import neighborhood_key, suggest_canonical_neighborhood
+from app.neighborhoods import neighborhood_key, resolve_neighborhood, suggest_canonical_neighborhood
 from app.search_engine import SearchCandidate, price_per_square_metre
 
 logger = logging.getLogger(__name__)
 CATALOG_PATH = Path(__file__).resolve().parent / "data" / "quartiers_catalogue_201.json"
-ALLOWED_PROPERTY_TYPES = frozenset({"terrain", "parcelle", "maison"})
+ALLOWED_PROPERTY_TYPES = frozenset({"terrain", "terrains", "parcelle", "maison"})
 SNAPSHOT_TABLE = "public.market_neighborhood_daily_prices"
 
 
@@ -75,22 +75,29 @@ def calculate_neighborhood_medians(
     for row in rows:
         if row.get("is_trashed"):
             continue
-        raw_type = (row.get("type_bien_normalise") or row.get("type_bien") or "")
-        if str(raw_type).strip().casefold() not in ALLOWED_PROPERTY_TYPES:
+        raw_type = str(row.get("type_bien_normalise") or row.get("type_bien") or "").strip().casefold()
+        if raw_type not in ALLOWED_PROPERTY_TYPES:
             continue
-
-        neighborhood = str(row.get("quartier_zone") or "").strip()
-        if not neighborhood:
-            continue
-        canonical = catalog_by_key.get(neighborhood_key(neighborhood))
-        if canonical is None:
-            alias = suggest_canonical_neighborhood(neighborhood)
-            canonical = catalog_by_key.get(neighborhood_key(alias)) if alias else None
-        if canonical is None:
-            continue
+        # Les variantes de pluriel désignent la même famille, sans reclasser villa/maison.
+        property_type = "terrain" if raw_type == "terrains" else raw_type
 
         text = str(row.get("texte_nettoye") or row.get("resume_court") or "")
-        if not sale_eligible(text) or not market_scope_eligible(text, neighborhood):
+        # Les champs les plus fiables sont essayés dans l'ordre ; le texte sert
+        # de résolution prioritaire lorsqu'il contient un lieu explicite.
+        canonical = None
+        for fallback in (row.get("quartier_final"), row.get("quartier_normalise"), row.get("quartier_zone")):
+            resolution = resolve_neighborhood(text, str(fallback).strip() if fallback else None)
+            resolved = resolution.canonical
+            if resolved:
+                canonical = catalog_by_key.get(neighborhood_key(resolved))
+            if canonical is None and fallback:
+                alias = suggest_canonical_neighborhood(str(fallback).strip())
+                canonical = catalog_by_key.get(neighborhood_key(alias)) if alias else None
+            if canonical:
+                break
+        if canonical is None:
+            continue
+        if not sale_eligible(text) or not market_scope_eligible(text, canonical):
             continue
 
         identity = str(row.get("url") or row.get("id") or "").strip()
@@ -105,7 +112,7 @@ def calculate_neighborhood_medians(
         candidate = SearchCandidate(
             identifier=str(row.get("id") or identity),
             text=text,
-            property_type=str(raw_type).strip().casefold(),
+            property_type=property_type,
             neighborhood=canonical,
             price_fcfa=price,
             area_m2=area,
@@ -160,6 +167,8 @@ def refresh_daily_neighborhood_prices(
                     a.type_bien,
                     a.type_bien_normalise,
                     a.quartier_zone,
+                    a.quartier_normalise,
+                    a.quartier_final,
                     a.superficie_m2,
                     a.prix_fcfa,
                     a.texte_nettoye,
@@ -172,7 +181,7 @@ def refresh_daily_neighborhood_prices(
                   AND COALESCE(
                     NULLIF(LOWER(TRIM(a.type_bien_normalise)), ''),
                     NULLIF(LOWER(TRIM(a.type_bien)), '')
-                  ) IN ('terrain', 'parcelle', 'maison')
+                  ) IN ('terrain', 'terrains', 'parcelle', 'maison')
                 ORDER BY a.id
                 """
             ).fetchall()

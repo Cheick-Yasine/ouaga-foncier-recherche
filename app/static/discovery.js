@@ -1707,7 +1707,9 @@
       row.append(element('span','deal-zone-price-name',name));
       const details=element('span','deal-zone-price-value');
       if(item && item.prix_m2_median_fcfa!==null && item.prix_m2_median_fcfa!==undefined) {
-        details.textContent=fmt.format(item.prix_m2_median_fcfa)+' FCFA/m²';
+        details.textContent=
+          fmt.format(item.prix_m2_median_fcfa)+' FCFA/m² · 300 m² : '+
+          fmt.format(item.prix_m2_median_fcfa*300)+' FCFA';
       } else {
         details.textContent='Prix non disponible';
       }
@@ -2101,21 +2103,32 @@
       if(!Number.isFinite(lat)||!Number.isFinite(lon)) return;
       bounds.push([lat,lon]);
       const marker=window.L.marker([lat,lon],{icon:markerIcon(selectedKeys.has(fold(location.name))),title:location.name,riseOnHover:true,keyboard:true});
-      // Le survol affiche le prix médian quotidien du quartier, tous types validés confondus.
+      // Au survol, afficher le nom, le prix médian au m² et son estimation pour 300 m².
       const priceInfo=discoveryPrices.get(fold(location.name));
-      const tooltipText=priceInfo?.prix_m2_median_fcfa!==null && priceInfo?.prix_m2_median_fcfa!==undefined
-        ? location.name+' · '+fmt.format(priceInfo.prix_m2_median_fcfa)+' FCFA/m²'
-        : location.name+' · Prix non disponible';
+      const hasPrice=Number.isFinite(Number(priceInfo?.prix_m2_median_fcfa))
+        && priceInfo?.prix_m2_median_fcfa!==null
+        && priceInfo?.prix_m2_median_fcfa!==undefined;
+      const tooltipText=hasPrice
+        ? location.name
+          +' · '+fmt.format(priceInfo.prix_m2_median_fcfa)+' FCFA/m²'
+          +' · 300 m² : '+fmt.format(priceInfo.prix_m2_median_fcfa*300)+' FCFA'
+        : location.name+' · Prix au m² et estimation indisponibles';
       marker.bindTooltip(tooltipText,{
         direction:'top',
         offset:[0,-10],
         opacity:.95
       });
-      marker.bindPopup('<div class="deal-map-popup"><strong></strong><span>Quartier référencé</span></div>');
-      marker.on('popupopen',()=>{
-        const strong=marker.getPopup().getElement()?.querySelector('strong');
-        if(strong) strong.textContent=location.name;
-      });
+      const popup=element('div','deal-map-popup');
+      popup.append(element('strong','',location.name));
+      if(priceInfo?.prix_m2_median_fcfa!==null && priceInfo?.prix_m2_median_fcfa!==undefined) {
+        popup.append(
+          element('span','', 'Prix médian : '+fmt.format(priceInfo.prix_m2_median_fcfa)+' FCFA/m²'),
+          element('span','', 'Estimation pour 300 m² : '+fmt.format(priceInfo.prix_m2_median_fcfa*300)+' FCFA')
+        );
+      } else {
+        popup.append(element('span','', 'Prix médian indisponible · estimation pour 300 m² indisponible'));
+      }
+      marker.bindPopup(popup);
       marker.on('click',()=>{
         addZone(location.name,{keepMap:true});
         handleDiscoveryMapPointClick(location);
@@ -2136,7 +2149,13 @@
       })
       .then(async data=>{
         discoveryCatalog=Array.isArray(data)
-          ? data.filter(item=>item && typeof item.name==='string' && item.name.trim())
+          ? data.filter(item=>
+              item
+              && typeof item.name==='string'
+              && item.name.trim()
+              // Saaba Centre est regroupé dans le quartier principal Saaba.
+              && fold(item.name)!=='saaba (centre)'
+            )
           : [];
         try {
           const priceResponse=await fetch('/market/neighborhood-prices',{cache:'no-store'});
