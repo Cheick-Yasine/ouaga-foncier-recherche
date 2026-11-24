@@ -55,3 +55,36 @@ def test_catalog_contains_all_201_neighborhoods_including_unlocated_ones():
 
     assert len(catalog) == 201
     assert all("name" in item and "key" in item for item in catalog)
+
+
+def test_plural_terrains_and_normalized_neighborhood_fallback_are_included():
+    catalog = [{"name": "Saaba", "key": "saaba"}]
+    rows = [
+        {
+            "id": "plural",
+            "url": "plural",
+            "type_bien_normalise": "terrains",
+            "quartier_zone": None,
+            "quartier_normalise": "SAABA",
+            "quartier_final": None,
+            "prix_fcfa": 2_400_000,
+            "superficie_m2": 120,
+            "texte_nettoye": "Terrain en vente",
+        },
+        {
+            "id": "final",
+            "url": "final",
+            "type_bien_normalise": "parcelle",
+            "quartier_zone": None,
+            "quartier_normalise": None,
+            "quartier_final": "Saaba",
+            "prix_fcfa": 3_000_000,
+            "superficie_m2": 150,
+            "texte_nettoye": "Parcelle en vente",
+        },
+    ]
+
+    result = calculate_neighborhood_medians(rows, catalog)
+
+    assert result[0]["median_price_m2"] == 20_000
+    assert result[0]["listing_count"] == 2
